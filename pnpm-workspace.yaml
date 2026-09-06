@@ -1,0 +1,11 @@
+# pnpm settings. As of pnpm 11 these live here, not in package.json.
+#
+# pnpm blocks dependency build scripts by default so a malicious postinstall
+# cannot run unnoticed. Approve only what genuinely needs to build.
+#
+# unrs-resolver — native import resolver used by eslint-config-next. Without
+# it, linting silently loses import resolution.
+allowBuilds:
+  unrs-resolver: true
+  # supabase CLI downloads its platform binary in a postinstall step
+  supabase: true

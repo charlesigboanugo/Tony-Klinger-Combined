@@ -1,0 +1,52 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files — real values never committed (note 02 §30, note 09 §49)
+.env*
+# .env.example is the exception: it documents every required variable NAME with
+# empty or safe local-default values, and is the only record of what a new
+# environment must provide. Note 02 §30 requires it to exist.
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# supabase local
+/supabase/.temp
+/supabase/.branches
+
+# captured copy of the old Wix site — reference only, deleted before launch
+/current-website

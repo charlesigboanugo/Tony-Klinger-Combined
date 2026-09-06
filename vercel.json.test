@@ -1,0 +1,29 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/send-emails",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-stripe",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/expire-entitlements",
+      "schedule": "10 * * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-tokens",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/sync-audiences",
+      "schedule": "45 4 * * *"
+    },
+    {
+      "path": "/api/cron/sync-stripe",
+      "schedule": "20 * * * *"
+    }
+  ]
+}

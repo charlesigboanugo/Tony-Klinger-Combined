@@ -1,0 +1,27 @@
+<!--
+  Invitation email — note 06 §14.2.
+
+  POINTS AT token_hash, NOT AT ConfirmationURL. GoTrue's default invite link
+  goes to its own /verify endpoint, which returns the session in the URL
+  FRAGMENT. A fragment is never sent to a server, so our callback saw no code
+  and treated a perfectly good invitation as a broken link.
+
+  `next` carries the invitee to the form that sets their password, because that
+  is what accepting an invitation means. Without it they arrive holding a
+  session and no credential of their own: able to use the site once, and unable
+  to sign in again.
+-->
+<h2>You've been invited</h2>
+
+<p>
+  You have been invited to create an account on Tony Klinger. Follow the link
+  below to choose a password and finish setting it up.
+</p>
+
+<p>
+  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite&next=%2Fauth%2Freset-password%3Finvited%3D1">
+    Accept the invitation
+  </a>
+</p>
+
+<p>If you were not expecting this, you can ignore this email.</p>

@@ -1,0 +1,480 @@
+@import "tailwindcss";
+
+/*
+ * Tony Klinger design tokens — note 10.
+ *
+ * DIRECTION: saturated jewel blocks. Deep oxblood, teal and indigo are used as
+ * large flat colour FIELDS behind content, against an ivory or midnight-indigo
+ * ground. The colour is structural — it divides the page into sections you can
+ * navigate by hue — rather than decorative trim on neutral cards.
+ *
+ * The three block colours are identical in both themes, deliberately. They are
+ * the fixed identity; it is the ground beneath them that changes. Flipping the
+ * blocks as well would leave the site with no constant.
+ *
+ * Light and dark both ship at launch (note 10 §39), so every semantic token
+ * carries a value in both themes. A token defined in only one theme is an
+ * incomplete token.
+ *
+ * Components consume the semantic names only. A raw hex in a feature component
+ * is a bug: it is exactly what makes a future theme change unmanageable
+ * (note 10 §38).
+ *
+ * Every pair below is contrast-checked in BOTH themes by
+ * `scripts/check-contrast.mjs`. Run it after touching any colour.
+ *
+ * Theme resolution, in order:
+ *   1. :root                          -> light (the default)
+ *   2. prefers-color-scheme: dark     -> dark, unless the user chose light
+ *   3. [data-theme]                   -> explicit choice always wins
+ */
+
+:root {
+  /* Surfaces — warm ivory ground so the jewel blocks sit on something with
+     temperature rather than on clinical white. */
+  --background: #f6f4ef;
+  --surface: #ffffff;
+  --surface-muted: #ebe7de;
+  --border: #d6cfc2;
+  /* Form-control boundary, distinct from the decorative --border above.
+     WCAG 1.4.11 requires 3:1 for anything needed to IDENTIFY a control. */
+  --input-border: #6d6657;
+
+  /* Text — indigo-tinted ink, never pure black. */
+  --foreground: #16182b;
+  --muted: #ebe7de;
+  --muted-foreground: #51556d;
+
+  /* Brand. Oxblood and deep teal — jewel tones, deepened on the light theme
+     so each can legally carry white text (note 10 §35). */
+  --primary: #a3162f;
+  --primary-foreground: #ffffff;
+  --secondary: #16182b;
+  --secondary-foreground: #f6f4ef;
+  --accent: #0b5563;
+  --accent-foreground: #ffffff;
+
+  /* Filled call-to-action buttons — a token distinct from --primary (note 10
+     §5.1). In light mode the two happen to coincide; in dark mode they must
+     not, because --primary also sets inline link/label text directly on the
+     dark background and that role needs a BRIGHT colour, which cannot also
+     pair with white button text at 4.5:1 (see the dark-mode block for the
+     arithmetic). Splitting them lets buttons be a deep, confident rose with
+     white text while links keep the brighter red they need to stay legible. */
+  --button: #a3162f;
+  --button-foreground: #ffffff;
+
+  /*
+   * THE JEWEL BLOCKS.
+   *
+   * These are the large flat colour fields the design is built on, and they
+   * are deliberately IDENTICAL in both themes. A saturated block is the
+   * constant — it is the page around it that changes from ivory to midnight.
+   * Flipping the blocks too would leave the site with no fixed identity.
+   *
+   * All three carry the same near-white foreground, so any block can host any
+   * content without a per-block text rule.
+   */
+  --block-oxblood: #7a1f2b;
+  --block-teal: #0f4c5c;
+  --block-indigo: #2e2a6e;
+  --block-foreground: #f7f3ec;
+
+  /* Status */
+  --success: #14663f;
+  --success-foreground: #ffffff;
+  --warning: #7d4a00;
+  --warning-foreground: #ffffff;
+  --error: #a91e17;
+  --error-foreground: #ffffff;
+
+  /* Focus ring — must stay visible in both themes (note 10 §36) */
+  --ring: #a3162f;
+
+  /*
+   * Google sign-in button — third-party brand, NOT our palette.
+   *
+   * A "Sign in with Google" control has to look like Google's, or people do
+   * not recognise it as the thing they already have an account with. These are
+   * Google's own specified values from their identity branding guidelines, and
+   * they deliberately do not follow this site's theme.
+   *
+   * They are tokens rather than hex literals in the component so that note 10
+   * §38 still holds — no raw colour in a feature component — and so the light
+   * and dark variants resolve through the same three-step cascade as
+   * everything else.
+   */
+  --google-bg: #ffffff;
+  --google-border: #747775;
+  --google-text: #1f1f1f;
+
+  /* Form. Sharper than the old 0.625rem: a large radius on every surface is
+     the single strongest "generic template" signal, and an editorial layout
+     wants edges that behave like paper and film frames. */
+  --radius: 0.25rem;
+  --radius-lg: 0.5rem;
+
+  /* Elevation. Two only — anything more and cards start floating arbitrarily. */
+  --shadow-card: 0 1px 2px rgb(20 18 13 / 0.06), 0 8px 24px -12px rgb(20 18 13 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(20 18 13 / 0.08), 0 24px 48px -20px rgb(20 18 13 / 0.28);
+
+  /* Motion. Centralised so timing is consistent rather than invented per
+     component (note 10 §37). Expo-out reads as "settling", not "sliding". */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --dur-fast: 160ms;
+  --dur-base: 320ms;
+  --dur-slow: 620ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* Midnight indigo, not neutral black — the ground is a jewel tone too. */
+    --background: #0a0f1f;
+    --surface: #141b33;
+    --surface-muted: #1c2547;
+    --border: #2c3763;
+    --input-border: #7c86b4;
+
+    --foreground: #f1f0fa;
+    --muted: #1c2547;
+    --muted-foreground: #b0b6d8;
+
+    /* --primary stays bright: it is also used directly as link/label text on
+       this dark background in ~20 places (blog links, account nav,
+       eyebrows), and text needs 4.5:1 against a near-black ground, which a
+       colour dark enough to carry white button text cannot reach (note 10
+       §5.1). Buttons use the separate --button token below instead of
+       forcing this one to serve two incompatible roles. */
+    --primary: #ff4d6d;
+    --primary-foreground: #1c0510;
+    --secondary: #1c2547;
+    --secondary-foreground: #f1f0fa;
+    --accent: #2dd4bf;
+    --accent-foreground: #04201c;
+
+    --success: #4ade80;
+    --success-foreground: #04201c;
+    --warning: #fbbf24;
+    --warning-foreground: #1c0510;
+    --error: #ff8a94;
+    --error-foreground: #1c0510;
+
+    --ring: #ff4d6d;
+
+    /* Deep rose, not the bright pink above — this is the one people press.
+       Paired with white, not the dark maroon --primary needs for its link
+       role, because a filled button reads more confidently with white text
+       and nothing here also has to double as body copy on the page ground. */
+    --button: #c62953;
+    --button-foreground: #ffffff;
+
+    /* Blocks do NOT flip with the theme — see the light block above. */
+    --block-oxblood: #7a1f2b;
+    --block-teal: #0f4c5c;
+    --block-indigo: #2e2a6e;
+    --block-foreground: #f7f3ec;
+
+    /* Google's own dark-theme button values (see the light block above). */
+    --google-bg: #131314;
+    --google-border: #8e918f;
+    --google-text: #e3e3e3;
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.7);
+    --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.6), 0 24px 48px -20px rgb(0 0 0 / 0.85);
+  }
+}
+
+:root[data-theme="dark"] {
+  /* Midnight indigo, not neutral black — the ground is a jewel tone too. */
+  --background: #0a0f1f;
+  --surface: #141b33;
+  --surface-muted: #1c2547;
+  --border: #2c3763;
+  --input-border: #7c86b4;
+
+  --foreground: #f1f0fa;
+  --muted: #1c2547;
+  --muted-foreground: #b0b6d8;
+
+  /* --primary stays bright — see the media-query block above for why. */
+  --primary: #ff4d6d;
+  --primary-foreground: #1c0510;
+  --secondary: #1c2547;
+  --secondary-foreground: #f1f0fa;
+  --accent: #2dd4bf;
+  --accent-foreground: #04201c;
+
+  --success: #4ade80;
+  --success-foreground: #04201c;
+  --warning: #fbbf24;
+  --warning-foreground: #1c0510;
+  --error: #ff8a94;
+  --error-foreground: #1c0510;
+
+  --ring: #ff4d6d;
+
+  /* Deep rose button colour — see the media-query block above for why it's
+     a separate token from --primary. */
+  --button: #c62953;
+  --button-foreground: #ffffff;
+
+  /* Blocks do NOT flip with the theme — see the light block above. */
+  --block-oxblood: #7a1f2b;
+  --block-teal: #0f4c5c;
+  --block-indigo: #2e2a6e;
+  --block-foreground: #f7f3ec;
+
+  /* Google's own dark-theme button values (see the light block above). */
+  --google-bg: #131314;
+  --google-border: #8e918f;
+  --google-text: #e3e3e3;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.7);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.6), 0 24px 48px -20px rgb(0 0 0 / 0.85);
+}
+
+/* Expose the semantic tokens to Tailwind utilities: bg-background,
+   text-muted-foreground, border-border, and so on. */
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-input-border: var(--input-border);
+
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-button: var(--button);
+  --color-button-foreground: var(--button-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+
+  --color-ring: var(--ring);
+
+  --color-block-oxblood: var(--block-oxblood);
+  --color-block-teal: var(--block-teal);
+  --color-block-indigo: var(--block-indigo);
+  --color-block-foreground: var(--block-foreground);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+
+  --radius-theme: var(--radius);
+  --radius-theme-lg: var(--radius-lg);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-lift: var(--shadow-lift);
+
+  --ease-expo: var(--ease-out-expo);
+  --ease-quart: var(--ease-out-quart);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Display face carries the editorial voice. Tight tracking at large sizes —
+     a serif set at 72px with default tracking looks slack. */
+  .font-display,
+  h1,
+  h2 {
+    font-family: var(--font-display), ui-serif, Georgia, serif;
+    font-optical-sizing: auto;
+  }
+
+  h1 {
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    letter-spacing: -0.015em;
+  }
+
+  /*
+   * Interactive things must look interactive — note 10 §21, §26.
+   *
+   * Tailwind v4's preflight sets `cursor: default` on <button>, matching the
+   * browser default. The practical effect is that every control on the site
+   * felt inert under the mouse: a button was indistinguishable from a caption
+   * until you clicked it. Anchors already get a pointer, so this restores
+   * parity for buttons, ARIA buttons and disclosure summaries.
+   *
+   * Disabled controls are excluded — a pointer over something that cannot be
+   * pressed is a false promise.
+   */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="radio"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  summary,
+  label[for],
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* Focus must remain visible in both themes (note 10 §36). */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Respect reduced-motion preferences (note 10 §37). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Editorial measure — long-form prose should not run the full container. */
+  .measure {
+    max-width: 68ch;
+  }
+
+  /* Film grain. A flat dark panel is the giveaway of a generated design; a
+     little luminance noise makes a large dark field read as a printed surface.
+     Pure CSS, no image request, and it sits behind content via a pseudo
+     element so it never intercepts pointer events. */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /*
+   * Dropdown / menu / popover motion — note 10 §37.1.
+   *
+   * The ONE transition every dropdown, account menu, select-style panel and
+   * future popover on the site should use, so "which motion does this menu
+   * use" is never a per-component decision again.
+   *
+   * Transform + opacity only — compositor-only, no layout or paint cost — and
+   * it runs on OPEN and CLOSE alike. The element stays mounted and toggles
+   * `data-open` rather than being conditionally rendered or `hidden`, which
+   * is what makes the CLOSE half possible at all: `display:none` cannot be
+   * transitioned. `visibility` is delayed by the transition duration so a
+   * closed panel leaves the tab order and stops accepting clicks only once
+   * it has actually finished fading, never before.
+   *
+   * Pair with a Tailwind `origin-*` utility per usage (the menu should scale
+   * from the corner nearest its trigger, not always dead centre) —
+   * deliberately left unset here rather than defaulted, so a usage that
+   * forgets it is visibly wrong instead of silently applying a guess.
+   *
+   * No animation library. `prefers-reduced-motion` already collapses every
+   * transition on the page to near-zero via the base-layer rule above, so
+   * this needs no separate reduced-motion override.
+   */
+  .dropdown-panel {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity var(--dur-fast) var(--ease-out-expo),
+      transform var(--dur-fast) var(--ease-out-expo),
+      visibility 0s var(--dur-fast);
+  }
+
+  .dropdown-panel[data-open="true"] {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    visibility: visible;
+    pointer-events: auto;
+    transition:
+      opacity var(--dur-fast) var(--ease-out-expo),
+      transform var(--dur-fast) var(--ease-out-expo),
+      visibility 0s;
+  }
+
+  /* Reveal-on-scroll initial state. The IntersectionObserver in
+     <Reveal> flips data-revealed, so content is visible even if JS never
+     runs — the hidden state is applied only when JS has marked the element. */
+  [data-reveal="pending"] {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  [data-reveal="shown"] {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity var(--dur-slow) var(--ease-out-expo),
+      transform var(--dur-slow) var(--ease-out-expo);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-reveal="pending"] {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* Navigation motion — note 10 §37.
+ *
+ * Applied only via Tailwind's `motion-safe:` variant, and the reduced-motion
+ * block above collapses any that slip through. Short and easing-out: a menu
+ * that takes longer than ~200ms to appear feels broken rather than polished. */
+@keyframes nav-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes nav-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nav-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
