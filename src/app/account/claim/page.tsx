@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { ClaimForm } from "@/app/account/claim/ClaimForm";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { AccountHeader } from "@/components/account/AccountHeader";
+import { BackLink } from "@/components/ui/BackLink";
+import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 export const metadata: Metadata = { title: "Claim your purchase", robots: { index: false } };
@@ -19,16 +21,22 @@ export default async function ClaimPage({ searchParams }: PageProps<"/account/cl
 
   if (!token) {
     return (
-      <EmptyState
-        title="No claim link"
-        description="Open the link from your receipt email to add a guest purchase to your account."
-      />
+      <>
+        <BackLink href="/account/orders">Your orders</BackLink>
+        <EmptyState icon="link"
+          title="No claim link"
+          description="Open the link from your receipt email to add a guest purchase to your account."
+          action={<ButtonLink href="/account/orders">See your orders</ButtonLink>}
+        />
+      </>
     );
   }
 
   return (
     <>
-      <PageHeader
+      <BackLink href="/account/orders">Your orders</BackLink>
+
+      <AccountHeader
         title="Claim your purchase"
         description="You bought this as a guest. Linking it to this account gives you access."
       />

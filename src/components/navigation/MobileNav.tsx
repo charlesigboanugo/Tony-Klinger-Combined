@@ -11,7 +11,10 @@ import { cn } from "@/lib/utils/cn";
 /**
  * Mobile and tablet navigation — note 04 §26, §27, note 10 §31, §35.
  *
- * A full-height sheet rather than a list pushed under the header. The previous
+ * A full-screen takeover on the ink field (note 10 §42.2): numbered sections
+ * set large in the display face, rising in one after another, with Sign in
+ * (or the account) and the cart at the foot. A full-height sheet rather than a
+ * list pushed under the header. The previous
  * version expanded every submenu at once, which on a phone put around thirty
  * links in a single scroll and buried the primary items.
  *
@@ -34,11 +37,13 @@ export function MobileNav({
   open,
   onClose,
   userEmail,
+  cartCount = 0,
   pathname,
 }: {
   open: boolean;
   onClose: () => void;
   userEmail?: string | null;
+  cartCount?: number;
   pathname: string;
 }) {
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -113,15 +118,11 @@ export function MobileNav({
 
   if (!open) return null;
 
+  // Entries rise in one after another; capped so the last never lags.
+  const rise = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 45}ms` });
+
   return (
     <div className="lg:hidden">
-      {/* Scrim. Clicking it closes, which is the gesture most people try first. */}
-      <div
-        className="fixed inset-0 top-16 z-40 bg-black/40 motion-safe:animate-[nav-fade_160ms_ease-out]"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
       <div
         ref={sheetRef}
         id="mobile-navigation"
@@ -129,66 +130,74 @@ export function MobileNav({
         aria-modal="true"
         aria-label="Site menu"
         className={cn(
-          "fixed inset-x-0 top-16 bottom-0 z-50 overflow-y-auto overscroll-contain",
-          "border-t border-border bg-background",
-          "motion-safe:animate-[nav-sheet_200ms_cubic-bezier(0.32,0.72,0,1)]",
+          // A full-screen takeover on the ink field (note 10 §42.2), not a
+          // sheet over a scrim: the menu IS the screen while it is open.
+          "on-ink grain fixed inset-x-0 top-16 bottom-0 z-50 overflow-y-auto overscroll-contain",
+          "motion-safe:animate-[nav-fade_200ms_ease-out]",
         )}
       >
-        <nav aria-label="Main" className="mx-auto max-w-2xl px-4 py-4 sm:px-6">
-          <ul className="space-y-1">
-            {publicNavigation.map((item) =>
-              item.children?.length ? (
-                <MobileSection
-                  key={item.href}
-                  item={item}
-                  pathname={pathname}
-                  expanded={expanded === item.href}
-                  onToggle={() =>
-                    setExpanded((current) =>
-                      current === item.href ? null : item.href,
-                    )
-                  }
-                  onNavigate={onClose}
-                />
-              ) : (
-                <li key={item.href}>
+        <nav aria-label="Main" className="mx-auto flex min-h-full max-w-2xl flex-col px-5 pt-6 pb-10 sm:px-8">
+          <ol className="border-t border-border">
+            {publicNavigation.map((item, i) => (
+              <li
+                key={item.href}
+                style={rise(i)}
+                className="border-b border-border motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both]"
+              >
+                {item.children?.length ? (
+                  <MobileSection
+                    item={item}
+                    number={i + 1}
+                    pathname={pathname}
+                    expanded={expanded === item.href}
+                    onToggle={() => setExpanded((current) => (current === item.href ? null : item.href))}
+                    onNavigate={onClose}
+                  />
+                ) : (
                   <Link
                     href={item.href}
                     onClick={onClose}
                     aria-current={isCurrentPage(pathname, item.href) ? "page" : undefined}
-                    className={cn(
-                      "flex min-h-11 items-center rounded-(--radius) px-3 text-base transition-colors",
-                      isActive(pathname, item.href)
-                        ? "bg-surface-muted font-medium text-foreground"
-                        : "text-foreground/80 hover:bg-surface-muted hover:text-foreground",
-                    )}
+                    className="group flex min-h-16 items-baseline gap-4 py-3 outline-offset-2 focus-visible:outline-2 focus-visible:outline-white"
                   >
-                    {item.label}
+                    <SectionNumber n={i + 1} />
+                    <span
+                      className={cn(
+                        "font-display text-[2rem] leading-none font-semibold tracking-tight transition-colors sm:text-4xl",
+                        isActive(pathname, item.href) ? "text-foreground" : "text-foreground/85 group-hover:text-foreground",
+                      )}
+                    >
+                      {item.label}
+                    </span>
+                    {isActive(pathname, item.href) ? (
+                      <span aria-hidden="true" className="ml-auto h-1.5 w-1.5 self-center rounded-full bg-primary" />
+                    ) : null}
                   </Link>
-                </li>
-              ),
-            )}
-          </ul>
+                )}
+              </li>
+            ))}
+          </ol>
 
-          <div className="mt-6 grid gap-2 border-t border-border pt-6 sm:grid-cols-2">
-            <ButtonLink href="/cart" variant="outline" onClick={onClose}>
-              Cart
-            </ButtonLink>
+          <div
+            style={rise(publicNavigation.length)}
+            className="mt-auto grid gap-3 pt-10 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both] sm:grid-cols-2"
+          >
             {userEmail ? (
-              <ButtonLink href="/account" onClick={onClose}>
+              <ButtonLink href="/account" variant="onBlock" onClick={onClose}>
                 My account
               </ButtonLink>
             ) : (
-              <ButtonLink href="/auth/sign-in" onClick={onClose}>
+              <ButtonLink href="/auth/sign-in" variant="onBlock" onClick={onClose}>
                 Sign in
               </ButtonLink>
             )}
+            <ButtonLink href="/cart" variant="onBlockOutline" onClick={onClose}>
+              {cartCount > 0 ? `Cart (${cartCount})` : "Cart"}
+            </ButtonLink>
           </div>
 
           {userEmail ? (
-            <p className="mt-4 truncate px-3 text-sm text-muted-foreground">
-              Signed in as {userEmail}
-            </p>
+            <p className="mt-4 truncate text-center text-xs text-muted-foreground">Signed in as {userEmail}</p>
           ) : null}
         </nav>
       </div>
@@ -196,14 +205,25 @@ export function MobileNav({
   );
 }
 
+/** "01" — the catalogue's numbering, carried into the menu. */
+function SectionNumber({ n }: { n: number }) {
+  return (
+    <span aria-hidden="true" className="w-7 shrink-0 text-xs text-muted-foreground tabular-nums">
+      {String(n).padStart(2, "0")}
+    </span>
+  );
+}
+
 function MobileSection({
   item,
+  number,
   pathname,
   expanded,
   onToggle,
   onNavigate,
 }: {
   item: NavItem;
+  number: number;
   pathname: string;
   expanded: boolean;
   onToggle: () => void;
@@ -211,73 +231,69 @@ function MobileSection({
 }) {
   const sectionActive =
     isActive(pathname, item.href) ||
-    (item.children ?? []).some(
-      (child) => !child.external && isActive(pathname, child.href),
-    );
+    (item.children ?? []).some((child) => !child.external && isActive(pathname, child.href));
 
   return (
-    <li>
+    <>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
-        className={cn(
-          "flex min-h-11 w-full items-center justify-between rounded-(--radius) px-3 text-base transition-colors",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-          sectionActive
-            ? "bg-surface-muted font-medium text-foreground"
-            : "text-foreground/80 hover:bg-surface-muted",
-        )}
+        className="group flex min-h-16 w-full items-baseline gap-4 py-3 text-left outline-offset-2 focus-visible:outline-2 focus-visible:outline-white"
       >
-        {item.label}
-        <svg
-          viewBox="0 0 12 12"
-          aria-hidden="true"
+        <SectionNumber n={number} />
+        <span
           className={cn(
-            "h-3 w-3 opacity-60 transition-transform duration-200",
-            expanded && "rotate-180",
+            "font-display text-[2rem] leading-none font-semibold tracking-tight transition-colors sm:text-4xl",
+            sectionActive || expanded ? "text-foreground" : "text-foreground/85 group-hover:text-foreground",
           )}
         >
-          <path
-            d="M2 4.5 6 8.5 10 4.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+          {item.label}
+        </span>
+        <span
+          aria-hidden="true"
+          className={cn(
+            "ml-auto grid h-8 w-8 shrink-0 place-items-center self-center rounded-full border border-border transition-transform duration-(--dur-base) ease-expo",
+            expanded && "rotate-45 border-foreground",
+          )}
+        >
+          <svg viewBox="0 0 12 12" className="h-3 w-3">
+            <path d="M6 1.5v9M1.5 6h9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </span>
       </button>
 
       {expanded ? (
-        <ul className="mt-1 ml-3 space-y-0.5 border-l border-border pl-3">
-          {(item.children ?? []).map((child) => {
-            const childActive = !child.external && isActive(pathname, child.href);
+        <div className="pb-6 pl-11 motion-safe:animate-[nav-in_200ms_ease-out]">
+          {item.description ? (
+            <p className="mb-3 max-w-md text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+          ) : null}
+          <ul className="grid gap-x-6 sm:grid-cols-2">
+            {(item.children ?? []).map((child) => {
+              const childActive = !child.external && isActive(pathname, child.href);
 
-            return (
-              <li key={child.href}>
-                <Link
-                  href={child.href}
-                  {...(child.external
-                    ? { target: "_blank", rel: "noopener noreferrer" }
-                    : {})}
-                  onClick={onNavigate}
-                  aria-current={isCurrentPage(pathname, child.href) ? "page" : undefined}
-                  className={cn(
-                    "flex min-h-11 items-center justify-between gap-3 rounded-(--radius) px-3 text-sm transition-colors",
-                    childActive
-                      ? "bg-surface-muted font-medium text-foreground"
-                      : "text-muted-foreground hover:bg-surface-muted hover:text-foreground",
-                  )}
-                >
-                  <span>{child.label}</span>
-                  {child.external ? <ExternalMark /> : null}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+              return (
+                <li key={child.href}>
+                  <Link
+                    href={child.href}
+                    {...(child.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    onClick={onNavigate}
+                    aria-current={isCurrentPage(pathname, child.href) ? "page" : undefined}
+                    className={cn(
+                      "flex min-h-11 items-center gap-2 text-base transition-colors",
+                      childActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {childActive ? <span aria-hidden="true" className="h-px w-3 bg-primary" /> : null}
+                    <span>{child.label}</span>
+                    {child.external ? <ExternalMark className="inline-block h-3 w-3 opacity-70" /> : null}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       ) : null}
-    </li>
+    </>
   );
 }

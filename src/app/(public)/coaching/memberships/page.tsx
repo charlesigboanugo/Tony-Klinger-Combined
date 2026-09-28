@@ -60,6 +60,7 @@ export default async function MembershipsPage() {
   }));
 
   return (
+    <>
     <Section>
       <Container>
         <PageHeader
@@ -78,5 +79,7 @@ export default async function MembershipsPage() {
         </p>
       </Container>
     </Section>
+
+    </>
   );
 }

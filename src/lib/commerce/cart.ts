@@ -114,3 +114,12 @@ export function setLineBilling(
 ): CartLine[] {
   return lines.map((l) => (l.slug === slug ? { ...l, billing } : l));
 }
+
+/**
+ * Total quantity across all lines, for the masthead's cart badge. Read from the
+ * same validated cookie as checkout, so a tampered cookie shows an empty cart
+ * rather than an invented count.
+ */
+export async function readCartCount(): Promise<number> {
+  return (await readCart()).reduce((sum, line) => sum + line.qty, 0);
+}

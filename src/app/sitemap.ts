@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 
-import { CATALOGUE_CATEGORIES, listCatalogue } from "@/lib/content/catalogue";
-import { GIVE_GET_GO_SECTIONS } from "@/lib/content/give-get-go";
+import { CATALOGUE_CATEGORIES, listCatalogue, workHref } from "@/lib/content/catalogue";
 import { listPosts } from "@/lib/content/blog";
 import { absoluteUrl } from "@/lib/urls";
 
@@ -21,7 +20,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/",
     "/about",
     "/coaching",
-    "/coaching/about",
     "/coaching/memberships",
     "/coaching/courses",
     "/coaching/group-coaching",
@@ -51,13 +49,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  const giveGetGoRoutes = GIVE_GET_GO_SECTIONS.map((section) => ({
-    url: absoluteUrl(`/give-get-go/${section.slug}`),
-    lastModified: new Date(),
-    changeFrequency: "monthly" as const,
-    priority: 0.6,
-  }));
-
   // A database outage must not fail the build or return a 500 for a crawler.
   // A sitemap missing its dynamic entries is recoverable; a broken one is not.
   const [posts, items] = await Promise.all([
@@ -72,7 +63,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  const itemRoutes = items.map((item) => ({
+  // Only works with a page of their own; external works live elsewhere.
+  const itemRoutes = items.filter((item) => workHref(item)?.external === false).map((item) => ({
     url: absoluteUrl(`/catalogue/${item.category}/${item.slug}`),
     lastModified: item.published_at ? new Date(item.published_at) : new Date(),
     changeFrequency: "monthly" as const,
@@ -82,7 +74,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticRoutes,
     ...categoryRoutes,
-    ...giveGetGoRoutes,
     ...postRoutes,
     ...itemRoutes,
   ];

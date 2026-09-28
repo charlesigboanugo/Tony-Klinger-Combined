@@ -1,7 +1,7 @@
 import { publicEnv } from "@/lib/env/public";
 
 /**
- * Storage buckets — migration 0019, note 02 §37, note 08 §26.
+ * Storage buckets — migration 0005_storage_contact_and_consent, note 02 §37, note 08 §26.
  *
  * Buckets are split by WHO MAY READ, not by file type: `public` is a per-bucket
  * flag, so which bucket a file is in decides its access rule. That is also the

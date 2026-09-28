@@ -20,14 +20,14 @@ export function AdminTable({
 }) {
   return (
     <div className="overflow-x-auto rounded-(--radius-lg) border border-border bg-surface shadow-card">
-      <table className="w-full min-w-[36rem] text-sm">
+      <table className="w-full min-w-xl text-sm">
         <thead className="border-b border-border bg-surface-muted">
           <tr>
             {headers.map((h) => (
               <th
                 key={h}
                 scope="col"
-                className="px-4 py-3 text-left text-[0.6875rem] font-semibold tracking-[0.1em] text-muted-foreground uppercase"
+                className="px-4 py-3 text-left text-[0.6875rem] font-semibold tracking-widest text-muted-foreground uppercase"
               >
                 {h}
               </th>
@@ -55,19 +55,29 @@ const TONES: Record<string, string> = {
   paid: "border-success/40 bg-success/10 text-success",
   active: "border-success/40 bg-success/10 text-success",
   published: "border-success/40 bg-success/10 text-success",
+  confirmed: "border-success/40 bg-success/10 text-success",
+  completed: "border-success/40 bg-success/10 text-success",
+  sent: "border-success/40 bg-success/10 text-success",
+  succeeded: "border-success/40 bg-success/10 text-success",
   pending: "border-warning/40 bg-warning/10 text-warning",
+  processing: "border-warning/40 bg-warning/10 text-warning",
+  paused: "border-warning/40 bg-warning/10 text-warning",
   past_due: "border-warning/40 bg-warning/10 text-warning",
   draft: "border-border bg-surface-muted text-muted-foreground",
   failed: "border-error/40 bg-error/10 text-error",
   cancelled: "border-error/40 bg-error/10 text-error",
   expired: "border-error/40 bg-error/10 text-error",
+  refunded: "border-error/40 bg-error/10 text-error",
+  no_show: "border-error/40 bg-error/10 text-error",
+  revoked: "border-error/40 bg-error/10 text-error",
+  archived: "border-border bg-surface-muted text-muted-foreground",
 };
 
 export function StatusPill({ value }: { value: string }) {
   return (
     <span
       className={cn(
-        "inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize",
+        "inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap capitalize",
         TONES[value] ?? "border-border bg-surface-muted text-muted-foreground",
       )}
     >

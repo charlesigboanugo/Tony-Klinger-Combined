@@ -654,6 +654,15 @@ A recording is therefore never a separate content hierarchy and has no route of 
 is reached through its parent — course, cohort workshop, Group Coaching session or
 masterclass — and a customer entitled to the parent is entitled to its recordings.
 
+**Enforced 2026-09-26 (migration 0019).** `resources` gained a read policy: a row is
+readable when it is the `recording_resource_id` of a cohort workshop whose cohort the
+caller holds, or of a Group Coaching session the caller booked (`has_booking()`) or whose
+series they hold. **Session replays deliberately exclude customers who merely hold unspent
+credits** — credits make a session visible and bookable, and a seat never taken is not a
+replay owed. An external URL (Livid) is shown as-is; a private-bucket path is signed
+server-side for one hour, only after the row came back under RLS
+(`src/lib/academy/delivery.ts`).
+
 ---
 
 # 24. Downloadable Resources
@@ -723,6 +732,13 @@ It should support:
 Memberships should only cover Private Coaching where that benefit is explicitly defined.
 
 Do not assume membership automatically includes private coaching.
+
+**Implemented 2026-09-27** (note 09 §36, migration 0020): a customer chooses an open time,
+pays, and the booking is confirmed from the resulting entitlement. Confirmed private sessions
+appear in the Academy's Coaching area alongside Group Coaching seats ("Private, with Tony",
+joining link in the usual window), and a paid session not yet given a time shows there as a
+prompt to choose one. Past private sessions are listed in Account → Bookings only; they have
+no replays.
 
 ---
 
@@ -952,7 +968,7 @@ chances to get one wrong.
 **The playable address exists only inside an authorised response.** It is built in
 `src/lib/academy/video.ts`, which is `server-only`, and only after the lesson row has come
 back — and a lesson row is readable solely with a live entitlement to its course
-(migration 0004). There is no stored URL for a forgotten `select *` to leak, and the course
+(migration 0002_security_and_reference_data). There is no stored URL for a forgotten `select *` to leak, and the course
 OUTLINE carries only a boolean saying a lesson has video, because a table of contents is
 rendered for people who may not hold every lesson on it.
 
@@ -1010,9 +1026,25 @@ opened" would send a returning customer back to something they had already finis
 because they glanced at it.
 
 Writing progress requires the entitlement, enforced by the insert policy rather than by the
-Server Action (migration 0037). A Server Action is a public endpoint: anyone with a session
+Server Action (migration 0007_staff_accounts_and_lesson_video). A Server Action is a public endpoint: anyone with a session
 can post any lesson id to it, and without the policy they could manufacture a completed
 course they never had access to.
+
+**"Complete and continue" (2026-09-26).** On any lesson but the last, one button records
+completion and opens the next lesson. The Server Action accepts a `next` path and redirects
+only if it matches `/academy/courses/<slug>/lessons/<slug>`, so it cannot be used as an
+open redirect. Completion is still explicit; opening a lesson still records nothing.
+
+## 34.3 Lesson body
+
+Lesson `content` is **Markdown** (the migrated CMS's format), rendered by a small parser in
+`src/lib/academy/lesson-markdown.ts`: `##`/`###` headings, `**bold**`, `*italic*`,
+numbered and bulleted lists, quotes and http(s)/site-relative links — nothing else, and no
+HTML is ever produced (blocks become React elements). It had been printed as plain
+paragraphs, so learners read literal `###` and `**`. The old CMS's `:Youtube{videoID="…"}`
+directive becomes a second player built by the same `server-only` video module as the main
+one, so a malformed id still degrades to nothing (§34.1). The editor rule in Admin is
+unchanged: a blank line separates paragraphs.
 
 
 ---
@@ -1039,6 +1071,11 @@ Recordings
 Participation / progress
 ```
 
+**Built 2026-09-26** as `/academy/cohorts/[cohortSlug]` (note 03 §20): overview, the next
+workshop with its joining link, the remaining schedule, recordings (§23) and the cohort's
+`benefits`. Participation/progress is not built — there is no attendance data yet.
+Workshops are scheduled in Admin → Workshops.
+
 ---
 
 # 36. Academy Group Coaching Experience
@@ -1060,6 +1097,14 @@ Recording / history
 ```
 
 The exact interaction depends on whether the customer already has a booking or merely an entitlement.
+
+**Joining window (2026-09-26).** A session's or workshop's `meeting_url` reaches the page
+only from **15 minutes before the start until the end** (`JOIN_OPENS_MINUTES`), and for
+Group Coaching **only for a confirmed booking**. Before the window the row says when the
+link appears. This is presentation, not a security boundary: the database row is still
+readable by anyone RLS lets see the session (including credit holders who haven't booked),
+so `meeting_url` should be treated as shareable. Per-attendee links belong with the Zoom
+item in `TO-CONNECT.md`. Sessions are scheduled in Admin → Sessions.
 
 ---
 
@@ -1444,3 +1489,4 @@ The Admin area manages the underlying products, content, customers and operation
 | 2026-09-05 | §34.1, §34.2 (new): lesson video recorded as a (provider, id) pair composed into a URL server-side, so the host can change without a rewrite and the playable address never exists outside an authorised response; and progress recorded as one row per completed lesson, with the entitlement enforced by the insert policy rather than by the Server Action. |
 | 2026-09-05 | §34.1: `youtube` added as a lesson video host (migration 0038), per the owner's decision that existing course videos stay on YouTube until they are re-uploaded to Livid. Recorded that the hosts are NOT equivalent — unlisted YouTube cannot be domain-restricted, so withholding the URL keeps non-members out of the page but cannot survive a member passing the address on. The embed uses youtube-nocookie. |
 | 2026-09-05 | §34.1: recorded that a malformed video id must degrade to "no video" rather than build an embed URL, after the migrated curriculum arrived with a literal `IDHERE` in one row. |
+| 2026-09-27 | §27: private coaching implemented — choose a time, pay, booking confirmed from the entitlement; delivered in the Academy's Coaching area next to Group Coaching (owner). |

@@ -214,7 +214,7 @@ export async function requirePermission(
 
   // One key admits any staff member. An OWNER additionally needs a spare,
   // because an owner lockout cannot be resolved from inside the application.
-  // The database refuses these operations too (migration 0014).
+  // The database refuses these operations too (migration 0004_operations).
   if (context.ownerNeedsSpareKey) {
     redirect(`/account/security/mfa?owner=1`);
   }

@@ -9,7 +9,7 @@ type EntitlementResource =
   Database["public"]["Enums"]["entitlement_resource"];
 
 /**
- * Signed URLs for private assets — note 05 §33, note 07, migration 0019.
+ * Signed URLs for private assets — note 05 §33, note 07, migration 0005_storage_contact_and_consent.
  *
  * PRIVATE ASSETS ARE NEVER LINKED DIRECTLY. `course-assets` and `documents`
  * have no read policy for anon or authenticated, so the only way to reach an

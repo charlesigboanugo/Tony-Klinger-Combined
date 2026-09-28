@@ -17,6 +17,10 @@ import { cn } from "@/lib/utils/cn";
  * previously had none of it, so the menu only closed on a second click of its
  * own trigger, never on a click anywhere else on the page (note 10 §37, §21).
  *
+ * Hover opens it for a mouse, like the header's `NavDropdown`s. Only for a
+ * mouse: on touch, the synthetic enter would open it and the tap's click would
+ * immediately toggle it shut again, so touch keeps the click toggle.
+ *
  * Sign-out is a POST form invoking a Server Action, never a link. A GET-able
  * sign-out URL can be fired by any third-party image tag (note 05 §8).
  */
@@ -47,7 +51,16 @@ export function UserMenu({ email }: { email: string }) {
   }, [open]);
 
   return (
-    <div ref={containerRef} className="relative">
+    <div
+      ref={containerRef}
+      className="relative"
+      onPointerEnter={(event) => {
+        if (event.pointerType === "mouse") setOpen(true);
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType === "mouse") setOpen(false);
+      }}
+    >
       <button
         ref={triggerRef}
         type="button"
@@ -82,13 +95,15 @@ export function UserMenu({ email }: { email: string }) {
 
       {/* Kept mounted always — see NavDropdown's `dropdown-panel` comment
           (note 10 §37.1): the element must exist in both directions for the
-          close to animate at all. */}
+          close to animate at all. The gap under the trigger is `pt-3` PADDING,
+          not a margin, so it belongs to the panel and moving the pointer down
+          onto it never leaves the container and closes the menu. */}
       <div
         id={menuId}
         role="menu"
         aria-hidden={!open}
         data-open={open}
-        className="dropdown-panel absolute right-0 z-50 mt-2 w-56 origin-top-right pt-1"
+        className="dropdown-panel absolute right-0 z-50 w-56 origin-top-right pt-3"
       >
         <div className="overflow-hidden rounded-(--radius-lg) border border-border bg-surface p-1.5 shadow-lift">
           <p className="truncate px-3 py-2 text-xs text-muted-foreground">{email}</p>

@@ -101,8 +101,8 @@ const PAIRS = [
   // identical in both themes by design, so they are checked twice and should
   // report the same number — a divergence means one theme was edited alone.
   ["--block-foreground", "--block-oxblood", 4.5, "text on oxblood block"],
-  ["--block-foreground", "--block-teal", 4.5, "text on teal block"],
   ["--block-foreground", "--block-indigo", 4.5, "text on indigo block"],
+  ["--block-foreground", "--block-noir", 4.5, "text on noir block"],
 
   // Solid button sitting ON a jewel field: light chip, dark label.
   ["--secondary", "--block-foreground", 4.5, "onBlock button label"],

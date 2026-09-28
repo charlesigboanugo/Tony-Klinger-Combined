@@ -30,6 +30,8 @@ export type PricedLine = {
   /** Carried through so callers can identify the line without guessing. */
   slug: string;
   name: string;
+  /** `products.product_type`, for labelling the line in the cart. */
+  productType: string;
   unitAmount: number;
   quantity: number;
   currency: string;
@@ -45,7 +47,7 @@ export async function priceCart(lines: CartLine[]): Promise<PricedLine[]> {
   const { data } = await supabase
     .from("products")
     .select(
-      "id,name,slug,status,prices(id,amount,currency,active,stripe_price_id,billing_type,interval)",
+      "id,name,slug,status,product_type,prices(id,amount,currency,active,stripe_price_id,billing_type,interval)",
     )
     .in("slug", slugs)
     .eq("status", "active");
@@ -54,6 +56,7 @@ export async function priceCart(lines: CartLine[]): Promise<PricedLine[]> {
     id: string;
     name: string;
     slug: string;
+    product_type: string;
     prices: Array<{
       id: string;
       amount: number;
@@ -101,6 +104,7 @@ export async function priceCart(lines: CartLine[]): Promise<PricedLine[]> {
       interval: price.interval,
       slug: product.slug,
       name: product.name,
+      productType: product.product_type,
       unitAmount: price.amount,
       quantity: Math.max(1, Math.min(line.quantity, 10)),
       currency: price.currency,
@@ -128,8 +132,10 @@ export async function createPendingOrder(params: {
   userId: string | null;
   guestEmail: string | null;
   lines: PricedLine[];
+  /** 'subscription' orders are receipted by their Stripe invoice (migration 0021). */
+  checkoutMode?: "payment" | "subscription";
 }): Promise<{ orderId: string; total: number } | null> {
-  const { userId, guestEmail, lines } = params;
+  const { userId, guestEmail, lines, checkoutMode = "payment" } = params;
   if (lines.length === 0) return null;
 
   const admin = createAdminClient();
@@ -146,6 +152,7 @@ export async function createPendingOrder(params: {
       subtotal: total,
       discount_total: 0,
       total,
+      checkout_mode: checkoutMode,
     })
     .select("id")
     .single();

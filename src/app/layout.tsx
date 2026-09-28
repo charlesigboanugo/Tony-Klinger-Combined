@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Manrope } from "next/font/google";
+import { Fraunces, Poppins } from "next/font/google";
 
 import "./globals.css";
 
@@ -19,12 +19,9 @@ import "./globals.css";
  * needs while a 20px subhead stays sturdy. One face covering both sizes is
  * what makes headings look either weedy or clumsy.
  *
- * Manrope sets everything else. It is a geometric grotesk with enough
- * character to avoid the system-font-stack look, and its tall x-height keeps
- * long descriptions readable at small sizes.
- *
- * Both are variable fonts, so the whole weight range costs one file each
- * rather than one request per weight.
+ * Poppins sets everything else (trial, replacing Manrope). A geometric sans
+ * that carries over from the legacy sites. Fraunces is variable; Poppins is
+ * not, so it loads five static weights.
  */
 const display = Fraunces({
   variable: "--font-display",
@@ -43,9 +40,16 @@ const display = Fraunces({
   axes: ["opsz"],
 });
 
-const body = Manrope({
+/*
+  Poppins replaced Manrope as the body face (2026-09-24, trial at the user's
+  request; it is also what the legacy sites use). Not a variable font, so each
+  weight is a separate file — only the weights the UI actually uses
+  (normal/medium/semibold), plus 300 and 700 for light and strong emphasis.
+*/
+const body = Poppins({
   variable: "--font-body",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -71,7 +75,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         */}
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-(--radius) focus:bg-button focus:px-4 focus:py-2 focus:text-button-foreground"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-100 focus:rounded-(--radius) focus:bg-button focus:px-4 focus:py-2 focus:text-button-foreground"
         >
           Skip to content
         </a>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { OfferCard } from "@/components/coaching/OfferCard";
+import { OfferGrid } from "@/components/coaching/OfferGrid";
 import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
@@ -30,7 +31,7 @@ export default async function RetreatsPage() {
             description="Dates and applications open here."
           />
         ) : (
-          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <OfferGrid count={retreats.length}>
             {retreats.map((retreat, i) => (
               <Reveal as="li" key={retreat.id} delay={(i % 3) * 70} className="h-full">
                 <OfferCard
@@ -38,6 +39,10 @@ export default async function RetreatsPage() {
                   title={retreat.name}
                   description={retreat.description}
                   eyebrow={retreat.requires_application ? "By application" : "Retreat"}
+                  cta="View retreat"
+                  // No retreat has its own product yet; say so where the price goes.
+                  priceLabel={retreat.requires_application ? "By application" : null}
+                  priceNote={null}
                   meta={[
                     retreat.starts_at
                       ? new Date(retreat.starts_at).toLocaleDateString("en-GB", {
@@ -53,10 +58,11 @@ export default async function RetreatsPage() {
                   storagePath={retreat.storagePath}
                   seed={retreat.slug}
                   priority={i < 3}
+                  feature={retreats.length === 1}
                 />
               </Reveal>
             ))}
-          </ul>
+          </OfferGrid>
         )}
       </Container>
     </Section>

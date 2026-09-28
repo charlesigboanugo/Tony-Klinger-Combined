@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { publicEnv } from "@/lib/env/public";
+import { visitorHeaders } from "@/lib/supabase/forwarded";
 import { requestOrigin } from "@/lib/urls";
 
 /**
@@ -42,8 +43,30 @@ function contentSecurityPolicy(nonce: string): string {
     // Tailwind ships a real stylesheet, but Next still emits some inline style
     // during development's fast refresh.
     `style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}' 'unsafe-inline'`}`,
+    /*
+      STYLE ATTRIBUTES ARE GOVERNED SEPARATELY, and must be allowed.
+
+      Once `style-src` carries a nonce, browsers IGNORE its 'unsafe-inline' —
+      and a `style="…"` attribute cannot carry a nonce. So in production every
+      server-rendered style attribute was silently dropped: each
+      `GeneratedCover` rendered without its gradient, and the hero's staggered
+      `animationDelay`s all collapsed to zero. Development never showed it,
+      because it sends no nonce. (Attributes React sets after hydration go
+      through the CSSOM and are not subject to CSP, which is why client-drawn
+      covers looked fine.)
+
+      `style-src-attr` relaxes attributes only. <style> and <link> elements
+      stay nonce-locked under `style-src`. A style attribute cannot execute
+      script, and injecting one already requires an HTML injection that the
+      nonce'd `script-src` still defends against.
+    */
+    "style-src-attr 'unsafe-inline'",
     // Storage images, plus data:/blob: for next/image's own placeholders.
     `img-src 'self' blob: data: ${supabase} https://i.vimeocdn.com https://i.ytimg.com`,
+    // Hosted recordings (interviews, podcasts) stream from the public
+    // site-media bucket (note 08 §60.1). Without this, <audio> falls back to
+    // default-src 'self' and every player on the site is silently refused.
+    `media-src 'self' ${supabase}`,
     "font-src 'self'",
     // Turnstile's api.js issues its own requests from the parent page, not just
     // from inside its iframe, so its origin must be reachable here too.
@@ -166,6 +189,7 @@ export async function proxy(request: NextRequest) {
     publicEnv.NEXT_PUBLIC_SUPABASE_URL,
     publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
+      global: { headers: visitorHeaders(request.headers) },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -201,6 +225,14 @@ export async function proxy(request: NextRequest) {
   }
 
   response.headers.set("Content-Security-Policy", csp);
+  /*
+    Ask Chrome and Edge for the device model and real platform version, so
+    "Signed-in devices" can say "Pixel 8" or "Windows 11" (note 05 §11.2).
+    Sent from then on to this origin only; the sign-in page's own load is
+    enough for the sign-in that follows to carry them. No Critical-CH: a
+    retried navigation on first visit costs more than it is worth.
+  */
+  response.headers.set("Accept-CH", "Sec-CH-UA-Model, Sec-CH-UA-Platform-Version");
   return response;
 }
 

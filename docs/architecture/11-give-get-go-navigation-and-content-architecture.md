@@ -131,8 +131,40 @@ which is what this note's Content Architecture Rule requires.
 
 ---
 
+# Amendment — one page (2026-09-25)
+
+*Owner's instruction, 2026-09-25: "I would rather just have one or two pages, then the
+external link to the education." The note's original wording above is unaltered; this
+section records where the implementation now departs from it.*
+
+**Deviation.** The note gives Publishing, Films and Documentaries a submenu entry each,
+each taking the visitor "to the relevant … content". They are now **sections of the one
+`/give-get-go` page** (anchors `#publishing`, `#films`, `#documentaries`), not separate
+routes. `/give-get-go/[section]` is removed; the three old URLs redirect permanently to the
+anchors (`next.config.ts`).
+
+```text
+Give-Get-Go
+├── Publishing, Films & Documentaries   → /give-get-go (one page, three sections)
+└── Give-Get-Go Education ↗             → give-get-go.com (unchanged)
+```
+
+**Unchanged.** Give-Get-Go stays a navigation and content grouping, not an application.
+Each section is still a tag-filtered view over `catalogue_items` (the Resolution above).
+Every work links to its canonical catalogue page. Give-Get-Go Education stays external,
+marked with `↗`. It is never part of the Academy or Admin. The page now ends with a
+hand-off section pointing to it.
+
+**One presentation rule added.** The documentaries also carry the `give-get-go:films` tag.
+When each section had its own page this did no harm. On one page it would print the same
+work twice in a row. So the Films section leaves out any work that Documentaries already
+shows (`listGiveGetGo()`). The tags themselves are unchanged.
+
+---
+
 # Document History
 
 | Date | Amendment |
 |------|-----------|
 | 2026-09-02 | Initial version recorded as supplied, wording unaltered. The note declared no filename; numbered `11-` and named from its own title, following the convention of notes 01–10. The external Give-Get-Go Education destination was supplied separately by the user as `give-get-go.com`. Opens R25 — the submenu names Documentaries, which is not one of the seven canonical Catalogue categories fixed by note 03 §7 (closed as R9), so the content source for that page is undecided. |
+| 2026-09-25 | **Collapsed to one page** (owner). Publishing, Films and Documentaries became sections of `/give-get-go`; the section routes were removed and now redirect to anchors. The submenu is now the page plus the external Education link. Recorded as an amendment; original wording unaltered. |

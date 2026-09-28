@@ -24,6 +24,12 @@ export type NavItem = {
    * menu has to say so before the click, not after.
    */
   external?: boolean;
+  /**
+   * One line saying what a section holds. Shown in the masthead's dropdown
+   * panel beside the section name (note 10 §42.2), so a visitor reads what is
+   * behind a word like "Give-Get-Go" before choosing a link inside it.
+   */
+  description?: string;
 };
 
 /** Public site — note 04 §3, §38. */
@@ -56,32 +62,16 @@ export const publicNavigation: NavItem[] = [
     // belongs inlined in a biography (note 03 §5).
     label: "About",
     href: "/about",
+    description: "Six decades in film, from The Avengers to Get Carter's legacy.",
     children: [
       { label: "Tony's Story", href: "/about" },
-      { label: "Meet the Team", href: "/about/team" },
       { label: "Testimonials", href: "/about/testimonials" },
-    ],
-  },
-  {
-    label: "Coaching",
-    href: "/coaching",
-    children: [
-      // The trigger is a BUTTON that toggles the menu, so it cannot navigate.
-      // Without an entry pointing at the section's own landing page, that page
-      // is unreachable from the desktop nav entirely (note 04 §21).
-      { label: "Coaching Overview", href: "/coaching" },
-      { label: "About", href: "/coaching/about" },
-      { label: "Memberships", href: "/coaching/memberships" },
-      { label: "Courses", href: "/coaching/courses" },
-      { label: "Group Coaching", href: "/coaching/group-coaching" },
-      { label: "Cohorts", href: "/coaching/cohorts" },
-      { label: "Private Coaching", href: "/coaching/private-coaching" },
-      { label: "Retreats", href: "/coaching/retreats" },
     ],
   },
   {
     label: "Catalogue",
     href: "/catalogue",
+    description: "The work itself: films produced and directed, books written, and stories from the front line.",
     // The seven canonical categories — note 03 §7. Individual works are detail
     // pages inside a category, never menu items (note 04 §4).
     children: [
@@ -99,16 +89,33 @@ export const publicNavigation: NavItem[] = [
     ],
   },
   {
+    label: "Coaching",
+    href: "/coaching",
+    description: "Learn the film business from someone who has done it — courses, cohorts, group and one-to-one coaching.",
+    children: [
+      // The trigger is a BUTTON that toggles the menu, so it cannot navigate.
+      // Without an entry pointing at the section's own landing page, that page
+      // is unreachable from the desktop nav entirely (note 04 §21).
+      { label: "Coaching Overview", href: "/coaching" },
+      { label: "Memberships", href: "/coaching/memberships" },
+      { label: "Courses", href: "/coaching/courses" },
+      { label: "Group Coaching", href: "/coaching/group-coaching" },
+      { label: "Cohorts", href: "/coaching/cohorts" },
+      { label: "Private Coaching", href: "/coaching/private-coaching" },
+      { label: "Retreats", href: "/coaching/retreats" },
+    ],
+  },
+  {
     // Note 11: Tony's broader venture — publishing, films and documentaries.
     // A navigation and content GROUPING over existing catalogue content, not a
-    // separate application and not duplicated content.
+    // separate application and not duplicated content. One page since
+    // 2026-09-25 (owner): Publishing, Films and Documentaries are sections of
+    // /give-get-go, so the menu is that page and the external Education site.
     label: "Give-Get-Go",
     href: "/give-get-go",
+    description: "Tony's venture for publishing, films and documentaries, and its education arm.",
     children: [
-      { label: "Overview", href: "/give-get-go" },
-      { label: "Publishing", href: "/give-get-go/publishing" },
-      { label: "Films", href: "/give-get-go/films" },
-      { label: "Documentaries", href: "/give-get-go/documentaries" },
+      { label: "Publishing, Films & Documentaries", href: "/give-get-go" },
       {
         // A RELATED VENTURE, not a section of this site and explicitly not part
         // of the Academy (note 11). Its own CIC, its own platform.
@@ -122,10 +129,47 @@ export const publicNavigation: NavItem[] = [
   { label: "Contact", href: "/contact" },
 ];
 
-/** Footer secondary links — note 04 §8. */
-export const footerNavigation: NavItem[] = [
-  { label: "Events", href: "/events" },
-  { label: "Contact", href: "/contact" },
+/**
+ * Footer link columns — note 04 §8, note 10 §42.2.
+ *
+ * CURATED, not the whole menu. The footer used to repeat every submenu entry,
+ * which made it a second sitemap and most of the page's height; it now carries
+ * the destinations people actually look for at the foot of a page. The full
+ * set stays in the masthead. Legal routes are separate (note 03 §8.2).
+ */
+export const footerColumns: { title: string; links: NavItem[] }[] = [
+  {
+    title: "The work",
+    links: [
+      { label: "Films", href: "/catalogue/films" },
+      { label: "Books", href: "/catalogue/books" },
+      { label: "Front Line stories", href: "/catalogue/stories-from-the-front-line" },
+      { label: "All works", href: "/catalogue" },
+    ],
+  },
+  {
+    title: "Coaching",
+    links: [
+      { label: "Overview", href: "/coaching" },
+      { label: "Memberships", href: "/coaching/memberships" },
+      { label: "Courses", href: "/coaching/courses" },
+      { label: "Private coaching", href: "/coaching/private-coaching" },
+    ],
+  },
+  {
+    title: "Studio",
+    links: [
+      { label: "About Tony", href: "/about" },
+      { label: "Give-Get-Go", href: "/give-get-go" },
+      { label: "Blog", href: "/blog" },
+      { label: "Events", href: "/events" },
+      { label: "Contact", href: "/contact" },
+    ],
+  },
+];
+
+/** Legal routes — note 03 §8.2. Always in the footer's bottom line. */
+export const legalNavigation: NavItem[] = [
   { label: "Privacy", href: "/privacy" },
   { label: "Terms", href: "/terms" },
   { label: "Cookies", href: "/cookies" },
@@ -157,15 +201,22 @@ export const academyNavigation: NavItem[] = [
   { label: "Coaching", href: "/academy/coaching" },
 ];
 
-/** Customer account — note 04 §12. Compact by design. */
+/**
+ * Customer account — note 04 §12, §31.
+ *
+ * One flat list, like the Academy's (owner, 2026-09-26: no group headings),
+ * ordered by the question someone arrives with: what do I have, what have I
+ * paid, then my details. "Entitlements" is labelled "Your access" — customers
+ * do not say "entitlement"; the route is unchanged.
+ */
 export const accountNavigation: NavItem[] = [
   { label: "Overview", href: "/account" },
-  { label: "Profile", href: "/account/profile" },
-  { label: "Orders", href: "/account/orders" },
-  { label: "Memberships", href: "/account/memberships" },
-  { label: "Entitlements", href: "/account/entitlements" },
+  { label: "Your access", href: "/account/entitlements" },
   { label: "Bookings", href: "/account/bookings" },
+  { label: "Memberships", href: "/account/memberships" },
+  { label: "Orders", href: "/account/orders" },
   { label: "Billing", href: "/account/billing" },
+  { label: "Profile", href: "/account/profile" },
   { label: "Security", href: "/account/security" },
   { label: "Notifications", href: "/account/notifications" },
   { label: "Settings", href: "/account/settings" },
@@ -181,7 +232,10 @@ export const adminNavigation: NavGroup[] = [
     items: [{ label: "Dashboard", href: "/admin" }],
   },
   {
-    label: "Customers",
+    // "People", not "Customers": this group also holds staff roles and the
+    // team, and a heading that describes only a third of its items is the
+    // confusion the owner flagged (2026-09-27).
+    label: "People",
     items: [
       { label: "Users", href: "/admin/users", permission: "users.read" },
       { label: "Roles", href: "/admin/roles", permission: "roles.read" },
@@ -206,6 +260,8 @@ export const adminNavigation: NavGroup[] = [
       { label: "Catalogue", href: "/admin/catalogue", permission: "catalogue.read" },
       { label: "Media", href: "/admin/media", permission: "catalogue.read" },
       { label: "Testimonials", href: "/admin/testimonials", permission: "blog.read" },
+      // Had a full editor (resources.ts) but no way in except typing the URL.
+      { label: "Testimonial videos", href: "/admin/testimonial-videos", permission: "blog.read" },
     ],
   },
   {
@@ -218,7 +274,9 @@ export const adminNavigation: NavGroup[] = [
       { label: "Modules", href: "/admin/modules", permission: "courses.read" },
       { label: "Lessons", href: "/admin/lessons", permission: "courses.read" },
       { label: "Cohorts", href: "/admin/cohorts", permission: "cohorts.read" },
+      { label: "Workshops", href: "/admin/workshops", permission: "cohorts.read" },
       { label: "Group Coaching", href: "/admin/group-coaching", permission: "coaching.read" },
+      { label: "Sessions", href: "/admin/sessions", permission: "coaching.read" },
       { label: "Masterclasses", href: "/admin/masterclasses", permission: "masterclasses.read" },
     ],
   },
@@ -226,18 +284,29 @@ export const adminNavigation: NavGroup[] = [
     label: "Experiences",
     items: [
       { label: "Private Coaching", href: "/admin/private-coaching", permission: "coaching.read" },
+      { label: "Coaching times", href: "/admin/coaching-slots", permission: "coaching.read" },
       { label: "Retreats", href: "/admin/retreats", permission: "retreats.read" },
       { label: "Events", href: "/admin/events", permission: "events.read" },
+      { label: "Event photos", href: "/admin/event-photos", permission: "events.read" },
+      // Event day: attendee lists, the door scan and the online joining link.
+      { label: "Check-in", href: "/admin/check-in", permission: "events.read" },
       { label: "Bookings", href: "/admin/bookings", permission: "bookings.read" },
     ],
   },
   {
     label: "Communications",
-    items: [{ label: "Emails", href: "/admin/emails", permission: "emails.read" }],
+    items: [
+      // Contact-form messages. RLS lets `users.read` read them (migration 0005).
+      { label: "Enquiries", href: "/admin/enquiries", permission: "users.read" },
+      { label: "Emails", href: "/admin/emails", permission: "emails.read" },
+    ],
   },
   {
     label: "System",
-    items: [{ label: "Settings", href: "/admin/settings", permission: "settings.read" }],
+    items: [
+      { label: "Settings", href: "/admin/settings", permission: "settings.read" },
+      { label: "Audit log", href: "/admin/audit", permission: "audit.read" },
+    ],
   },
 ];
 

@@ -3,7 +3,8 @@ import Link from "next/link";
 
 import { AdminNav } from "@/components/admin/AdminNav";
 import { SpareKeyBanner } from "@/components/admin/SpareKeyBanner";
-import { signOutAction } from "@/app/auth/actions";
+import { UserMenu } from "@/components/navigation/UserMenu";
+import { Wordmark } from "@/components/navigation/Wordmark";
 import { AccessDenied } from "@/components/ui/AccessDenied";
 import { adminNavigation } from "@/lib/navigation";
 import {
@@ -50,7 +51,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   return (
     <div className="flex min-h-svh flex-col">
       {/* Admin must not look like the public site (note 04 §16). */}
-      <div aria-hidden="true" className="h-[3px] w-full bg-block-indigo" />
+      <div aria-hidden="true" className="h-0.75 w-full bg-block-indigo" />
 
       {/*
         The header is split into a brand column that is EXACTLY the sidebar's
@@ -59,38 +60,40 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         row and its left edge landed wherever the padding fell, cutting across
         the sidebar at an arbitrary offset.
       */}
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur">
+      {/*
+        The header is split into a brand column that is EXACTLY the sidebar's
+        width and carries the same right border, so the two line up into one
+        vertical rule down the page (note 04 §32.2).
+
+        The brand is the site's own mark and the workspace name in tracked
+        small capitals — the same treatment as `WorkspaceHeader` for Account
+        and the Academy — replacing plain "Tony Klinger" beside a filled pill,
+        which read as a placeholder. The account menu (with Sign out) replaces
+        a bare email and button.
+      */}
+      <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-md">
         <div className="flex h-16 items-center">
-          <div className="flex h-full shrink-0 items-center gap-3 px-4 sm:px-6 lg:w-64 lg:border-r lg:border-border">
-            <Link href="/" className="font-semibold tracking-tight">
-              Tony Klinger
-            </Link>
-            <span
-              className="rounded-full bg-block-indigo px-2.5 py-0.5 text-[0.6875rem] font-semibold tracking-[0.1em] text-block-foreground uppercase"
-              aria-label="Administrative workspace"
+          <div className="flex h-full min-w-0 items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:w-76 lg:shrink-0 lg:gap-3.5 lg:px-5 lg:border-r lg:border-border">
+            <Wordmark compact monogramOnPhone />
+            <span aria-hidden="true" className="h-7 w-px shrink-0 bg-border" />
+            <Link
+              href="/admin"
+              className="rounded-sm text-[0.75rem] font-semibold tracking-[0.24em] whitespace-nowrap uppercase transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
             >
               Admin
-            </span>
+            </Link>
           </div>
 
-          <div className="flex flex-1 items-center justify-end gap-3 px-4 sm:px-6">
-            <span className="hidden text-sm text-muted-foreground sm:inline">
-              {context.email}
-            </span>
+          <div className="flex flex-1 items-center justify-end gap-1 px-4 sm:gap-2 sm:px-6">
+            {/* Your account is in the account menu beside it. */}
             <Link
-              href="/account"
-              className="text-sm text-muted-foreground hover:text-foreground"
+              href="/"
+              className="hidden items-center gap-1.5 rounded-full px-3 py-2 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:inline-flex"
             >
-              Account
+              <span aria-hidden="true">&larr;</span>
+              Back to site
             </Link>
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                className="cursor-pointer rounded-full border border-input-border px-4 py-1.5 text-sm font-medium transition-colors hover:border-primary hover:text-primary"
-              >
-                Sign out
-              </button>
-            </form>
+            <UserMenu email={context.email ?? ""} />
           </div>
         </div>
       </header>
@@ -107,9 +110,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         */}
         <aside
           className={
-            "shrink-0 border-b border-border p-4 " +
-            "lg:sticky lg:top-[calc(4rem+3px)] lg:h-[calc(100svh-4rem-3px)] " +
-            "lg:w-64 lg:overflow-y-auto lg:overscroll-contain lg:border-r lg:border-b-0"
+            "z-30 shrink-0 border-b border-border px-4 py-3 sm:px-6 lg:p-4 " +
+            "lg:sticky lg:top-16.25 lg:h-[calc(100svh-4.0625rem)] " +
+            "lg:w-76 lg:overflow-y-auto lg:overscroll-contain lg:border-r lg:border-b-0"
           }
         >
           <AdminNav groups={groups} />
@@ -117,7 +120,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
 
         {/* `min-w-0` so a wide table scrolls inside the pane instead of
             stretching the whole layout and dragging the sidebar off-screen. */}
-        <main id="main" className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
+        <main id="main" className="workspace min-w-0 flex-1 px-4 pt-6 pb-20 sm:px-6 lg:px-10 lg:pt-8">
           {context.needsSpareKey ? (
             <SpareKeyBanner
               verifiedFactors={context.verifiedFactors}

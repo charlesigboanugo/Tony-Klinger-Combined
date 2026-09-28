@@ -268,7 +268,7 @@ export async function inviteUserAction(
  *
  * `remove` unlinks rather than deletes deliberately. A published biography is
  * content, and losing it because somebody's staff status changed is exactly the
- * accident `ON DELETE SET NULL` was chosen to avoid in migration 0034.
+ * accident `ON DELETE SET NULL` was chosen to avoid in migration 0006_public_content_and_benefits.
  *
  * LINKING IS NEVER INFERRED. An existing entry is connected only because an
  * operator picked it: matching a display name against a biography's name would

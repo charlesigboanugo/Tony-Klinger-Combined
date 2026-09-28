@@ -28,6 +28,16 @@ type Common = {
   sizes?: string;
   priority?: boolean;
   /**
+   * "eager" loads without waiting for the viewport, but — unlike `priority` —
+   * without preloading or raising fetch priority. For tiny decorative images
+   * that paint above the fold: the blurred 64px backdrops behind the catalogue
+   * heroes are what the browser measures as Largest Contentful Paint (they
+   * cover the whole hero), so leaving them lazy delayed LCP on every catalogue
+   * page, while promoting them to `priority` would put them ahead of the real
+   * posters.
+   */
+  loading?: "eager" | "lazy";
+  /**
    * 90 for anything shown large — poster and cover art has flat gradients that
    * band badly at the default 75. Leave unset for thumbnails and grids.
    */
@@ -49,7 +59,7 @@ type Sized = Common & { width: number; height: number; fill?: false };
 type Filled = Common & { fill: true; width?: never; height?: never };
 
 export function StoredImage(props: Sized | Filled) {
-  const { path, alt, className, sizes, priority, quality, fit = "cover" } = props;
+  const { path, alt, className, sizes, priority, loading, quality, fit = "cover" } = props;
   const src = publicStorageUrl(path);
   if (!src) return null;
 
@@ -63,6 +73,7 @@ export function StoredImage(props: Sized | Filled) {
         // 100vw and downloads a full-width image for a 300px card.
         sizes={sizes ?? "(max-width: 768px) 100vw, 33vw"}
         priority={priority}
+        loading={priority ? undefined : loading}
         quality={quality}
         className={cn(fit === "contain" ? "object-contain" : "object-cover", className)}
       />
@@ -77,6 +88,7 @@ export function StoredImage(props: Sized | Filled) {
       height={props.height}
       sizes={sizes}
       priority={priority}
+      loading={priority ? undefined : loading}
       quality={quality}
       className={className}
     />

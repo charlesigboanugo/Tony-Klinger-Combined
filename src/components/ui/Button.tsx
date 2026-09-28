@@ -46,7 +46,7 @@ const base = [
   // "surface" and "thing you press" does real work.
   "overflow-hidden rounded-full font-semibold tracking-[0.01em] whitespace-nowrap",
   "transition-[transform,box-shadow,background-color,border-color,color] duration-(--dur-fast) ease-expo",
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--ring)",
+  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
   "active:translate-y-px",
   // Sheen. Skewed and parked off the left edge, swept across on hover.
   "after:pointer-events-none after:absolute after:inset-y-0 after:-left-full after:-z-10 after:w-1/2",

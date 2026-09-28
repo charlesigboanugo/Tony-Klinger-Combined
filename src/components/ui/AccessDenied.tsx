@@ -23,7 +23,7 @@ export function AccessDenied({ permission }: { permission?: string }) {
           <p className="text-sm font-medium tracking-widest text-muted-foreground uppercase">
             Access denied
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight">
+          <h1>
             You don&apos;t have access to this area
           </h1>
           <p className="text-muted-foreground">

@@ -72,7 +72,7 @@ export function parseFields(
       }
       case "tags":
         // Normalised again by a database trigger, so a stray space here cannot
-        // split one curated collection in two (migration 0023).
+        // split one curated collection in two (migration 0006_public_content_and_benefits).
         values[field.name] = text
           .split(",")
           .map((t) => t.trim())

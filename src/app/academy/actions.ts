@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/permissions";
@@ -8,7 +9,7 @@ import { requireUser } from "@/lib/permissions";
 /**
  * Mark a lesson finished, or unfinished — note 07 §32.
  *
- * NOT AUTHORIZED HERE. The insert policy on `lesson_progress` (migration 0037)
+ * NOT AUTHORIZED HERE. The insert policy on `lesson_progress` (migration 0007_staff_accounts_and_lesson_video)
  * requires a live entitlement to the lesson's course, so a caller who posts a
  * lesson id they cannot see is refused by the database rather than by this
  * function remembering to check. That matters because a Server Action is a
@@ -23,6 +24,9 @@ export async function setLessonCompleteAction(
   const lessonId = formData.get("lessonId")?.toString().trim();
   const path = formData.get("path")?.toString().trim();
   const complete = formData.get("complete") === "true";
+  // "Complete and continue": where to go once the write succeeds. Only a
+  // lesson path is honoured — anything else would make this an open redirect.
+  const next = formData.get("next")?.toString().trim();
 
   if (!lessonId) return { error: "No lesson given." };
 
@@ -57,6 +61,10 @@ export async function setLessonCompleteAction(
   // each course's own page, so those are what need revalidating.
   revalidatePath("/academy");
   revalidatePath("/academy/courses");
+
+  if (complete && next && /^\/academy\/courses\/[\w-]+\/lessons\/[\w-]+$/.test(next)) {
+    redirect(next);
+  }
 
   return {};
 }

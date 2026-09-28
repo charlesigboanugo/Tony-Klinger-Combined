@@ -86,13 +86,18 @@ Contact
 
 ### Coaching
 
-Coaching is a major commercial section and may expose appropriate secondary navigation.
+Coaching is a major commercial section. Its pages are reached from the masthead's
+Coaching menu (and the mobile menu); **it has no secondary navigation bar**. One ran
+under the masthead on every `/coaching/*` page until 2026-09-26, when the owner removed
+it: it repeated the Coaching menu item for item, and a second bar of links under the
+header read as clutter. Do not reintroduce one; wayfinding within the section is the
+menu plus each page's own links.
 
 Conceptually:
 
 ```text
 Coaching
-├── About
+├── Overview
 ├── Memberships
 ├── Courses
 ├── Group Coaching
@@ -108,7 +113,6 @@ About is a section rather than a single destination (note 03 §5):
 ```text
 About
 ├── Tony's Story
-├── Meet the Team
 └── Testimonials
 ```
 
@@ -246,6 +250,16 @@ It may contain:
 - Newsletter/email signup where appropriate
 - External destinations
 
+**The newsletter signup is a popup, not a footer form** (owner, 2026-09-24: the form
+made the footer too long). The footer carries one line — "Letters from Tony, a few times
+a year" — and a button that opens `NewsletterPopup` (a native `<dialog>`, mounted once in
+the public layout). The same dialog offers itself once to a reader: after 25 seconds on
+a page AND half of it scrolled, never on checkout, cart, auth or welcome pages, never
+again in a browser that subscribed, and not for 30 days after it is closed. That memory
+is `localStorage` (`tk-newsletter`), not a cookie: nothing about it needs to reach the
+server, and without storage it simply never opens by itself. The consent wording,
+unticked required box and honeypot are unchanged — it is the same `NewsletterSignup`.
+
 The legal pages have defined routes (note 03 §8.2):
 
 ```text
@@ -344,6 +358,15 @@ The navigation must:
 
 Do not simply shrink a desktop navigation until it becomes unusable.
 
+**Implemented 2026-09-26.** From `lg` the Academy nav is the sticky sidebar, each item with
+an icon, plus an "Explore coaching" link. Below `lg` it is ONE full-width button naming the
+current section, opening the list as a `.dropdown-panel` — the same arrangement as
+`AccountNav`. It replaces a horizontally scrolling link strip, which was the secondary link
+bar §27 rules out. The signed-in Academy header now carries "Back to site" and the shared
+`UserMenu` (hover-open, note 10 §37) in place of a bare Account link and Sign out button.
+The guest `/academy` landing now actually receives the public masthead and footer, as §9
+already required; it had been rendered in a bare wrapper with no navigation at all.
+
 ---
 
 # 12. Account Navigation
@@ -375,6 +398,19 @@ The exact grouping may be simplified where several items naturally belong togeth
 
 Account should not use the large Academy navigation or Admin navigation.
 
+**Revised 2026-09-26, at the owner's direction: one flat list, built like the Academy's**
+(an icon beside each item, no group headings; a brief grouped version was rejected the same
+day). Order follows what a customer arrives for; "Entitlements" is labelled **Your access**
+(the route stays `/account/entitlements`):
+
+```text
+Overview · Your access · Bookings · Memberships · Orders · Billing ·
+Profile · Security · Notifications · Settings
+```
+
+Pages without an item of their own highlight their parent: `/account/tickets/*` → Bookings,
+`/account/claim` → Orders.
+
 ---
 
 # 13. Account Header
@@ -391,6 +427,15 @@ It should provide:
 - User menu/sign-out
 
 The interface should remain focused rather than becoming another large workspace.
+
+**2026-09-26: shared workspace header.** Account and Academy (signed in) both use
+`WorkspaceHeader`: the 3px identity strip (Account oxblood, Academy noir), then a sticky 4rem
+header on the page ground with the site's own `Wordmark` (TK monogram and name; monogram only
+below `sm`), a hairline, the workspace name in tracked small capitals, "← Back to site"
+(from `md`), an Admin link for staff (Account only) and the shared `UserMenu`. It replaces a
+plain-text name beside a filled pill badge. **No main site menu:** Account was briefly moved
+under the public masthead the same day and the owner withdrew that; the masthead is for the
+public site only. Admin keeps its own header for now.
 
 ---
 
@@ -475,6 +520,29 @@ System
 
 This is a navigation organization model, not a requirement that every group must initially be visible as a separate menu heading.
 
+**As built (2026-09-27, owner: group headings "look just like" the links beneath them).**
+
+```text
+Dashboard                       (group level — Overview holds only this)
+People          Users, Roles, Team
+Commerce        Products, Prices, Memberships, Entitlements, Orders, Payments
+Content         Blog, Catalogue, Media, Testimonials, Testimonial videos
+Learning        Courses, Modules, Lessons, Cohorts, Workshops, Group Coaching, Sessions, Masterclasses
+Experiences     Private Coaching, Coaching times, Retreats, Events, Event photos, Check-in, Bookings
+Communications  Enquiries, Emails
+System          Settings, Audit log
+```
+
+"Customers" became **People**: the group holds staff roles and the team too, and a heading
+describing a third of its items was part of the confusion. The two levels are drawn as two
+levels: a group is a **disclosure button** (icon tile, foreground-weight name, item count,
+chevron); its pages sit **indented on a guide line**, lighter and without icons. The group
+holding the current page is always open and shows a teal icon tile; others toggle on click.
+A **"Find a page"** box (shortcut `/`) above the tree filters every page by name across groups;
+Enter opens the first match. Exactly one item is active, by longest matching href — `/admin`
+previously lit up Dashboard on every page. Below `lg` the finder and tree sit behind one
+section button ("Admin · People / Users"), the same pattern as Account and Academy (§27).
+
 ---
 
 # 16. Admin Header
@@ -491,6 +559,12 @@ It should provide:
 - Appropriate link back to the public website
 
 Do not make the Admin interface visually indistinguishable from the public site.
+
+**As built (2026-09-27).** Indigo identity strip; the brand column (same width as the
+sidebar, 19rem) carries the site `Wordmark`, a hairline and "ADMIN" in tracked small
+capitals — the `WorkspaceHeader` treatment — replacing plain text beside a filled pill.
+Right side: "← Back to site" and the shared account menu (which holds Your account and
+Sign out), replacing a bare email, an "Account" link and a sign-out button.
 
 ---
 
@@ -513,6 +587,11 @@ A logo/brand link back to the public site is appropriate.
 
 Do not expose the full public menu unnecessarily on authentication pages.
 
+**Implemented (2026-09-25):** a split screen with no header or menu. The wordmark sits on
+the noir stage panel and is the link home. Each screen also offers "Back to
+tonyklinger.com", except the 2FA step. A Privacy / Terms / Contact row sits under the form.
+See note 10 §42.3.
+
 ---
 
 # 18. Checkout Navigation
@@ -532,6 +611,12 @@ The checkout experience may include:
 - Required support/contact information
 
 The customer should still have an appropriate way to recover from an error or return to shopping.
+
+**Implemented 2026-09-27.** Checkout uses the shared `WorkspaceHeader` (§13) labelled
+"Checkout", on a noir strip, with **no account menu** — guests check out too — so its
+"← Back to site" stays visible at every width. There is no main site menu. The page opens
+with a `BackLink` (§32.3): "Back to your cart", or "Keep browsing" (to `/coaching`) for a
+single-product checkout. A task footer carries Need help? / Terms / Privacy only.
 
 ---
 
@@ -553,6 +638,14 @@ The cart receives the public header and footer because `cart/` sits inside the `
 route group (note 03 §27, §32). The URL remains `/cart`.
 
 The cart should not require the full Academy or Account navigation.
+
+**Cart indicator (implemented 2026-09-26).** The masthead's cart icon carries a red count
+badge (total quantity) whenever the cart is non-empty, and its accessible name states the
+count. On desktop the icon is always present. Below `lg` it appears **only while the cart
+holds something**; an empty cart stays reachable from the menu, whose Cart button also shows
+the count. The count is read server-side in the `(public)` layout from the same validated
+`tk_cart` cookie that checkout uses, so a malformed cookie reads as empty. Adding to the cart
+is a Server Action that sets the cookie, which re-renders the layout and updates the badge.
 
 ---
 
@@ -582,6 +675,33 @@ After completion, provide clear routes to:
 - Account
 - Academy where relevant
 - Public site
+
+**Implemented 2026-09-27 — booking gets the workspace header, not the public masthead.**
+Every `/bookings` page is signed-in only, and booking is a single task, so the layout uses
+the shared `WorkspaceHeader` (§13): site wordmark, "Booking", "← Back to site", "Your
+bookings" (`/account/bookings`) and the account menu, on Account's oxblood strip, since
+what a booking produces is managed under Account. No main site menu. Content uses the
+`.workspace` type scale. The same task footer as checkout (Need help? / Terms / Privacy).
+
+The flow and its ways back:
+
+```text
+/bookings                          ← Your bookings (/account/bookings)
+   Private coaching still to book  → /bookings/private/[serviceSlug]
+   Group sessions the access covers → /bookings/[bookableId]
+
+/bookings/[bookableId]             ← Book a session
+   after booking: View your bookings · Academy coaching · Book another
+
+/bookings/private/[serviceSlug]    ← Book a session (holding a session to book)
+                                   ← the service page (paying — came from "Check availability")
+   after booking with a credit: /academy/coaching?booked=private
+   after paying: /checkout/success
+```
+
+`/bookings` now lists unspent private coaching sessions as well as group sessions, so a
+paid-for session that was never scheduled, or was returned by a cancellation, is one click
+from choosing a time.
 
 ---
 
@@ -859,6 +979,22 @@ Account Content
 
 The navigation should remain compact.
 
+**As built (2026-09-26):**
+
+```text
+Identity strip (oxblood) + WorkspaceHeader (no main menu)
+    ↓
+lg+:   sticky sidebar (flat list with icons, as Academy)  |  Account content
+<lg:   one "Your account · <section>" button  →  dropdown panel of the same list
+```
+
+The phone arrangement is one button rather than a strip of links under the header (owner
+rejected secondary link bars). The panel uses the shared `.dropdown-panel` motion. The
+sidebar sticks under the header (`top-20`) and scrolls on its own when taller than the
+viewport, which closes the §32.2 gap recorded for Account. Account pages use `AccountHeader`
+rather than `PageHeader`, so the h1 is not pushed down to the public hero height and starts
+level with the navigation.
+
 ---
 
 # 32. Admin Layout
@@ -921,9 +1057,24 @@ pattern with no border at all, and this note now records THAT as the standard ra
 hairline. **Admin still carries a `border-r`** (built earlier and not revisited this round) —
 recorded as a known inconsistency rather than silently generalised into a rule either way;
 resolve it explicitly if Admin is revisited rather than assuming the newer or the older
-choice wins. **Account does not yet implement the sticky/independent-scroll behaviour this
-section has described since 2026-09-05** — its sidebar is a plain nav in normal flow. Also
-recorded rather than fixed, since this round of work was scoped to Academy only.
+choice wins. ~~Account does not yet implement the sticky/independent-scroll behaviour~~ — resolved;
+Account now matches Academy.
+
+**Revised 2026-09-27, at the owner's direction: the sidebar pane is full height.** In
+Account and Academy the pane sticks flush under the header (`top-16.25`, the 64px header plus
+its 1px rule) and is exactly `100svh − 4.0625rem` tall, so its scroll track joins the header
+at the top and the bottom of the screen instead of floating with a gap at either end. The
+40px top offset that keeps the first item level with the page heading now sits inside the
+pane and on `main`, not on the row. Admin already used this pattern.
+
+**Revised 2026-09-27, again at the owner's direction: the scroll track is the separator.**
+Account's longer menu overflows, so the browser draws its scrollbar track down the full
+pane, and the owner likes that line as the menu/content separation. Academy's short menu
+never overflows, so its pane uses `overflow-y-scroll` to draw the track regardless. This
+is the native track, not a border (the drawn hairline is still rejected). Browsers with
+overlay scrollbars (macOS by default) show no track in either workspace.
+*(Resolved 2026-09-26: Account's sidebar is sticky with its own scroll under the shared
+`WorkspaceHeader` — see §13 and §31. Its active item uses `--accent` like Academy's.)*
 
 **Workspace identity extends into the sidebar itself, not only the 3px strip.** Academy's
 active navigation item now carries the workspace's own accent colour (teal) rather than the
@@ -962,6 +1113,16 @@ Two rules behind it:
   pointing at the place the visitor actually came from, rather than a full breadcrumb
   chain — the lesson page's two-crumb trail was replaced by a single button back to the
   course, since that is what "back" means from inside a lesson.
+
+**2026-09-27 — pages with no sidebar item of their own.** `BackLink` extended to the pages
+reached only by a link, an email or a redirect: `/bookings` (→ Your bookings) and its
+steps (§20), `/checkout` (§18), `/account/security/mfa` (→ Security; → Admin for an owner
+sent there by the two-key rule; **none** for a staff account held at the second-factor
+gate, where every other account page would only send it back — the header's "Back to
+site" is the exit), `/account/claim` (→ Your orders, including its no-token state),
+`/admin/[resource]/[id]` and `/admin/[resource]/new` (→ All <resource>), and
+`/admin/check-in/[reference]` (its muted text link replaced). Auth pages keep their own
+exits (§17, `AuthCard`), which already satisfy this.
 
 
 ---
@@ -1079,7 +1240,6 @@ Home
 Coaching
 About
   Tony's Story
-  Meet the Team
   Testimonials
 Blog
 Catalogue
@@ -1191,6 +1351,17 @@ Use Next.js layouts and contextual navigation to achieve those boundaries within
 | 2026-09-02 | §4, §5, §38: Give-Get-Go added as a primary navigation item with a five-item submenu — Overview, Publishing, Films, Documentaries and Give-Get-Go Education. The last leaves the site for `give-get-go.com` and is marked with an external indicator, per note 11; it is presented as a related venture and is explicitly not part of the Academy or Admin. |
 | 2026-09-02 | §5, §26, §27, §38: **implementation finding** — §5 and §38 define submenus for Coaching and Catalogue, but the desktop header rendered top-level items only. `children` was consumed solely by the mobile menu, so every submenu was unreachable above the `lg` breakpoint. Desktop dropdowns added with hover, click, Enter/Space, Escape-to-close and focus restoration. The mobile menu was rebuilt as a single-expansion accordion in a modal sheet with a focus trap, scroll lock and 44px targets (note 10 §35), replacing a flat list that expanded every submenu at once. |
 | 2026-09-02 | §4, §38: primary navigation reordered by importance rather than by build order — Home, Coaching, Catalogue, Give-Get-Go, About, Blog, Contact. Coaching leads as the commercial core; Catalogue precedes Give-Get-Go because Give-Get-Go is a view over catalogue content; Contact stays last by convention. Events remains a footer link (§8). |
+| 2026-09-24 | §4, §38: **Catalogue now comes before Coaching** in the primary navigation, at the owner's request. The implemented order is Home, About, Catalogue, Coaching, Give-Get-Go, Blog, Contact (declared once in `src/lib/navigation/index.ts`, so desktop and mobile both follow it). This matches the home page, where the catalogue already comes before coaching. It supersedes the 2026-09-02 order, which had put Coaching first as the commercial core. |
 | 2026-09-02 | §26, §27: **defect fixed** — the mobile sheet was rendered inside `<header>`, which carries `backdrop-blur`. A `backdrop-filter` makes an element a containing block for its `position:fixed` descendants, so `top-16 bottom-0` resolved against the header's 64px box and collapsed the sheet to zero height: the menu opened, trapped focus and locked scrolling while being invisible. The sheet is now a sibling of `<header>`. |
 | 2026-09-05 | §32.2 (new): workspace chrome alignment recorded — the header's brand column matches the sidebar width and border, the page heading starts level with the first navigation item, and the sidebar scrolls independently behind a hairline separation. **Partly reverses the 2026-09-05 amendment that gave every workspace page an eyebrow:** inside a sidebar workspace the eyebrow repeats what the sidebar already says and pushed the heading 32px below the navigation. Public pages keep theirs. |
+| 2026-09-26 | §19: cart indicator. A count badge on the masthead cart icon, and on phones and tablets the icon appears only while the cart is non-empty. |
 | 2026-09-05 | §32.1 (new): `x-pathname` stamped by the proxy so a layout-level gate can return the operator to the page they asked for. Without it every deep link into Admin collapsed to the dashboard at the second-factor step. |
+| 2026-09-24 | §8: newsletter signup moved from a footer form into `NewsletterPopup` — opened from a one-line footer invitation, or once by itself to a reader (25 s + half the page), remembered in `localStorage`. Footer is shorter; consent handling unchanged. |
+| 2026-09-25 | §17: auth layout implemented as a split screen — noir stage panel carrying the wordmark (the link home), form column with no header or menu, legal links beneath the form. Note 10 §42.3. |
+| 2026-09-25 | §4, §5, §38: **Give-Get-Go submenu reduced to two items**: "Publishing, Films & Documentaries" (`/give-get-go`) and "Give-Get-Go Education ↗" (external, unchanged). The Overview, Publishing, Films and Documentaries entries were removed because the sections now share one page (note 11, amendment 2026-09-25). |
+| 2026-09-26 | §4 Coaching: **secondary navigation bar removed** (owner) — `src/app/(public)/coaching/layout.tsx` deleted, with the hero-height offset it needed. It duplicated the Coaching menu. "About" dropped from the menu; the section's overview now carries How it works (note 03 §9). |
+| 2026-09-26 | Admin navigation, Experiences group: "Event photos" (`/admin/event-photos`) and "Check-in" (`/admin/check-in`) added after Events, both behind `events.read`. |
+| 2026-09-27 | §32.2: Account and Academy sidebar panes made full height — flush under the header to the bottom of the viewport (owner), matching Admin. Stale "Account not yet sticky" remark resolved. |
+| 2026-09-27 | §32.2: Academy sidebar uses `overflow-y-scroll` so its scroll track always shows as the menu/content separator, matching Account (owner). |
+| 2026-09-27 | §18, §20, §32.3: Booking and Checkout move to the shared `WorkspaceHeader` (booking with the account menu and "Your bookings"; checkout without an account menu, links visible at every width) plus a shared task footer; no main site menu in either. `/bookings` lists private coaching still to book. `BackLink` added to every link-only page that lacked one (booking steps, checkout, security keys, claim, admin resource edit/new, ticket check-in). |
+| 2026-09-27 | §15, §16, §32: Admin navigation rebuilt as a two-level disclosure tree with icons, a page finder and a phone section switcher; "Customers" renamed People; Enquiries and Audit log added; longest-match active state. Admin header uses the site wordmark and the account menu. |

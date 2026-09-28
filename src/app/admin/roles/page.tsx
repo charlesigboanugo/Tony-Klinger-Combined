@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { PageHeader } from "@/components/layout/PageHeader";
+import { AdminPageHeader, humanise } from "@/components/admin/AdminUI";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { adminRoles } from "@/lib/admin";
 import { requirePermission } from "@/lib/permissions";
@@ -28,18 +28,19 @@ export default async function RolesPage() {
 
   return (
     <>
-      <PageHeader
+      <AdminPageHeader
         title="Roles"
+        meta={`${roles.length} roles`}
         description="What each role allows, and who holds it. Assign a role from a person's own page."
       />
 
       {roles.length === 0 ? (
-        <EmptyState
+        <EmptyState icon="users"
           title="No roles defined"
           description="Roles are created in migrations, not here."
         />
       ) : (
-        <ul className="space-y-4">
+        <ul className="space-y-5">
           {roles.map((role) => (
             <li
               key={role.id}
@@ -47,9 +48,7 @@ export default async function RolesPage() {
             >
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div>
-                  <h2 className="font-display text-lg font-semibold">
-                    {role.name.replace(/_/g, " ")}
-                  </h2>
+                  <h2 className="text-lg">{humanise(role.name)}</h2>
                   {role.description ? (
                     <p className="mt-1 text-sm text-muted-foreground">
                       {role.description}
@@ -64,7 +63,7 @@ export default async function RolesPage() {
 
               <div className="mt-4 grid gap-5 border-t border-border pt-4 sm:grid-cols-2">
                 <div>
-                  <h3 className="text-[0.6875rem] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
+                  <h3 className="text-[0.6875rem] font-semibold tracking-widest text-muted-foreground uppercase">
                     Holders
                   </h3>
                   {role.holders.length === 0 ? (
@@ -77,7 +76,7 @@ export default async function RolesPage() {
                         <li key={holder.userId}>
                           <Link
                             href={`/admin/users/${holder.userId}`}
-                            className="text-primary underline-offset-4 hover:underline"
+                            className="font-medium hover:text-accent"
                           >
                             {holder.name}
                           </Link>
@@ -88,7 +87,7 @@ export default async function RolesPage() {
                 </div>
 
                 <div>
-                  <h3 className="text-[0.6875rem] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
+                  <h3 className="text-[0.6875rem] font-semibold tracking-widest text-muted-foreground uppercase">
                     Permissions ({role.permissions.length})
                   </h3>
                   {role.permissions.length === 0 ? (

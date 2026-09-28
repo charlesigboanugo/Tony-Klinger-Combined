@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { ResourceForm } from "@/components/admin/ResourceForm";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { AdminPageHeader } from "@/components/admin/AdminUI";
+import { BackLink } from "@/components/ui/BackLink";
 import { listMedia, listReferences } from "@/lib/admin/crud";
 import { resourceBySlug } from "@/lib/admin/resources";
 import { requirePermission } from "@/lib/permissions";
@@ -35,10 +36,8 @@ export default async function Page({
 
   return (
     <>
-      <PageHeader
-        title={`New ${resource.labelSingular.toLowerCase()}`}
-        description={resource.description}
-      />
+      <BackLink href={`/admin/${resource.slug}`}>All {resource.label.toLowerCase()}</BackLink>
+      <AdminPageHeader title={`New ${resource.labelSingular.toLowerCase()}`} description={resource.description} />
       <ResourceForm resource={resource} media={media} references={references} />
     </>
   );

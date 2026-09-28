@@ -34,7 +34,7 @@ function AddButton({ label }: { label: string }) {
         "border border-input-border bg-transparent text-[0.9375rem] font-semibold text-foreground",
         "transition-[transform,box-shadow,background-color,border-color,color] duration-(--dur-fast) ease-expo",
         "hover:border-primary hover:bg-primary/8 hover:text-primary",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--ring)",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
         "active:translate-y-px disabled:pointer-events-none disabled:opacity-50",
         "motion-reduce:transform-none motion-reduce:transition-none",
       )}

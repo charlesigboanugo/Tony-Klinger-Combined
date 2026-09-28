@@ -111,11 +111,23 @@ export async function cancelBookingAction(
 
     revalidatePath("/bookings");
     revalidatePath("/account/bookings");
+    revalidatePath("/academy/coaching");
     return {
       success: result.credit_returned
-        ? "Cancelled — your session credit has been returned."
+        ? "Cancelled — your session has been returned to your account to rebook."
         : "Cancelled. This was too close to the start time for the credit to be returned.",
     };
+  }
+
+  if (result?.status === "too_late") {
+    return {
+      error:
+        "Private sessions can't be cancelled online within 48 hours of the start. Please get in touch and we'll help.",
+    };
+  }
+
+  if (result?.status === "paid_ticket") {
+    return { error: "This is a paid ticket. Get in touch and we'll sort out your place and any refund." };
   }
 
   return { error: "We couldn't find that booking." };

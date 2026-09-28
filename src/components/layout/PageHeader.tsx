@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 
+import { DesignPhoto, type DesignImage } from "@/components/media/DesignPhoto";
 import { Reveal } from "@/components/motion/Reveal";
 import { cn } from "@/lib/utils/cn";
+import { Eyebrow } from "@/components/ui/Eyebrow";
 
 /**
  * Page title block — note 10 §9 typography hierarchy.
@@ -15,28 +17,80 @@ import { cn } from "@/lib/utils/cn";
  * The lead is measure-limited. A description running the full width of a wide
  * container is physically hard to read — the eye loses the line on the return
  * sweep past roughly 75 characters.
+ *
+ * With a `photo` (note 10 §42.3) the header becomes a split: the words on one
+ * side, a framed portrait drifting gently on the other. Stacked on phones,
+ * words first.
  */
+/**
+ * From lg the words start at `--hero-text-top` below the header, the height
+ * every page hero shares with the home title card. A page header sits in a
+ * `Section`, whose top padding is 4rem from `sm`, so it adds the rest.
+ */
+const HERO_START = "lg:pt-[max(0px,calc(var(--hero-text-top)-4rem))]";
+
 export function PageHeader({
   eyebrow,
   title,
   description,
   actions,
   align = "start",
+  photo,
   className,
+  nested = false,
 }: {
   eyebrow?: string;
   title: string;
   description?: string;
   actions?: ReactNode;
   align?: "start" | "center";
+  photo?: DesignImage;
   className?: string;
+  /** Set by the photo split for its inner title block, which it has
+      already moved to the shared start height. */
+  nested?: boolean;
 }) {
+  if (photo) {
+    return (
+      <div
+        className={cn(
+          "mb-12 grid items-center gap-10 sm:mb-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-start lg:gap-16",
+          className,
+        )}
+      >
+        <div className={cn("space-y-6", HERO_START)}>
+          <PageHeader
+            eyebrow={eyebrow}
+            title={title}
+            description={description}
+            className="mb-0 sm:mb-0"
+            nested
+          />
+          {actions ? (
+            <Reveal delay={180} className="flex flex-wrap gap-3">
+              {actions}
+            </Reveal>
+          ) : null}
+        </div>
+        <Reveal delay={120}>
+          <DesignPhoto
+            image={photo}
+            aspect="aspect-4/3 lg:aspect-4/5"
+            priority
+            parallax
+          />
+        </Reveal>
+      </div>
+    );
+  }
+
   const centered = align === "center";
 
   return (
     <div
       className={cn(
         "mb-10 flex flex-col gap-6 sm:mb-14",
+        !nested && HERO_START,
         centered
           ? "items-center text-center"
           : "sm:flex-row sm:items-end sm:justify-between",
@@ -51,15 +105,15 @@ export function PageHeader({
       */}
       <div className={cn("w-full space-y-4", centered && "max-w-3xl")}>
         {eyebrow ? (
-          <Reveal as="p" className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">
-            {eyebrow}
+          <Reveal>
+            <Eyebrow align={centered ? "center" : "start"}>{eyebrow}</Eyebrow>
           </Reveal>
         ) : null}
 
         <Reveal
           as="h1"
           delay={eyebrow ? 60 : 0}
-          className="font-display text-4xl leading-[1.05] font-semibold text-balance sm:text-5xl lg:text-6xl"
+          className="font-display"
         >
           {title}
         </Reveal>

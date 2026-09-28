@@ -57,7 +57,7 @@ function GoogleSubmit({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="flex h-12 w-full items-center justify-center gap-3 rounded-full border border-(--google-border) bg-(--google-bg) px-4 text-[0.9375rem] font-medium text-(--google-text) transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-60"
+      className="flex h-13 w-full items-center justify-center gap-3 rounded-full border border-(--google-border) bg-(--google-bg) px-4 text-[0.9375rem] font-medium text-(--google-text) transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-60"
     >
       <GoogleMark />
       <span>{pending ? "Redirecting…" : label}</span>

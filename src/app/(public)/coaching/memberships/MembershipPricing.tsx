@@ -19,7 +19,7 @@ const CTA_BASE =
   "relative inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full px-6 " +
   "text-[0.9375rem] font-semibold transition-[transform,box-shadow,background-color,border-color,color] " +
   "duration-(--dur-fast) ease-expo focus-visible:outline-2 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-(--ring) active:translate-y-px motion-reduce:transform-none";
+  "focus-visible:outline-ring active:translate-y-px motion-reduce:transform-none";
 const CTA_PRIMARY =
   "bg-button text-button-foreground shadow-card hover:-translate-y-0.5 hover:shadow-lift hover:brightness-110";
 const CTA_OUTLINE =
@@ -99,6 +99,10 @@ function TierCard({
           isTop && "border-primary/40 ring-1 ring-primary/25",
         )}
       >
+        {/* The whole card is clickable (owner, 2026-09-26); the Join button
+            below stays the one link in the tab order. */}
+        <PeriodLink href={`/coaching/memberships/${tier.slug}`} overlay className="z-0 rounded-(--radius-lg)" />
+
         {isTop ? (
           <p className="bg-button px-5 py-1.5 text-center text-[0.6875rem] font-semibold tracking-[0.12em] text-button-foreground uppercase">
             Everything included
@@ -107,38 +111,46 @@ function TierCard({
 
         <CardBody>
           <CardEyebrow>Tier {tier.rank}</CardEyebrow>
-          <CardTitle as="h2" className="mt-1 text-2xl">
+          <CardTitle as="h3" className="mt-1 text-2xl">
             {tier.name}
           </CardTitle>
 
           <TierPrice prices={tier.prices} />
 
-          <ul className="mt-4 flex-1 space-y-2.5 border-t border-border pt-4 text-sm">
+          {/*
+            What the tier includes, each line ticked. A check says "included"
+            where a dot only says "a list"; it sits in a soft teal disc, the
+            accent the site keeps for state cues, so it reads in both themes
+            and does not compete with the red buttons (2026-09-26: the owner
+            found dots in red, then white, weak here). The billing term is not
+            a benefit, so it follows the list untucked and quieter.
+          */}
+          <ul className="mt-4 space-y-3 border-t border-border pt-5 text-sm">
             {tier.benefits.map((benefit) => (
-              <li key={benefit} className="flex gap-2.5">
+              <li key={benefit} className="flex gap-3">
                 <span
                   aria-hidden="true"
-                  className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary"
-                />
-                <span className="text-foreground">{benefit}</span>
+                  className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-accent/12 text-accent"
+                >
+                  <svg viewBox="0 0 16 16" className="size-3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3.5 8.5 6.5 11.5 12.5 5" />
+                  </svg>
+                </span>
+                <span className="leading-snug text-foreground">{benefit}</span>
               </li>
             ))}
-            {tier.prices.length > 0 ? (
-              <li className="flex gap-2.5">
-                <span
-                  aria-hidden="true"
-                  className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary"
-                />
-                <span className="text-foreground">
-                  {period === "yearly"
-                    ? "One payment — access for a full year"
-                    : "Renews monthly — cancel any time"}
-                </span>
-              </li>
-            ) : null}
           </ul>
+          {tier.prices.length > 0 ? (
+            <p className="mt-4 flex-1 text-xs text-muted-foreground">
+              {period === "yearly"
+                ? "One payment — access for a full year"
+                : "Renews monthly — cancel any time"}
+            </p>
+          ) : (
+            <div className="flex-1" />
+          )}
 
-          <CardFooter>
+          <CardFooter className="relative z-10">
             <PeriodLink
               href={`/coaching/memberships/${tier.slug}`}
               className={cn(CTA_BASE, isTop ? CTA_PRIMARY : CTA_OUTLINE)}
@@ -151,7 +163,7 @@ function TierCard({
                 nothing is hidden.
               */}
               <span className="relative z-10">
-                See {tier.name.replace(/\s+Membership$/i, "")}
+                Join {tier.name.replace(/\s+Membership$/i, "")}
               </span>
             </PeriodLink>
           </CardFooter>

@@ -54,7 +54,7 @@ export default async function CheckoutSuccessPage({
         {paid ? "Payment confirmed" : failed ? "Payment problem" : "Processing"}
       </p>
 
-      <h1 className="font-display text-3xl font-semibold text-balance sm:text-4xl">
+      <h1 className="font-display text-balance">
         {paid
           ? "Thank you — your order is complete"
           : failed

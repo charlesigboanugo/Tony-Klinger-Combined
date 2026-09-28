@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { KeyIcon } from "@/app/auth/AuthParts";
 import { Button } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils/cn";
 
 type Factor = { id: string; name: string };
 
@@ -156,11 +158,25 @@ export function Challenge({
     <div className="space-y-4">
       {error ? <FormMessage>{error}</FormMessage> : null}
 
-      <p className="text-sm text-muted-foreground">
-        {busy
-          ? "Waiting for your security key…"
-          : "Your browser should have asked for your key. If it didn't, use the button below."}
-      </p>
+      {/* The key mark. While the browser waits for the key, a teal ring
+          pulses around it — a state cue, so it uses the accent — which tells
+          the operator the page is listening, not frozen. */}
+      <div className="flex items-center gap-4 rounded-(--radius-lg) border border-border bg-surface p-4">
+        <span className="relative grid size-12 shrink-0 place-items-center rounded-full bg-surface-muted text-primary">
+          {busy ? (
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 rounded-full border-2 border-accent animate-ping motion-reduce:animate-none"
+            />
+          ) : null}
+          <KeyIcon className={cn(busy && "text-accent")} />
+        </span>
+        <p className="text-sm leading-relaxed text-muted-foreground" aria-live="polite">
+          {busy
+            ? "Waiting for your security key…"
+            : "Your browser should have asked for your key. If it didn't, use the button below."}
+        </p>
+      </div>
 
       <Button
         onClick={() => verify(factors[0].id)}

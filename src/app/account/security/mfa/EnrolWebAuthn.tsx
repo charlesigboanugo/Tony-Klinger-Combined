@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Field, FormMessage, Input } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
+import { describeDevice } from "@/lib/utils/device";
 
 /**
  * WebAuthn enrolment — note 05 §11.1.
@@ -42,18 +43,42 @@ export function EnrolWebAuthn({
     typeof window !== "undefined" && !window.PublicKeyCredential;
 
   /*
+    This device, as precisely as the browser allows: Chrome and Edge give the
+    model and real OS version through User-Agent Client Hints ("Pixel 8 ·
+    Chrome", "Windows 11 computer · Edge"); Safari and Firefox give the
+    platform only.
+  */
+  async function deviceLabel(): Promise<string | null> {
+    let ua = navigator.userAgent;
+    const data = (navigator as Navigator & {
+      userAgentData?: { getHighEntropyValues(hints: string[]): Promise<{ model?: string; platformVersion?: string }> };
+    }).userAgentData;
+    if (data?.getHighEntropyValues) {
+      try {
+        const v = await data.getHighEntropyValues(["model", "platformVersion"]);
+        if (v.model) ua += ` TKModel/${encodeURIComponent(v.model)}`;
+        if (v.platformVersion) ua += ` TKPlatformVersion/${encodeURIComponent(v.platformVersion)}`;
+      } catch {
+        // Hints refused — the plain user agent still names the platform.
+      }
+    }
+    const { label, device } = describeDevice(ua);
+    return device === "Unrecognised device" ? null : label;
+  }
+
+  /*
     A name that is not already taken.
 
     The default was `Security key <date>`, which meant registering a SECOND key
     on the same day always collided — Supabase rejects duplicate friendly names
     with 422 `mfa_factor_name_conflict`, and the generic catch below reported
     "we couldn't register that key" while the real reason sat in the console.
-    That is the error that appeared every time an operator was (wrongly) asked
-    to enrol again on each sign-in.
+    Named after the device doing the registering, so the list says where each
+    key lives without anyone having to type it.
   */
-  function defaultName(): string {
+  async function defaultName(): Promise<string> {
     const taken = new Set(existingNames.map((n) => n.toLowerCase()));
-    const base = `Security key ${new Date().toLocaleDateString()}`;
+    const base = (await deviceLabel()) ?? `Security key ${new Date().toLocaleDateString()}`;
     if (!taken.has(base.toLowerCase())) return base;
     for (let i = 2; i < 50; i++) {
       const candidate = `${base} (${i})`;
@@ -70,7 +95,7 @@ export function EnrolWebAuthn({
     let factorId: string | undefined;
 
     try {
-      const chosen = name.trim() || defaultName();
+      const chosen = name.trim() || (await defaultName());
 
       // Caught here so the operator is told the actual problem before a
       // round trip, rather than after a 422.
@@ -184,7 +209,7 @@ export function EnrolWebAuthn({
       <Field
         label="Name this key"
         name="friendlyName"
-        hint="So you can tell your keys apart later — e.g. 'Laptop' or 'YubiKey'."
+        hint="Optional. Left blank, it's named after this device — e.g. 'Chrome on Windows'."
       >
         <Input
           name="friendlyName"

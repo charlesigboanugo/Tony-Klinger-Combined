@@ -1,13 +1,24 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/permissions";
 
 /**
  * Account queries — note 01 §6, note 03 §24.
  *
  * Every read here is scoped to the signed-in customer by RLS. A bug in a filter
  * produces an empty page, never another customer's data (note 08 §59).
+ *
+ * RLS ALONE IS NOT ENOUGH FOR STAFF. Staff also hold "read all" policies on
+ * these tables (for Admin), so for them RLS returns EVERY customer's rows —
+ * their own Account would list everyone's orders and access. Each read here
+ * therefore also filters to the caller's own id.
  */
+
+/** The signed-in user's id, from the per-request auth context. */
+async function me(): Promise<string | null> {
+  return (await getAuthContext())?.userId ?? null;
+}
 
 export type Profile = {
   user_id: string;
@@ -18,10 +29,13 @@ export type Profile = {
 };
 
 export async function myProfile(): Promise<Profile | null> {
+  const userId = await me();
+  if (!userId) return null;
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
     .select("user_id,first_name,last_name,display_name,status")
+    .eq("user_id", userId)
     .maybeSingle();
   return (data as Profile | null) ?? null;
 }
@@ -33,18 +47,25 @@ export type OrderSummary = {
   total: number;
   created_at: string;
   paid_at: string | null;
+  /** Snapshotted names (note 08 §40), so a list can say what was bought. */
+  order_items: Array<{ product_name_snapshot: string; quantity: number }>;
 };
 
 export async function myOrders(): Promise<OrderSummary[]> {
+  const userId = await me();
+  if (!userId) return [];
   const supabase = await createClient();
   const { data } = await supabase
     .from("orders")
-    .select("id,status,currency,total,created_at,paid_at")
+    .select("id,status,currency,total,created_at,paid_at,order_items(product_name_snapshot,quantity)")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
-  return (data as OrderSummary[] | null) ?? [];
+  return (data as unknown as OrderSummary[] | null) ?? [];
 }
 
 export async function myOrder(id: string) {
+  const userId = await me();
+  if (!userId) return null;
   const supabase = await createClient();
   const { data } = await supabase
     .from("orders")
@@ -53,6 +74,7 @@ export async function myOrder(id: string) {
         "order_items(id,product_name_snapshot,unit_amount,quantity,total_amount)",
     )
     .eq("id", id)
+    .eq("user_id", userId)
     .maybeSingle();
 
   return (data as unknown as {
@@ -97,21 +119,27 @@ export type EntitlementRow = {
  * different area for different people (note 06 §23.1).
  */
 export async function myEntitlements(): Promise<EntitlementRow[]> {
+  const userId = await me();
+  if (!userId) return [];
   const supabase = await createClient();
   const { data } = await supabase
     .from("entitlements")
     .select(
       "id,resource_type,resource_id,source_type,status,starts_at,expires_at,quantity,quantity_used",
     )
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
   return (data as EntitlementRow[] | null) ?? [];
 }
 
 export async function mySubscriptions() {
+  const userId = await me();
+  if (!userId) return [];
   const supabase = await createClient();
   const { data } = await supabase
     .from("subscriptions")
     .select("id,status,membership_tier,current_period_end,cancel_at")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   return (data as Array<{
@@ -146,6 +174,7 @@ export const RESOURCE_LABELS: Record<string, string> = {
   course: "Course",
   group_coaching_series: "Group Coaching series",
   group_coaching_session: "Group Coaching sessions",
+  private_coaching: "Private coaching",
   cohort: "Interactive Cohort",
   retreat: "Retreat",
   event: "Event",
@@ -154,6 +183,14 @@ export const RESOURCE_LABELS: Record<string, string> = {
   release: "New release",
   partner_discount: "Partner discount",
 };
+
+/** "Screenwriting Level One and 2 more" — an order in one line. */
+export function orderTitle(order: Pick<OrderSummary, "order_items">): string {
+  const names = order.order_items.map((i) => i.product_name_snapshot);
+  if (names.length === 0) return "Order";
+  if (names.length === 1) return names[0]!;
+  return `${names[0]} and ${names.length - 1} more`;
+}
 
 export const SOURCE_LABELS: Record<string, string> = {
   purchase: "Bought directly",

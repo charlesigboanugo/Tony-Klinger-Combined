@@ -7,6 +7,7 @@ import { isBillingPeriod } from "@/lib/commerce/billing";
 import { readCart } from "@/lib/commerce/cart";
 import { createPendingOrder, priceCart } from "@/lib/commerce/orders";
 import { stripe } from "@/lib/stripe/client";
+import { ensureStripeCustomer } from "@/lib/stripe/customer";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { absoluteUrl } from "@/lib/urls";
@@ -99,6 +100,36 @@ export async function startCheckoutAction(
     };
   }
 
+  /*
+    EVENT TICKETS (migration 0018). A ticket is a booking in someone's name, so
+    it needs an account at the point of sale — a guest order would leave the
+    ticket unissued until claimed, and the door would have nothing to scan.
+    One ticket per person per event (the booking's uniqueness rule), and no
+    sale once the event is full or has started.
+  */
+  const tickets = lines.filter((l) => l.productType === "event");
+  if (tickets.length > 0) {
+    if (!user) {
+      return { error: "Please sign in to buy a ticket, so it is issued in your name." };
+    }
+    if (tickets.some((l) => l.quantity > 1)) {
+      return { error: "Tickets are one per person. Each guest can buy their own with their account." };
+    }
+    for (const line of tickets) {
+      const { data: status } = await supabase.rpc("event_sale_status", { p_product_id: line.productId });
+      if (status !== "ok") {
+        return {
+          error:
+            status === "full"
+              ? `${line.name} is fully booked. You can join its waiting list on the event page.`
+              : status === "past"
+                ? `${line.name} has already started.`
+                : `Tickets for ${line.name} are not on sale just now.`,
+        };
+      }
+    }
+  }
+
   // A RECURRING PRICE MUST USE mode: "subscription".
   //
   // This was previously hard-coded to "payment", so a £15/month membership took
@@ -143,6 +174,7 @@ export async function startCheckoutAction(
     userId: user?.id ?? null,
     guestEmail: user ? null : email,
     lines,
+    checkoutMode: isSubscription ? "subscription" : "payment",
   });
 
   if (!order) {
@@ -164,9 +196,15 @@ export async function startCheckoutAction(
   let url: string | null = null;
 
   try {
+    // A signed-in buyer pays as their own Stripe Customer, so the card,
+    // receipts and any subscription all land on the one record the billing
+    // page and Customer Portal open (migration 0021). A guest has no account
+    // to attach a customer to, and pays by email as before.
+    const customer = user?.email ? await ensureStripeCustomer(user.id, user.email) : null;
+
     const session = await stripe().checkout.sessions.create({
       mode: isSubscription ? "subscription" : "payment",
-      customer_email: email,
+      ...(customer ? { customer } : { customer_email: email }),
       // Prefer the synced Stripe Price. Inline price_data is the fallback for
       // a catalogue that has not been synced yet — it works, but Stripe creates
       // a throwaway Product per purchase, which destroys per-product reporting

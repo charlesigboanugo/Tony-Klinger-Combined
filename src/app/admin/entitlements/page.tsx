@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 
 import { GrantForm } from "@/app/admin/entitlements/GrantForm";
 import { AdminTable, StatusPill } from "@/components/admin/AdminTable";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { AdminPageHeader, AdminSection, PersonCell, humanise, ukDate } from "@/components/admin/AdminUI";
 import { adminEntitlements } from "@/lib/admin";
+import { peopleByIds } from "@/lib/admin/operations";
 import { can, requirePermission } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Entitlements · Admin", robots: { index: false } };
@@ -17,19 +18,26 @@ export const metadata: Metadata = { title: "Entitlements · Admin", robots: { in
 export default async function AdminEntitlementsPage() {
   const context = await requirePermission("entitlements.read", "/admin/entitlements");
   const entitlements = await adminEntitlements();
+  const people = await peopleByIds(entitlements.map((e) => e.user_id));
 
   return (
     <>
-      <PageHeader
+      <AdminPageHeader
         title="Entitlements"
+        meta={`${entitlements.length} shown`}
         description="What customers can access, and why. Every change here is audited."
       />
 
       {can(context, "entitlements.grant") ? (
-        <section className="mb-10">
-          <h2 className="mb-3 font-medium">Grant access by hand</h2>
-          <GrantForm />
-        </section>
+        <AdminSection
+          title="Grant access by hand"
+          description="For comps, corrections and partners. The reason is recorded in the audit log."
+          className="mb-10"
+        >
+          <div className="rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card">
+            <GrantForm />
+          </div>
+        </AdminSection>
       ) : (
         <p className="mb-8 text-sm text-muted-foreground">
           Your role can view entitlements but not grant them.
@@ -37,20 +45,23 @@ export default async function AdminEntitlementsPage() {
       )}
 
       <AdminTable
-        headers={["Resource", "Source", "Status", "Remaining", "Reason", "Granted"]}
+        headers={["Person", "Resource", "Source", "Status", "Remaining", "Reason", "Granted"]}
         empty={entitlements.length === 0 ? "No entitlements yet." : undefined}
       >
         {entitlements.map((e) => (
-          <tr key={e.id} className="hover:bg-surface">
-            <td className="px-4 py-3 capitalize">{e.resource_type.replace(/_/g, " ")}</td>
-            <td className="px-4 py-3 capitalize">{e.source_type.replace(/_/g, " ")}</td>
+          <tr key={e.id} className="hover:bg-surface-muted/60">
+            <td className="px-4 py-3">
+              <PersonCell id={e.user_id} name={people.get(e.user_id)?.name} email={people.get(e.user_id)?.email} />
+            </td>
+            <td className="px-4 py-3">{humanise(e.resource_type)}</td>
+            <td className="px-4 py-3">{humanise(e.source_type)}</td>
             <td className="px-4 py-3"><StatusPill value={e.status} /></td>
             <td className="px-4 py-3">
               {e.quantity == null ? "Unlimited" : `${e.quantity - e.quantity_used}/${e.quantity}`}
             </td>
             <td className="px-4 py-3 text-muted-foreground">{e.grant_reason ?? "—"}</td>
             <td className="px-4 py-3 text-muted-foreground">
-              {new Date(e.created_at).toLocaleDateString("en-GB")}
+              {ukDate(e.created_at)}
             </td>
           </tr>
         ))}

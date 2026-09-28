@@ -506,7 +506,7 @@ administrative operation performed by another authorized person, audited under n
 it protects.
 
 That operation is `/admin/users/[id]` → **Clear security keys**, and the rule about who may
-clear whose keys lives in the database (`admin_record_mfa_reset`, migration 0036) rather
+clear whose keys lives in the database (`admin_record_mfa_reset`, migration 0007_staff_accounts_and_lesson_video) rather
 than only in the interface:
 
 ```text
@@ -543,6 +543,56 @@ Re-enrolment, and an audit record written after the fact
 
 The break-glass path is deliberate, documented and rare. It exists because the alternative
 — a convenient in-app reset — would be exactly the bypass an attacker would use.
+
+---
+
+### 11.2 Self-service keys and signed-in devices (2026-09-27, migration 0022)
+
+**Keys.** `/account/security/mfa` lists each key with its name, where it lives (from the
+AAGUID the authenticator reports — "iCloud Keychain", "Windows Hello", "YubiKey 5 NFC";
+unknown ids are not guessed at), when it was added and when it was last used. A key
+registered without a name is named after the registering device ("Chrome on Windows").
+
+**Removing a key** is gated in the database by `authorise_security_key_removal`, which
+refuses unless ALL of:
+
+```text
+the key is the caller's own and verified
+this session is aal2 AND presented a key within the last 10 minutes
+                      (auth.mfa_amr_claims 'mfa/webauthn', stamped on each use)
+the account keeps its minimum: owner 2, other staff 1, customers 0
+```
+
+A stale session is sent to `/auth/2fa?confirm=1`, which re-challenges even an `aal2`
+session and returns. On success the gate writes an audit entry (`security_key.removed`)
+and queues the `security_key_removed` email to the account's own address; the server
+action then deletes the factor through the Auth admin API — the same split as the admin
+reset (§11.1).
+
+**Signed-in devices.** `/account/security` lists the caller's sessions (`my_sessions`) —
+browser and platform, last active, sign-in date, public IP, whether confirmed with a key —
+with **Sign out** per session (`sign_out_my_session`, never the current one) and **Sign
+out all other devices** (Supabase's `signOut({ scope: "others" })`). Because every server
+request validates the session with the Auth server (`getUser()`), a signed-out device is
+refused on its **next page load** (verified end-to-end), so the access-token lifetime
+stays at one hour; its only remaining reach is a raw token against the Data API, still
+bounded by RLS, until expiry.
+
+**Device names.** A website cannot read what an app can (a phone's model or its owner-given
+name). What it can get: the iOS/Android version from the user agent, and on Chrome/Edge the
+**model** ("Pixel 8", Samsung codes shown by family) and the **real OS version** (Windows 10 vs
+11, macOS 15) via User-Agent Client Hints, requested with `Accept-CH` by `proxy.ts`. iPhones
+never expose their model to any website. Labels come from `describeDevice()`
+(`lib/utils/device.ts`); sessions recorded before the forwarding below say "Device not
+recorded" rather than guessing.
+
+**The visitor's device reaches Auth.** Sign-in and refresh are server-to-server, so
+Supabase recorded every session as user agent `node` at the server's address. Both server
+clients (`lib/supabase/server.ts`, `proxy.ts`) now forward the visitor's `User-Agent` and
+first `X-Forwarded-For` (`lib/supabase/forwarded.ts`), with the two client hints appended to
+the user agent as `TKModel/…` and `TKPlatformVersion/…` tokens, since Supabase stores only
+the user agent. Informational only — nothing is
+authorised on either value; private and loopback addresses are not displayed.
 
 ---
 
@@ -1374,3 +1424,5 @@ The architecture must be secure by design and must not rely on client-side check
 | 2026-09-05 | §11.2 (new), §36: `/auth/callback` extended to verify `token_hash` links server-side, and the fragment form recorded as unsupportable rather than merely unsupported. `safeRedirect` now matches its allowed `/auth/` destinations on the PATH, so `/auth/reset-password?invited=1` survives; `/auth/2fa` added to that set, being a step that finishes authentication rather than starting it. |
 | 2026-09-05 | §11.1: `/auth/2fa` recorded as the challenge step, distinct from enrolment at `/account/security/mfa`. A staff session holding a key is now challenged immediately, in the auth chrome, rather than being sent to the settings page to find a button; only a key-less account is sent to enrolment. Every registered key is offered by name, since a challenge is bound to a single factor. |
 | 2026-09-05 | §11.1: the second factor moved into the SIGN-IN step and extended to customers who have set one up. The customer rule is clarified — MFA is optional to have, not optional to use — because a key that is never asked for is decorative. Enforcement moved into `requireUser()`, with `/auth/2fa` and `/account/security/mfa` deliberately using `requireSession()` so neither becomes a closed loop. MFA state is now derived from the `getUser()` call each request already makes rather than from two further round trips, which is what had made computing it for customers look expensive. Recovery recorded with the rule now in the database (migration 0036): a customer's keys may be cleared by anyone holding `users.reset_mfa`, a staff member's only by an owner, an owner's not at all, and never one's own. |
+| 2026-09-26 | Security headers (§35): `Permissions-Policy` stays `camera=()` site-wide, except `/admin/check-in` and its sub-paths, which allow `camera=(self)` so staff can scan tickets in the page. It is a staff-only area behind `events.read` (and `events.update` to check in). |
+| 2026-09-27 | §11.2 (new): self-service key list (device type via AAGUID, added, last used) and removal gated in the database (recent key use within 10 minutes, owner 2 / staff 1 minimum, audit entry, notification email); `/auth/2fa?confirm=1` re-confirmation; signed-in devices with per-session and "all others" sign-out; visitor User-Agent/IP forwarded to Supabase Auth. Migration 0022. |

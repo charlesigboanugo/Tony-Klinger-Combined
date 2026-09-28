@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { AuthCard } from "@/app/auth/AuthCard";
 import { SignInMethods } from "@/app/auth/sign-in/SignInMethods";
@@ -25,19 +24,12 @@ export default async function SignInPage({ searchParams }: PageProps<"/auth/sign
 
   return (
     <AuthCard
+      eyebrow="Sign in"
       title="Welcome back"
       description="Sign in with Google, a password, or a link sent to your email — whichever you used before."
       altPrompt="Don't have an account yet?"
       altHref={next ? `/auth/sign-up?next=${encodeURIComponent(next)}` : "/auth/sign-up"}
       altLabel="Create one"
-      footer={
-        <Link
-          href="/auth/forgot-password"
-          className="underline-offset-4 hover:text-foreground hover:underline"
-        >
-          Forgotten your password?
-        </Link>
-      }
     >
       {errorKey && ERRORS[errorKey] ? (
         <div className="mb-5">

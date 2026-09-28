@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 
 import { OfferCard } from "@/components/coaching/OfferCard";
+import { OfferGrid } from "@/components/coaching/OfferGrid";
 import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
@@ -22,40 +23,21 @@ export default async function CohortsPage() {
         <PageHeader
           eyebrow="Coaching"
           title="Interactive Cohorts"
-          description="A structured programme with a fixed group and fixed dates."
+          description="A fixed programme with a fixed group: eight three-hour workshops, live on Zoom, start to finish with the same people. Unlike Group Coaching, you do not book session by session."
         />
 
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
-          {[
-            ["8", "workshops"],
-            ["3 hrs", "each"],
-            ["24 hrs", "in total"],
-          ].map(([value, label]) => (
-            <div key={label} className="rounded-(--radius) border border-border bg-surface p-5">
-              <p className="text-3xl font-semibold">{value}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{label}</p>
-            </div>
-          ))}
-        </div>
-
         {/* Cohorts are NOT Group Coaching under another name (note 07 §16), and
-            a cohort *level* is not a membership *tier* (note 07 §16.1). */}
-        <div className="mb-8 rounded-(--radius) border border-border bg-surface p-6">
-          <h2 className="font-medium">How this differs from Group Coaching</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Group Coaching is a series of one-hour sessions you book as you go.
-            A cohort is a fixed programme: the same group, eight three-hour
-            workshops, start to finish.
-          </p>
-        </div>
-
+            a cohort *level* is not a membership *tier* (note 07 §16.1). The
+            difference is stated in the header rather than in a boxed aside;
+            the old "8 / 3 hrs / 24 hrs" figure tiles are gone (owner: no
+            count stats). */}
         {cohorts.length === 0 ? (
           <EmptyState
             title="No cohorts scheduled"
             description="New cohort dates are announced here."
           />
         ) : (
-          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <OfferGrid count={cohorts.length}>
             {cohorts.map((cohort, i) => (
               <Reveal as="li" key={cohort.id} delay={(i % 3) * 70} className="h-full">
                 <OfferCard
@@ -66,6 +48,7 @@ export default async function CohortsPage() {
                      two ladders share three names and must not be conflated
                      (note 07 §16.1). */
                   eyebrow={`${cohort.cohort_level} cohort`}
+                  cta="View cohort"
                   meta={
                     cohort.starts_at
                       ? `Starts ${new Date(cohort.starts_at).toLocaleDateString("en-GB", {
@@ -79,10 +62,11 @@ export default async function CohortsPage() {
                   storagePath={cohort.storagePath}
                   seed={cohort.slug}
                   priority={i < 3}
+                  feature={cohorts.length === 1}
                 />
               </Reveal>
             ))}
-          </ul>
+          </OfferGrid>
         )}
 
       </Container>

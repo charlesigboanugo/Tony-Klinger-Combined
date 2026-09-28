@@ -802,7 +802,8 @@ Suggested structure:
 supabase/
 ├── migrations/
 ├── functions/
-├── seed.sql
+├── content/        real site content — production initial setup (`pnpm content:setup`)
+├── seed.sql        local-only fixtures: test accounts, placeholders
 └── config.toml
 ```
 
@@ -1134,6 +1135,7 @@ tonyklinger/
 ├── supabase/
 │   ├── migrations/
 │   ├── functions/
+│   ├── content/
 │   ├── seed.sql
 │   └── config.toml
 │

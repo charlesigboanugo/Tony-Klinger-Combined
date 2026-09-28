@@ -499,6 +499,30 @@ while the customer retains access until the end of the paid period.
 
 The exact grace-period and cancellation policy must be explicitly configured.
 
+
+**Self-service implemented 2026-09-27 (migration 0021), at the owner's direction ("the normal
+setup, production ready"):**
+
+- **One Stripe Customer per account** (`billing_customers`, `ensureStripeCustomer`).
+  Signed-in checkouts, including private coaching, pass `customer` instead of
+  `customer_email`; guests still pay by email.
+- **Stripe Customer Portal** for card changes, invoice history, billing details and
+  cancellation; "Update card" deep-links to `payment_method_update` (`flow_data`). Its settings live in code, `scripts/stripe-portal-setup.mjs`, and
+  are selected by `STRIPE_PORTAL_CONFIGURATION_ID`. Cancellation is **at period end** with
+  a reason asked; access runs to the date already paid for. **Plan switching is off** in the
+  portal: moving between tiers changes entitlements, which the membership rules own.
+- **Resume** ("Keep my membership") is done on the site, since the portal has no deep link
+  for it; it clears whichever of `cancel_at_period_end` / `cancel_at` Stripe holds.
+- **Cancel on the site too** (owner, same day: "cancelling can be done directly through the
+  dashboard and on Stripe"). `/account/billing` has its own confirmation dialog —
+  access-until date, no further charge, reversible — with an optional reason and comment
+  passed to Stripe as `cancellation_details`, so they appear in Stripe's reporting. Same
+  outcome as the portal (at period end). The portal's cancel step stays enabled.
+- **Receipts:** one-off payments keep Stripe's charge receipt (`payments.receipt_url`,
+  captured at fulfilment, or fetched once later if missing); subscriptions use the invoice's
+  hosted page and PDF. `/account/billing` lists both, newest first; `/account/orders/[id]`
+  links its receipt.
+
 ---
 
 ## 18. Membership Upgrades and Downgrades
@@ -535,6 +559,13 @@ customer.subscription.deleted
 invoice.payment_succeeded
 invoice.payment_failed
 ```
+
+`checkout.session.expired` is also handled (2026-09-27): it releases a private coaching hold
+(§36). The production webhook endpoint must be subscribed to it.
+
+Also handled from 2026-09-27 (migration 0021): `invoice.paid`, `invoice.payment_failed`,
+`invoice.finalized` and `invoice.voided` record the subscription invoice for billing history.
+They do not change access; the subscription events carry the status (§17).
 
 The implementation must verify the current Stripe event model and official recommendations before coding.
 
@@ -881,6 +912,38 @@ Booking
 ```
 
 Membership access to Private Coaching exists only where the relevant membership entitlement explicitly provides it.
+
+**Implementation status (2026-09-27, migration 0020), at the owner's direction: slots set in
+Admin, paid at booking.** Book-first per §35:
+
+```text
+Slot (staff open it)
+   ↓
+Hold — a pending booking, 35 minutes            hold_private_coaching_slot
+   ↓
+Stripe Checkout, expires after 30 minutes       /bookings/private/[serviceSlug]
+   ↓
+Webhook → fulfil_order → `private_coaching` entitlement (quantity 1)
+   ↓
+Trigger spends it on the held booking → confirmed
+```
+
+- **Slots** (`private_coaching_slots`) belong to one service. A time overlapping any live
+  booking of any service is hidden (Tony cannot be in two sessions). At least 12 hours'
+  notice. Times reach customers only through `private_coaching_availability`; the table,
+  which carries the call link, is readable by staff and by the person who booked it.
+- **Holds** are pending bookings with `hold_expires_at`, linked to their order by
+  `bookings.order_id`. Choosing again releases the customer's earlier hold. A
+  `checkout.session.expired` webhook releases the hold at once; otherwise it lapses.
+- **Payment never lost:** if the hold lapsed and the time went to someone else before the
+  payment landed, the entitlement stays unspent — a credit — and the customer is emailed
+  to choose another time (`private_coaching_rebook`).
+- **Credits** book outright with no payment. They come from a purchase whose time was
+  lost, a cancellation made at least 48 hours ahead, or staff cancelling a booked slot
+  (always returned, customer emailed). Inside 48 hours `cancel_booking` refuses
+  (`too_late`) and the customer is pointed to contact.
+- Sign-in is required; there is no guest private coaching purchase.
+- Membership inclusion of private coaching is still not modelled, per the rule above.
 
 ---
 
@@ -1695,3 +1758,6 @@ at every stage of the customer and administrative workflows.
 | 2026-09-02 | §42.3 (new): this platform's own Brevo templates and lists recorded, all prefixed `TK.com — `. Template-first with HTML fallback resolved per message; HTML always sent alongside so Mailpit still renders locally and a deleted template degrades rather than sending nothing. Parameter names recorded as the contract, since a mismatch is silent. |
 | 2026-09-02 | §40, §40.1 (new): Livid recorded as the video host for all video, public and gated; Supabase Storage explicitly excluded, since object storage neither transcodes nor serves adaptive bitrate. Recorded that Livid's domain restriction does not distinguish between our own customers, so a gated video URL must be withheld server-side on the entitlement check exactly as any other gated resource is. Local and preview-domain allowlisting flagged as open questions. |
 | 2026-09-05 | §40.1: Vimeo recorded as the interim host for gated lesson video per the owner's decision on R29, with the note that this is a hosting choice rather than an architectural one — a lesson stores a provider and an id, so the move to Livid is a data change. The domain-restriction argument applies unchanged to Vimeo, and the operational requirement to switch that restriction on per video is recorded in the R29 row. |
+| 2026-09-27 | §19, §36: private coaching booking implemented (migration 0020) — Admin-set slots, a 35-minute hold, Stripe Checkout limited to 30 minutes, fulfilment confirming the hold through a `private_coaching` entitlement, credit fallback when the held time is lost, 48-hour cancellation returning the session. `checkout.session.expired` added to the handled webhook events. |
+| 2026-09-27 | §17, §19: billing self-service (migration 0021) — one Stripe Customer per account, Customer Portal for card changes, invoices and at-period-end cancellation (settings in `scripts/stripe-portal-setup.mjs`, plan switching off), on-site resume, receipts for one-off payments and invoices for subscriptions; `invoice.*` events recorded. |
+| 2026-09-27 | §17: memberships can be cancelled on the site (confirmation dialog, reason sent to Stripe as `cancellation_details`) as well as in the Stripe portal (owner). |

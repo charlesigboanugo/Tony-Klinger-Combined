@@ -100,6 +100,43 @@ The exact migration numbering and filenames may differ.
 
 The important requirement is that the schema can be recreated and evolved from version-controlled migrations.
 
+**Consolidated 2026-09-23, before first deployment.** Forty migrations became ten, each
+a run of the originals in their original order, so the resulting schema is identical
+(verified by `pg_dump` diff). Every section keeps a banner naming its former number,
+which older notes and change-log rows still cite:
+
+| Now | Formerly |
+|-----|----------|
+| `0001_core_schema` | 0001–0003 |
+| `0002_security_and_reference_data` | 0004–0007 |
+| `0003_commerce_and_bookings` | 0008–0012 |
+| `0004_operations` | 0013–0018 (0014 folded into 0013) |
+| `0005_storage_contact_and_consent` | 0019–0022 (0022 folded into 0021) |
+| `0006_public_content` | 0023–0028 |
+| `0007_benefits_and_covers` | 0029–0031, 0033, 0034 (0032 removed) |
+| `0008_staff_accounts` | 0035–0036 |
+| `0009_lesson_video_and_progress` | 0037–0038 (0038 folded into 0037) |
+| `0010_catalogue_media` | 0039–0040 |
+
+**Consolidated again 2026-09-28, before first deployment.** The twenty-two files that
+existed by then became ten, again as adjacent runs in their original order; the rebuilt
+`public` schema, storage policies and buckets match the previous build (`pg_dump` diff),
+and every section carries a banner naming its former file:
+
+| Now | Formerly (2026-09-23 numbering) |
+|-----|----------|
+| `0001`–`0005` | unchanged |
+| `0006_public_content_and_benefits` | `0006_public_content`, `0007_benefits_and_covers` |
+| `0007_staff_accounts_and_lesson_video` | `0008_staff_accounts`, `0009_lesson_video_and_progress` |
+| `0008_catalogue_and_site_media` | `0010_catalogue_media` – `0016_course_order_and_level` |
+| `0009_events_and_academy_delivery` | `0017`–`0019` |
+| `0010_coaching_billing_and_account_security` | `0020`–`0022` |
+
+Bare migration numbers above 0005 in older notes, comments and change-log rows refer to
+the numbering in force when they were written.
+
+Once deployed, migrations are append-only again: never rewritten, only added to.
+
 ---
 
 # 5. Core Entity Model
@@ -656,10 +693,17 @@ product_id
 title
 slug
 description
+level        display label for its place in a sequence ("Level Two"); not a prerequisite
+position     storefront order, lowest first
 status
 created_at
 updated_at
 ```
+
+A course is **titled by what it teaches**, not by its level (owner, 2026-09-26). The level
+is a small label (`level`, migration 0016), and the storefront order is curated
+(`position`), not alphabetical. The product that sells a course carries the same name, so
+the cart and the order snapshot say what was bought.
 
 A course may be linked to a product if it is commercially sold.
 
@@ -764,6 +808,11 @@ attached to Academy content, `documents` for standalone gated files.
 
 Do not expose protected Academy resources through a publicly accessible static directory.
 
+**Recording read policy (migration 0019, 2026-09-26):** a resource row is also readable
+when it is the recording of a workshop or session the caller may open — note 07 §23 has the
+exact rule. A private-bucket path read this way is still only a key; the object needs a
+server-minted signed URL.
+
 ---
 
 # 27. Masterclasses
@@ -847,9 +896,21 @@ status
 published_at
 author_user_id
 cover_resource_id
+word_count          generated (migration 0013)
 created_at
 updated_at
 ```
+
+`word_count` is a stored generated column — whitespace-delimited words in `content` — so
+listings can show reading time without selecting article bodies. It is never written by
+the application.
+
+The imported archive has `author_user_id` empty on every row. Until it is populated, the
+author of a post is Tony Klinger unless the body closes with a "Written by …" line, which
+is how the archive's guest pieces record their author (`postAuthor()`,
+`src/lib/content/blog.ts`). The imported `published_at` values are republication dates on
+the predecessor site, not dates of writing: they order the essays but are shown nowhere,
+not even in metadata (owner, 2026-09-25).
 
 Status values:
 
@@ -938,7 +999,8 @@ category   what the work IS        one value, fixed set of seven (note 03 §7)
 tags       where it APPEARS       many values, open set, admin-editable
 ```
 
-**This is what Give-Get-Go's section pages are built from** (note 11). Each section is a
+**This is what Give-Get-Go's sections are built from** (note 11; one page since
+2026-09-25, each section an anchor on `/give-get-go`). Each section is a
 view over `catalogue_items` filtered by tag:
 
 ```text
@@ -959,6 +1021,11 @@ eighth category: the seven categories are media types, and a documentary is a ge
 film. Adding it alongside them would invite drama, comedy and every other genre to follow,
 and would reopen the R9 decision for no gain.
 
+**A work's page exists only when it has body copy.** Without `body`, everything the work
+holds (title, description, cover) is already on its card, so the card is not a link and
+`/catalogue/[category]/[slug]` returns 404. An external work links to its external home.
+The single decision point is `workHref()`; the page appears as soon as text is added.
+
 **One item, one canonical home, many views.** An item is never duplicated to appear in a
 collection. Tags add views over the single row; they never create a second copy of it.
 
@@ -971,6 +1038,76 @@ catalogue_item_id
 resource_id
 position
 ```
+
+`resources.width` and `height` (migration 0011) record each stored image's pixel size. `scripts/import-images.mjs` reads them from the file on upload, and they're null for links. The catalogue lays each work out by the shape of its cover (note 10 §42.1).
+
+The cover (`catalogue_items.cover_resource_id`) is shown on cards and at the head of the
+work's page; `catalogue_item_resources` holds any further images, shown as a gallery on the
+work's own page only.
+
+**Hosted recordings use the same join** (2026-09-25). An interview or podcast episode we
+host is a `resources` row with `resource_type = 'audio'` and a `site-media` path, joined
+through `catalogue_item_resources` in play order — so a recording in two parts is two
+rows, with no new table. `getCatalogueItemExtras()` splits the join by `resource_type`:
+images to the gallery, audio to the work page's player (`AudioPlayer`, note 10 §42.1).
+The files are uploaded and attached by `scripts/import-audio.mjs` from an explicit
+work-to-file map; SQL cannot upload files, and nothing unused is uploaded. Artwork fills its frame everywhere it appears; `catalogue_items.cover_focus`
+(`top` by default, or `center`, `left`, `right`) is the edge the crop keeps, so a title
+printed at one edge of the artwork is not cut away (migration 0008_catalogue_and_site_media).
+
+Outbound links — where to buy, listen or read a review — are a separate table:
+
+```text
+catalogue_item_links
+--------------------
+catalogue_item_id
+label
+url          (http/https only)
+position
+```
+
+They are not `resources` rows with an `external_url`. The public read policy on `resources`
+admits only files in a public bucket, and widening it to external URLs would also publish
+the external links attached to paid course material in the same table. A link on a
+published work is public exactly when the work is: `catalogue_item_links` is readable when
+its item is `published`, and by staff holding `catalogue.read` (migration 0008_catalogue_and_site_media).
+
+---
+
+# 28.3 Testimonial Videos
+
+Filmed client testimonials — the eleven clips on the coaching site's
+/video-testimonials page (migration 0015).
+
+```text
+testimonial_videos
+id
+slug              unique
+title             a line from the clip, shown as a quote; null where the old site titled it by name only
+attributed_to     null only for a compilation of several voices
+context           as testimonials.context
+cover_resource_id → resources
+video_provider    youtube | vimeo | livid | null
+video_id          set exactly when video_provider is
+video_hash        Vimeo unlisted token
+duration_seconds
+position
+status
+```
+
+A table of its own, not a nullable `quote` on `testimonials`: every text renderer (home,
+coaching storefront) would otherwise have to guard against a testimonial with no words.
+
+Video is a provider and an id, never a URL, exactly as on `lessons` (§25, note 07 §34.1),
+so a move of host is a data change. **These are public marketing video, so there is no
+entitlement gate**: the embed URL is built for any reader of a published row, and passing it
+through client props (the click-to-play facade) is acceptable here and never for lesson video.
+
+**A published row with no video is valid** and shows its cover marked "Coming soon", not
+playable — the rule the owner set for the /watch uploads on 2026-09-26. The files are Wix
+uploads that go to Livid by hand (note 09 §40.1); `supabase/content/11_testimonial_videos.sql`
+maps each row to its file. Public read of published rows; staff read all. Edited through
+Admin → Testimonial videos.
 
 ---
 
@@ -1029,6 +1166,12 @@ The exact fields may evolve.
 The session belongs to a series.
 
 Do not duplicate the series definition into every session.
+
+**Read access (migration 0019, 2026-09-26).** Besides series entitlement and unspent credits
+(0003), a session is readable by anyone holding a `confirmed` or `completed` booking of it
+(`has_booking(bookable_type, id)`, security definer). Without this, spending your last
+credit on a booking hid the session you had just booked: its title vanished from
+`/account/bookings` and the Academy had no row for its joining link or replay.
 
 ---
 
@@ -1184,6 +1327,44 @@ Events may require:
 
 The exact relationship to bookings/orders should be defined by the event type.
 
+**Implemented (migration 0017, 2026-09-26).**
+
+- `events.cover_resource_id` → `resources` (ON DELETE SET NULL, FK
+  `events_cover_resource_id_fkey`), public-bucket images only, as the coaching covers.
+- `event_images` (`event_id`, `resource_id`, `position`, `caption`): the photographs from
+  an event, in order. Cascades with its event. RLS: readable when the event is published,
+  or by staff with `events.read`; written by staff with `events.update`.
+- `event_places_taken(event_id)`: security-definer count of live bookings, callable by
+  anyone, so a page can show places left without exposing anyone's booking.
+- `register_for_event(event_id)`: security-definer, authenticated only. Free, published,
+  dated, future events only; locks the event row; enforces capacity and one live place per
+  person; inserts `bookings` with `bookable_type = 'event'`. Returns a status
+  (`ok`, `full`, `already_booked`, `past`, `unscheduled`, `paid`, `not_found`,
+  `not_authenticated`) and never raises.
+
+**Tickets, waitlist and check-in (migration 0018, 2026-09-26).**
+
+- `events.format` (`event_format`: `in_person`, `online`, `hybrid`) and `events.venue_address`.
+- `event_access` (`event_id` PK, `join_url`, `joining_notes`): private joining details.
+  RLS: read by a user holding a live booking on the event, or staff (`events.read`);
+  written by `events.update`.
+- `bookings.reference` (unique, set by trigger for every `event` booking) and
+  `bookings.checked_in_at`.
+- `event_waitlist` (`event_id`, `user_id`, `notified_at`), one row per person per event.
+  RLS: own rows, or staff. Written only through `join_event_waitlist` /
+  `leave_event_waitlist`; `my_waitlist_position` reads a place in the queue.
+- Triggers: `bookings` insert (event) → reference, ticket email (`event_ticket`), leave the
+  waitlist; `bookings` status → cancelled (event) → email the next waiting person
+  (`event_place_available`); `entitlements` insert (`event`, active) → issue the booking,
+  linked by `entitlement_id`, which is how a paid ticket is recognised.
+- `cancel_booking` now refuses a paid event ticket (`paid_ticket`).
+- Staff functions: `event_attendees(event_id)` (`events.read`),
+  `check_in_ticket(reference, undo)` (`events.update`). Service role only:
+  `event_reminders_due(kind)`.
+- `event_sale_status(product_id)` is public: checkout's guard before taking payment. A race
+  on the last place can still sell one over capacity; the ticket is issued rather than a
+  paying customer refused.
+
 ---
 
 # 36. Private Coaching
@@ -1203,6 +1384,26 @@ individual booking
 ```
 
 The service itself is not the booking.
+
+**Implemented 2026-09-27 (migration 0020):**
+
+```text
+private_coaching_slots        service_id → private_coaching_services, starts_at, ends_at
+                              (defaults to start + service length), meeting_url (private),
+                              status open|cancelled, notes
+bookings.order_id             the order paying for a held booking
+bookings.hold_expires_at      pending private coaching bookings only
+entitlement_resource          + 'private_coaching' (resource_id = the service;
+                              quantity = sessions bought, spent per booking)
+```
+
+A slot's booking is `bookings` with `bookable_type = 'private_coaching'` and
+`bookable_id = slot id`. RLS: slots are staff-read/manage and readable by the person holding
+a confirmed or completed booking of them (`has_booking`); customers otherwise see only times,
+through `private_coaching_availability`. Functions: `hold_private_coaching_slot`,
+`private_coaching_time_taken`, `release_private_coaching_hold`; `grant_entitlements_for_order`
+and `cancel_booking` replaced to cover the new type. Triggers: an entitlement insert confirms
+the held booking; cancelling a slot cancels its booking and returns the session.
 
 ---
 
@@ -1412,6 +1613,28 @@ updated_at
 The exact schema should follow the final Stripe integration.
 
 Subscription status should not be inferred merely from the existence of an order.
+
+
+**Billing self-service (2026-09-27, migration 0021):**
+
+```text
+billing_customers        user_id (pk) → stripe_customer_id (unique). One Stripe
+                         Customer per account; service-role writes only, owner
+                         and staff (orders.read) read.
+invoices                 one row per Stripe subscription invoice — first payment
+                         and every renewal: number, status, amounts, hosted page,
+                         PDF, period, paid_at; subscription_id, order_id (first
+                         invoice only), provider_subscription_id and
+                         membership_tier kept on the row because invoice events
+                         can arrive before the subscription event.
+payments.receipt_url     Stripe's hosted receipt for a one-off payment.
+orders.checkout_mode     'payment' | 'subscription'; a subscription order is
+                         receipted by its invoice and not listed twice.
+subscriptions.cancel_at_period_end
+                         "cancelled, access runs to the end of the paid period".
+```
+
+Card details are never stored: the billing page reads the card summary live from Stripe.
 
 ---
 
@@ -1851,6 +2074,16 @@ Administrative queries should have a deliberate authorization mechanism.
 
 Where privileged service-role operations are required, they must remain server-side and be tightly controlled.
 
+
+**Customer views filter to the caller as well (2026-09-27).** Staff hold "read all"
+policies on `bookings`, `entitlements`, `orders`, `subscriptions` and `profiles` so Admin
+can work, which means RLS alone returns EVERY customer's rows to a staff session. A
+"my …" query in Account or Academy (`myBookings`, `myEntitlements`, `myOrders`,
+`myCourses`, `sessionCredits`, `getTicket`, and so on) therefore also adds
+`.eq("user_id", <caller>)` from `getAuthContext()`. Found when a staff account's own Account
+and Academy were shown to list other customers' bookings, access and orders. Staff could not
+act on those rows, because the booking and cancellation functions check ownership. RLS
+remains the security boundary; the filter is what makes the view correct.
 ---
 
 # 61. RLS and Service Role
@@ -1916,6 +2149,12 @@ Where a recording already lives on a radio station's or a podcast platform's own
 the catalogue entry links out instead, using `is_external` and `external_url` (§28.2).
 Hosting our own copy is a choice per item, not a requirement.
 
+**Implemented 2026-09-25 (migration 0014).** The bucket as created in 0005 had not caught
+up with this rule: it accepted images only, capped at 15 MB. 0014 adds `audio/mpeg` and
+raises the cap to 50 MB (the largest interview is 44 MB), matching the private buckets.
+The Content-Security-Policy gained `media-src 'self' <supabase>` in `proxy.ts`; without it
+`<audio>` falls back to `default-src 'self'` and every player is refused.
+
 **Paths use ids, never slugs**: `books/{book_id}/cover.jpg`. Storage has no rename, so
 a slug edited for SEO would strand every object beneath it and repairing it means
 copy-then-delete on each. Ids do not change. Avatars are the special case —
@@ -1931,7 +2170,7 @@ environment and the URL is built at render.
 **Defect found and fixed 2026-09-06.** `pnpm images:import` (`scripts/import-images.mjs`)
 uploads the real imported files and is deliberately NOT part of the seed — it is slow,
 and it also runs cover-assignment logic that needs a human-verified list, not something
-to fire blindly on every reset. But migration 0033 tried to assign `courses` and
+to fire blindly on every reset. But the former migration 0033 tried to assign `courses` and
 `private_coaching_services` covers itself, matching on the exact hash-prefixed
 `storage_path` the import script produces.
 
@@ -1950,14 +2189,55 @@ this was never a matching problem — purely a sequencing one.
 **Fixed by moving the assignment into the script**, at the point after upload where
 `resources` genuinely has rows — the same place catalogue covers and team-member
 photos were already being assigned correctly, by the same kind of filename lookup.
-Migration 0033's copy of this logic is left in place rather than edited (migrations are
-not rewritten after the fact), but it is now understood to be permanently inert on a
-fresh reset; the version in `import-images.mjs` is the one that actually runs.
+The inert copy in the migration was removed when the migrations were consolidated
+(2026-09-23), along with the same kind of dead assignment from the former 0032.
 
 **The general rule this establishes:** any one-time data assignment that depends on
 `resources` rows created by `images:import` must live in that script, never in a
 migration — a migration's position in the reset sequence is fixed, and it is always
 before the point this data exists.
+
+## 60.1.2 Where Data Lives, and How Production Gets It
+
+Three kinds of data, one home each:
+
+| Kind | Home | Reaches production by |
+|------|------|-----------------------|
+| Structure and reference data: tables, policies, buckets, roles, permissions, tiers | `supabase/migrations/` | `supabase db push` |
+| Real content: products, prices, curriculum, lesson video, catalogue, blog, coaching, team, testimonials | `supabase/content/*.sql` | `pnpm content:setup --env <file>`, once |
+| Migrated image library: all ~380 images from the three source sites | `current-website/*/site-files/` (AVIF, gitignored) | the same command, which then runs `import-images.mjs` |
+| Images added from outside the old sites (openly licensed, credited) | `supabase/content/images/` (committed; licences in its `CREDITS.md`) | the same command |
+| Static photos the client supplied for page design (hero, About) | `public/images/` (AVIF). The photographer is recorded per file in `src/lib/site/photo-credits.ts`; pages render `<PhotoCredit>`, which words the line by count ("Photo courtesy of…" for one, "Photos…" for several) and places it as a caption under a framed photo or as a corner overlay when the photo is a background. The 29 files present on 2026-09-24 are credited to Danny Clifford. A file added later has no credit until the client names the photographer. | deployed with the app |
+| Local fixtures: test accounts, their roles and entitlements, placeholder rows, RLS test rows | `supabase/seed.sql` | never |
+
+**Design images vs content images (2026-09-24, owner's rule).** An image the design
+depends on, whose crop, focal point and treatment the layout was built around (the home
+hero, the About portrait), lives in `public/images/` and is referenced from code. This holds
+even when the same photo is also in the migrated media library. The two copies do different
+jobs: the `public/` copy changes only when the design does, so an admin edit to the library
+can't break a layout. Everything the owner should be able to swap (covers, galleries, team
+photos) stays in Storage and is managed from the admin. A duplicated photo needs its credit in
+both places: `src/lib/site/photo-credits.ts` for the `public/` copy and `resources.credit` for
+the library copy. If the owner later wants to change a design image himself, it is no longer
+a design image and moves to the library.
+
+**Old-site image credits follow the old sites (2026-09-26, owner).** `resources.credit`
+carries "Photos courtesy of Danny Clifford Photographer" only where tonydklinger.com or
+the coaching site credited Danny Clifford: beside the portraits of Tony from one shoot
+(the camera-named `Z91_…`/`Z92_…` files, matched by `CLIFFORD_SHOOT` in
+`scripts/import-images.mjs`). Every other old-site image — jackets, posters, stills,
+logos — has no credit unless a specific one is known (`SOURCE_CREDIT_OVERRIDES`). This
+replaces the earlier default of crediting every old-site image to him.
+
+Locally, `supabase db reset` loads `content/*.sql` and then `seed.sql` (config.toml
+`[db.seed]`), followed by `pnpm images:import` and `pnpm audio:import`. `content:setup` runs all content files
+in one transaction and refuses a second run without `--force`, because some rows
+(prices) have no natural key to deduplicate on. The whole image library goes to
+production, not only the images a page shows, so any of it can be assigned later from
+admin. `--only-used` exists for a lean upload when one is wanted.
+
+Content is not placed in migrations. The former migrations 0032 and 0033 did this and
+never took effect on a fresh reset (§60.1.1); both data parts have since been removed.
 
 ## 60.2 Reaching a Private Asset
 
@@ -2399,3 +2679,12 @@ The schema should be managed through version-controlled SQL migrations, protecte
 | 2026-09-03 | §60.1: **R26 closed.** `site-media` widened from "all marketing imagery" to carry public audio as well — the Wix export's 22 radio and podcast recordings (289 MB) had no defined home, and `audio` and `podcasts` are two of the seven canonical Catalogue categories. Audio has none of the properties that forced video onto an external host: no transcoding, no adaptive bitrate, ~13 MB average. Gated audio takes the private-bucket plus signed-URL path instead, with the rule stated explicitly that a file's format never decides its bucket — who may read it does. No new external service, so the integration boundary is unchanged. |
 | 2026-09-02 | §60.1, §60.2 (new): storage bucket model recorded — four buckets split by who may read them rather than by file type, since `public` is a per-bucket flag and is the one property that cannot be refactored later. Paths use ids not slugs (Storage has no rename); the database stores the path, never a URL. Private assets are reachable only through a short-lived signed URL minted after `has_active_entitlement()`, with the absent read policy as the backstop. §26: `resources.storage_path` clarified as a bucket-relative key. Implemented in migration 0019. |
 | 2026-09-05 | `lessons` gained `video_provider`, `video_id`, `video_hash` and `video_duration_seconds`, with a check constraint so a provider without an id is impossible. A provider and an id rather than a URL: the playable address is composed server-side after the entitlement check, so none is stored to leak, and changing host is a data change (note 07 §34.1). New `lesson_progress` (user_id, lesson_id, completed_at) with RLS — own rows only for read and delete, and an insert policy requiring a live entitlement to the lesson's course, so progress cannot be manufactured for content the caller cannot see. |
+| 2026-09-25 | §28.1: `blog_posts.word_count` added as a stored generated column (migration 0013) for reading time on listings. Recorded that imported posts have no `author_user_id` (authorship read from a closing "Written by …" line, else Tony) and that imported `published_at` values are republication dates. |
+| 2026-09-25 | §28.2, §60.1, §60.1.2: hosted recordings attached to catalogue works as `resources` (`resource_type 'audio'`) through `catalogue_item_resources`; migration 0014 lets `site-media` hold `audio/mpeg` up to 50 MB, implementing the §60.1 rule; `scripts/import-audio.mjs` (`pnpm audio:import`) uploads and attaches them and runs as the last step of `content:setup`. |
+| 2026-09-25 | §60.1: `resources.credit` for old-site images is no longer always the supplied photographer credit — `scripts/import-images.mjs` takes a per-file override (`SOURCE_CREDIT_OVERRIDES`), null where the maker is unknown, so show artwork and publicity photos are not credited to Danny Clifford. Third-party show artwork used as covers is recorded, as not openly licensed, in `supabase/content/images/CREDITS.md`. |
+| 2026-09-26 | §28.3 (new): `testimonial_videos` (migration 0015) for the coaching site's filmed testimonials — video by provider + id as on `lessons`, public with no entitlement gate, and a published row without a video shown as "Coming soon". Covers assigned by `scripts/import-images.mjs` (`TESTIMONIAL_VIDEO_COVERS`). |
+| 2026-09-26 | §23: `courses.level` and `courses.position` (migration 0016). Courses are titled by their promise ("How to Get Your Movie Made"), with the level as a label and a curated order; the selling products were renamed to match. |
+| 2026-09-27 | §36: `private_coaching_slots`, `bookings.order_id` and `bookings.hold_expires_at`, and the `private_coaching` entitlement type (migration 0020), with the hold, availability and release functions and the confirm/cancel triggers. |
+| 2026-09-27 | §60: customer-facing "my …" queries also filter by the caller's id, because staff read-all policies made a staff account's own Account and Academy list every customer's bookings, access and orders. |
+| 2026-09-27 | §44: `billing_customers`, `invoices`, `payments.receipt_url`, `orders.checkout_mode`, `subscriptions.cancel_at_period_end` (migration 0021) for receipts, invoice history and self-service cancellation. |
+| 2026-09-27 | Migration 0022: SECURITY DEFINER functions over `auth.mfa_factors` / `auth.sessions`, each scoped to `auth.uid()` — `my_security_keys()`, `my_sessions()`, `sign_out_my_session(uuid)`, `authorise_security_key_removal(uuid)` (writes `audit_logs`, enqueues `security_key_removed`). Executable by `authenticated` only. Note 05 §11.2. |

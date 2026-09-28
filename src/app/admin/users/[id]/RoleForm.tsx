@@ -74,7 +74,7 @@ export function RoleForm({
                 name="grant"
                 value={value}
                 defaultChecked={value === "grant"}
-                className="size-4 accent-[var(--color-primary)]"
+                className="size-4 accent-primary"
               />
               {label}
             </label>

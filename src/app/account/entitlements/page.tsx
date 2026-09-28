@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
-import { PageHeader } from "@/components/layout/PageHeader";
+import { AccessCard } from "@/components/account/AccessCard";
+import { AccountHeader, AccountSection } from "@/components/account/AccountHeader";
 import { ButtonLink } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
-import {
-  RESOURCE_LABELS,
-  SOURCE_LABELS,
-  myEntitlements,
-} from "@/lib/account";
+import { myAccess } from "@/lib/account/access";
 import { requireUser } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Your access", robots: { index: false } };
@@ -17,96 +14,124 @@ export const metadata: Metadata = { title: "Your access", robots: { index: false
  *
  * Read-only and strictly this customer's own. Unrelated to /admin/entitlements,
  * which grants and revokes across all customers (note 06 §23.1).
+ *
+ * Every card names the actual course, event or series and carries the action
+ * that uses it (see `myAccess`). The closing panel says what does NOT appear
+ * here and where it lives instead — a membership, private coaching, a guest
+ * purchase — because "I bought it and it isn't here" is the question this
+ * page most needs to answer before it is asked.
  */
 export default async function EntitlementsPage() {
   await requireUser("/account/entitlements");
-  const entitlements = await myEntitlements();
+  const access = await myAccess();
 
-  const live = entitlements.filter((e) => e.status === "active");
-  const ended = entitlements.filter((e) => e.status !== "active");
+  const live = access.filter((a) => a.state === "active");
+  const ended = access.filter((a) => a.state === "ended");
 
   return (
     <>
-      <PageHeader title="Your access"
-        description="What you can use, where it came from, and when it ends."
+      <AccountHeader
+        title="Your access"
+        description="Everything you can use, how you got it, and when it ends."
       />
 
-      {entitlements.length === 0 ? (
-        <EmptyState
-          title="No access yet"
-          description="Anything you buy — or that comes with a membership — appears here."
-          action={<ButtonLink href="/coaching">Explore coaching</ButtonLink>}
-        />
-      ) : (
-        <div className="space-y-8">
-          {live.length > 0 ? (
-            <section>
-              <h2 className="mb-3 text-sm font-medium tracking-wide text-muted-foreground uppercase">
-                Active
-              </h2>
-              <ul className="divide-y divide-border rounded-(--radius) border border-border bg-surface">
-                {live.map((e) => (
-                  <li key={e.id} className="p-4">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="font-medium">
-                        {RESOURCE_LABELS[e.resource_type] ?? e.resource_type}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {SOURCE_LABELS[e.source_type] ?? e.source_type}
-                      </p>
-                    </div>
-                    <dl className="mt-2 flex flex-wrap gap-x-8 gap-y-1 text-sm text-muted-foreground">
-                      {e.quantity != null ? (
-                        <div className="flex gap-2">
-                          <dt>Remaining</dt>
-                          <dd className="font-medium text-foreground">
-                            {e.quantity - e.quantity_used} of {e.quantity}
-                          </dd>
-                        </div>
-                      ) : (
-                        <div className="flex gap-2">
-                          <dt>Usage</dt>
-                          <dd className="font-medium text-foreground">Unlimited</dd>
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        <dt>Ends</dt>
-                        <dd className="font-medium text-foreground">
-                          {e.expires_at
-                            ? new Date(e.expires_at).toLocaleDateString("en-GB")
-                            : "No end date"}
-                        </dd>
-                      </div>
-                    </dl>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
+      <div className="space-y-14 sm:space-y-16">
+        {live.length === 0 ? (
+          <div className="rounded-(--radius-lg) border border-border bg-surface px-6 py-12 text-center">
+            <p className="text-lg font-medium">No access yet</p>
+            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+              When you buy a course, cohort, Group Coaching series or event ticket, it appears
+              here straight away, ready to open.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <ButtonLink href="/coaching">Explore coaching</ButtonLink>
+              <ButtonLink href="/events" variant="outline">
+                See events
+              </ButtonLink>
+            </div>
+          </div>
+        ) : (
+          <AccountSection title="Ready to use">
+            <ul className="grid gap-5 md:grid-cols-2">
+              {live.map((item) => (
+                <li key={item.id}>
+                  <AccessCard item={item} />
+                </li>
+              ))}
+            </ul>
+          </AccountSection>
+        )}
 
-          {ended.length > 0 ? (
-            <section>
-              <h2 className="mb-3 text-sm font-medium tracking-wide text-muted-foreground uppercase">
-                Ended
-              </h2>
-              <ul className="divide-y divide-border rounded-(--radius) border border-border">
-                {ended.map((e) => (
-                  <li key={e.id} className="flex items-baseline justify-between gap-4 p-4">
-                    <p className="text-muted-foreground">
-                      {RESOURCE_LABELS[e.resource_type] ?? e.resource_type}
-                    </p>
-                    <p className="text-sm text-muted-foreground capitalize">{e.status}</p>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-sm text-muted-foreground">
-                Ended access is kept on record — it explains past orders and can
-                be restored if you renew.
-              </p>
-            </section>
-          ) : null}
-        </div>
-      )}
+        {ended.length > 0 ? (
+          <AccountSection title="Finished">
+            <ul className="grid gap-5 md:grid-cols-2">
+              {ended.map((item) => (
+                <li key={item.id}>
+                  <AccessCard item={item} />
+                </li>
+              ))}
+            </ul>
+          </AccountSection>
+        ) : null}
+
+        <AccountSection title="Not seeing something?">
+          <dl className="grid gap-px overflow-hidden rounded-(--radius-lg) border border-border bg-border sm:grid-cols-2">
+            {[
+              {
+                q: "A membership",
+                a: (
+                  <>
+                    Memberships are shown under{" "}
+                    <Link href="/account/memberships" className="font-medium text-primary underline-offset-4 hover:underline">
+                      Memberships
+                    </Link>
+                    , with when they renew.
+                  </>
+                ),
+              },
+              {
+                q: "Private coaching",
+                a: (
+                  <>
+                    Private sessions are arranged with you directly and appear under{" "}
+                    <Link href="/account/bookings" className="font-medium text-primary underline-offset-4 hover:underline">
+                      Bookings
+                    </Link>{" "}
+                    once they&apos;re scheduled.
+                  </>
+                ),
+              },
+              {
+                q: "Something bought without signing in",
+                a: "Open the link in your receipt email while signed in here. That attaches the purchase to this account.",
+              },
+              {
+                q: "Anything else",
+                a: (
+                  <>
+                    Check{" "}
+                    <Link href="/account/orders" className="font-medium text-primary underline-offset-4 hover:underline">
+                      Orders
+                    </Link>{" "}
+                    to confirm the payment went through, or{" "}
+                    <Link href="/contact" className="font-medium text-primary underline-offset-4 hover:underline">
+                      contact us
+                    </Link>{" "}
+                    and we&apos;ll sort it out.
+                  </>
+                ),
+              },
+            ].map(({ q, a }) => (
+              <div key={q} className="bg-surface p-5">
+                <div>
+                  <dt className="text-sm font-semibold">{q}</dt>
+                  <dd className="mt-1 text-sm text-muted-foreground">{a}</dd>
+                </div>
+              </div>
+            ))}
+          </dl>
+        </AccountSection>
+      </div>
     </>
   );
 }

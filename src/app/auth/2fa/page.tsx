@@ -41,8 +41,14 @@ export default async function TwoFactorPage({
   const context = await requireSession(`/auth/2fa`);
   const mfa = await getMfaState();
 
-  // Already satisfied — arriving here again would be a loop.
-  if (mfa.current === "aal2") redirect(next);
+  /*
+    `?confirm=1` is a deliberate RE-confirmation before a sensitive change
+    (removing a key — migration 0022 requires a key used in the last few
+    minutes), so an already-verified session is challenged again rather than
+    waved through. Without it, arriving here verified would be a loop.
+  */
+  const reconfirm = params.confirm === "1";
+  if (mfa.current === "aal2" && !reconfirm) redirect(next);
 
   // Nothing to challenge. Enrolment is a different job on a different page.
   if (mfa.factors.length === 0) {
@@ -53,8 +59,13 @@ export default async function TwoFactorPage({
 
   return (
     <AuthCard
+      eyebrow="Security key"
       title="Confirm it's you"
-      description="Use the security key registered to this account. You are not creating a new one."
+      description={
+        reconfirm
+          ? "Changing your security keys needs a fresh confirmation. Use one of your keys — you'll go straight back."
+          : "Use the security key registered to this account. You are not creating a new one."
+      }
       escape={false}
       /*
         An honest answer, not a link to a page where nothing can be done.
@@ -76,7 +87,7 @@ export default async function TwoFactorPage({
             Lost your key?{" "}
             <Link
               href="/contact"
-              className="underline underline-offset-4 hover:text-foreground"
+              className="underline decoration-current/40 underline-offset-4 transition-colors hover:text-accent hover:decoration-current"
             >
               Ask us to remove it
             </Link>{" "}

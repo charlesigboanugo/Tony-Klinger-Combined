@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 import { updateMarketingPreference } from "@/app/account/notifications/actions";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { AccountHeader } from "@/components/account/AccountHeader";
+import { IconTile } from "@/components/ui/Icon";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUser } from "@/lib/permissions";
@@ -26,7 +27,7 @@ export default async function Page() {
 
   return (
     <>
-      <PageHeader title="Notifications"
+      <AccountHeader title="Notifications"
         description="What we send you, and when."
       />
 
@@ -37,24 +38,41 @@ export default async function Page() {
           switched off. Presenting them as one setting would either promise to
           stop receipts we must send, or imply marketing cannot be refused.
         */}
-        <section className="rounded-(--radius) border border-border bg-surface p-6">
-          <h2 className="font-medium">Service emails</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Order receipts, membership changes, booking confirmations and
-            security notices. These are part of your account and cannot be
-            turned off while it is open.
-          </p>
+        <section className="flex flex-wrap items-start gap-4 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:p-6">
+          <IconTile name="receipt" tone="success" size="lg" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg">Service emails</h2>
+              <span className="rounded-full border border-success/40 bg-success/10 px-3 py-1 text-xs font-medium text-success">
+                Always on
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Order receipts, membership changes, booking confirmations and
+              security notices. These are part of your account and cannot be
+              turned off while it is open.
+            </p>
+          </div>
         </section>
 
-        <section className="rounded-(--radius) border border-border bg-surface p-6">
-          <h2 className="font-medium">News and offers</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
+        <section className="flex flex-wrap items-start gap-4 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:p-6">
+          <IconTile name="megaphone" tone={optedIn ? "accent" : "neutral"} size="lg" />
+          <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg">News and offers</h2>
+            <span
+              className={
+                "rounded-full border px-3 py-1 text-xs font-medium " +
+                (optedIn
+                  ? "border-accent/40 bg-accent/10 text-accent"
+                  : "border-border bg-surface-muted text-muted-foreground")
+              }
+            >
+              {optedIn ? "Subscribed" : "Not subscribed"}
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
             Occasional news about coaching, courses, books and films.
-          </p>
-
-          <p className="mt-4 text-sm">
-            Currently:{" "}
-            <strong>{optedIn ? "subscribed" : "not subscribed"}</strong>
           </p>
 
           <form action={updateMarketingPreference} className="mt-4">
@@ -73,6 +91,7 @@ export default async function Page() {
                 : "You will still receive service emails about your account."}
             </p>
           ) : null}
+          </div>
         </section>
       </div>
     </>

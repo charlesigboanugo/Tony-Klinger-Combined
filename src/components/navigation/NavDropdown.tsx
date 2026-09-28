@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { ExternalMark } from "@/components/navigation/ExternalMark";
+import { navLinkType } from "@/components/navigation/navStyles";
 import { isActive, isCurrentPage, type NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils/cn";
 
@@ -40,8 +41,8 @@ export function NavDropdown({
   const containerRef = useRef<HTMLLIElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  // A section is current when any of its pages is, so "Give-Get-Go" stays
-  // highlighted while reading /give-get-go/publishing.
+  // A section is current when any of its pages is, so "Coaching" stays
+  // highlighted while reading /coaching/memberships.
   const sectionActive =
     isActive(pathname, item.href) ||
     (item.children ?? []).some(
@@ -85,11 +86,10 @@ export function NavDropdown({
         aria-current={sectionActive ? "true" : undefined}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex items-center gap-1.5 rounded-(--radius) px-3 py-2 text-sm transition-colors",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-          sectionActive
-            ? "bg-surface-muted font-medium text-foreground"
-            : "text-muted-foreground hover:text-foreground",
+          "flex items-center gap-1.5 rounded-sm px-2 py-3 transition-colors xl:px-3",
+          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+          navLinkType,
+          sectionActive || open ? "text-foreground" : "text-muted-foreground hover:text-foreground",
         )}
       >
         {item.label}
@@ -117,40 +117,104 @@ export function NavDropdown({
           `hidden`/display:none cannot do. `aria-hidden` plus the panel's own
           `visibility`/`pointer-events` keep it out of the tab order and
           unclickable while closed. */}
-      <div
-        id={menuId}
-        aria-hidden={!open}
-        data-open={open}
-        className="dropdown-panel absolute left-0 top-full z-50 min-w-56 origin-top-left pt-2"
-      >
-        <ul className="overflow-hidden rounded-(--radius) border border-border bg-surface p-1.5 shadow-lg shadow-black/5">
-          {(item.children ?? []).map((child) => {
-            const childActive = !child.external && isActive(pathname, child.href);
+      {/* THE PANEL — note 10 §42.2. The header's paper surface, the section
+          named in the display face with a line on what it holds, and its
+          links beside that. Centred under its trigger by an outer wrapper, so
+          the `dropdown-panel` transform (note 10 §37.1) is not overridden by a
+          translate on the same element.
 
-            return (
-              <li key={child.href}>
-                <Link
-                  href={child.href}
-                  {...(child.external
-                    ? { target: "_blank", rel: "noopener noreferrer" }
-                    : {})}
-                  onClick={() => setOpen(false)}
-                  aria-current={isCurrentPage(pathname, child.href) ? "page" : undefined}
-                  className={cn(
-                    "flex items-center justify-between gap-3 rounded-[calc(var(--radius)-2px)] px-3 py-2 text-sm transition-colors",
-                    "focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent",
-                    childActive
-                      ? "bg-surface-muted font-medium text-foreground"
-                      : "text-muted-foreground hover:bg-surface-muted hover:text-foreground",
-                  )}
-                >
-                  <span>{child.label}</span>
-                  {child.external ? <ExternalMark /> : null}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+          Kept mounted always — `dropdown-panel` needs the element present in
+          both directions to animate the close, which `hidden`/display:none
+          cannot do. `aria-hidden` plus the panel's own `visibility` and
+          `pointer-events` keep it out of the tab order and unclickable while
+          closed. */}
+      {/* The wrapper is as large as the panel even while the panel is hidden,
+          and it's inside the <li>, so it must ignore the pointer when closed:
+          otherwise hovering the empty page below the header opens the menu.
+          Open, it catches the pointer so the `pt-3` gap bridges trigger and
+          panel without a mouseleave. */}
+      {/* FLUSH WITH THE HEADER'S BOTTOM EDGE (owner, 2026-09-24): the panel
+          reads as the masthead folding open, not a box dropped under it. The
+          trigger is vertically centred in the 4.5rem (`lg:h-18`) bar, so the
+          bar's bottom edge is always 50% + 2.25rem below the trigger's top,
+          whatever the trigger's own height. The `before:` strip bridges the
+          gap between trigger and panel, so moving the pointer down never
+          leaves the <li> and closes the menu. */}
+      <div
+        className={cn(
+          "absolute top-[calc(50%+2.25rem)] left-1/2 z-50 -translate-x-1/2",
+          "before:absolute before:inset-x-0 before:bottom-full before:h-6",
+          !open && "pointer-events-none",
+        )}
+      >
+        <div
+          id={menuId}
+          aria-hidden={!open}
+          data-open={open}
+          className="dropdown-panel origin-center"
+        >
+          <div
+            className={cn(
+              // The header's own paper, squared off where it meets the bar
+              // and rounded below. Solid, not the bar's translucent blur: a
+              // panel this size let the page's headlines ghost through it.
+              // A hairline and the lift shadow keep it a layer above the page,
+              // light or dark, including over the noir home hero.
+              "relative grid gap-8 overflow-hidden rounded-b-(--radius-lg) border border-border bg-background p-7 shadow-lift",
+              (item.children ?? []).length > 5
+                ? "w-160 grid-cols-[14rem_minmax(0,1fr)]"
+                : "w-xl grid-cols-[14rem_minmax(0,1fr)]",
+            )}
+          >
+            {/* A short red rule under the bar, centred on the trigger above:
+                the thread from the word you pointed at to its menu. */}
+            <span aria-hidden="true" className="absolute top-0 left-1/2 h-0.5 w-10 -translate-x-1/2 bg-primary" />
+            <div className="border-r border-border pr-8">
+              {/* Never breaks at a hyphen: "Give-Get-Go" is one name. */}
+              <p className="font-display text-3xl leading-none font-semibold tracking-tight whitespace-nowrap">{item.label}</p>
+              {item.description ? (
+                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+              ) : null}
+            </div>
+
+            <ul
+              className={cn(
+                "grid content-start gap-x-6 gap-y-0.5",
+                (item.children ?? []).length > 5 && "grid-cols-2",
+              )}
+            >
+              {(item.children ?? []).map((child) => {
+                const childActive = !child.external && isActive(pathname, child.href);
+
+                return (
+                  <li key={child.href}>
+                    <Link
+                      href={child.href}
+                      {...(child.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                      onClick={() => setOpen(false)}
+                      aria-current={isCurrentPage(pathname, child.href) ? "page" : undefined}
+                      className={cn(
+                        "group/item flex items-center gap-2 rounded-sm py-2 text-sm transition-colors",
+                        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                        childActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "h-px w-3 origin-left bg-primary transition-transform duration-(--dur-base) ease-expo",
+                          childActive ? "scale-x-100" : "scale-x-0 group-hover/item:scale-x-100",
+                        )}
+                      />
+                      <span>{child.label}</span>
+                      {child.external ? <ExternalMark className="inline-block h-3 w-3 opacity-70" /> : null}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
       </div>
     </li>
   );

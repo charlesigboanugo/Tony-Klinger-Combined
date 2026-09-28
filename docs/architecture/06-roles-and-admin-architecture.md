@@ -511,7 +511,7 @@ provably theirs — which is the property note 05 §11.1 spends its whole effort
 invitee proves control of the mailbox and picks their own secret, which is also the only
 version of events an audit trail can honestly describe.
 
-It carries its own permission, `users.invite` (migration 0035), held by owner and admin.
+It carries its own permission, `users.invite` (migration 0007_staff_accounts_and_lesson_video), held by owner and admin.
 Creating an account is not editing one: it adds a principal that can then be given roles,
 so folding it into `users.update` would hand it to every role that can correct a
 customer's name (§33).
@@ -558,7 +558,7 @@ first.
 
 ## 14.3 Handing an account back
 
-`users.reset_mfa` (migration 0036), held by owner and admin, clears a person's security
+`users.reset_mfa` (migration 0007_staff_accounts_and_lesson_video), held by owner and admin, clears a person's security
 keys so they can register again. The rule about who may do it to whom is note 05 §11.1 and
 is enforced by `admin_record_mfa_reset` in the database, not only by the form: a customer's
 keys may be cleared by any holder of the permission, a staff member's only by an owner, an

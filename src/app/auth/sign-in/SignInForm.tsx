@@ -5,6 +5,7 @@ import { useActionState } from "react";
 
 import { signInAction } from "@/app/auth/actions";
 import { Field, FormMessage, Input } from "@/components/ui/Field";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import type { AuthFormState } from "@/lib/validation/auth";
 
@@ -30,26 +31,26 @@ export function SignInForm({ next }: { next?: string }) {
         />
       </Field>
 
-      <Field label="Password" name="password" errors={state.fieldErrors?.password}>
-        <Input
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          errors={state.fieldErrors?.password}
-        />
-      </Field>
-
-      <div className="flex items-center justify-between">
-        <Link
-          href="/auth/forgot-password"
-          className="text-sm text-muted-foreground underline hover:text-foreground"
-        >
-          Forgot your password?
-        </Link>
+      <div className="space-y-2">
+        <Field label="Password" name="password" errors={state.fieldErrors?.password}>
+          <PasswordInput
+            name="password"
+            autoComplete="current-password"
+            required
+            errors={state.fieldErrors?.password}
+          />
+        </Field>
+        <p className="text-right">
+          <Link
+            href="/auth/forgot-password"
+            className="text-sm text-muted-foreground underline decoration-current/40 underline-offset-4 transition-colors hover:text-accent hover:decoration-current"
+          >
+            Forgot your password?
+          </Link>
+        </p>
       </div>
 
-      <SubmitButton className="w-full" pendingLabel="Signing in…">
+      <SubmitButton size="lg" className="w-full" pendingLabel="Signing in…">
         Sign in
       </SubmitButton>
     </form>

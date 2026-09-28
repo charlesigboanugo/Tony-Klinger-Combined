@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { AdminTable, StatusPill } from "@/components/admin/AdminTable";
-import { PageHeader } from "@/components/layout/PageHeader";
+import Link from "next/link";
+
+import { AdminPageHeader, AdminSection, humanise, ukDate } from "@/components/admin/AdminUI";
 import { BackLink } from "@/components/ui/BackLink";
 import { KeysForm } from "@/app/admin/users/[id]/KeysForm";
 import { RoleForm } from "@/app/admin/users/[id]/RoleForm";
@@ -13,6 +15,7 @@ import {
   adminUserDetail,
   adminUserFactors,
 } from "@/lib/admin";
+import { peopleByIds } from "@/lib/admin/operations";
 import { formatPrice } from "@/lib/commerce/pricing";
 import { requirePermission } from "@/lib/permissions";
 
@@ -31,101 +34,104 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/users/
   if (!detail.profile) notFound();
 
   const name = (detail.profile.display_name as string | null) ?? "Unnamed account";
+  const email = (await peopleByIds([id])).get(id)?.email ?? null;
 
   return (
     <>
       <BackLink href="/admin/users">All users</BackLink>
-      <div className="mt-6">
-        <PageHeader
-          title={name}
-          description={detail.roles.length ? `Roles: ${detail.roles.join(", ")}` : "Customer"}
-        />
-      </div>
+      <AdminPageHeader
+        title={name}
+        meta={detail.roles.length ? detail.roles.map(humanise).join(", ") : "Customer"}
+        description={
+          email ? (
+            <a href={`mailto:${email}`} className="underline-offset-4 hover:text-accent hover:underline">
+              {email}
+            </a>
+          ) : undefined
+        }
+      />
 
-      <section className="mb-8">
-        <h2 className="mb-3 font-medium">Entitlements</h2>
+      <AdminSection title="Access" description="What this person can use, and why.">
         <AdminTable
           headers={["Resource", "Source", "Status", "Remaining", "Reason"]}
           empty={detail.entitlements.length === 0 ? "No entitlements." : undefined}
         >
           {detail.entitlements.map((e) => (
             <tr key={e.id}>
-              <td className="px-4 py-3 capitalize">{e.resource_type.replace(/_/g, " ")}</td>
-              <td className="px-4 py-3 capitalize">{e.source_type.replace(/_/g, " ")}</td>
+              <td className="px-4 py-3">{humanise(e.resource_type)}</td>
+              <td className="px-4 py-3">{humanise(e.source_type)}</td>
               <td className="px-4 py-3"><StatusPill value={e.status} /></td>
-              <td className="px-4 py-3">
-                {e.quantity == null ? "Unlimited" : `${e.quantity - e.quantity_used}/${e.quantity}`}
+              <td className="px-4 py-3 tabular-nums">
+                {e.quantity == null ? "Unlimited" : `${e.quantity - e.quantity_used} of ${e.quantity}`}
               </td>
               <td className="px-4 py-3 text-muted-foreground">{e.grant_reason ?? "—"}</td>
             </tr>
           ))}
         </AdminTable>
-      </section>
+      </AdminSection>
 
-      <section>
-        <h2 className="mb-3 font-medium">Orders</h2>
+      <AdminSection title="Orders">
         <AdminTable
-          headers={["Date", "Total", "Status"]}
+          headers={["Placed", "Total", "Status", ""]}
           empty={detail.orders.length === 0 ? "No orders." : undefined}
         >
           {detail.orders.map((o) => (
-            <tr key={o.id}>
-              <td className="px-4 py-3">{new Date(o.created_at).toLocaleDateString("en-GB")}</td>
-              <td className="px-4 py-3">{formatPrice(o.total, o.currency)}</td>
+            <tr key={o.id} className="hover:bg-surface-muted/60">
+              <td className="px-4 py-3">{ukDate(o.created_at)}</td>
+              <td className="px-4 py-3 tabular-nums">{formatPrice(o.total, o.currency)}</td>
               <td className="px-4 py-3"><StatusPill value={o.status} /></td>
+              <td className="px-4 py-3 text-right">
+                <Link href={`/admin/orders/${o.id}`} className="text-sm font-medium text-accent underline-offset-4 hover:underline">
+                  Open
+                </Link>
+              </td>
             </tr>
           ))}
         </AdminTable>
-      </section>
+      </AdminSection>
 
       {/* Role assignment lives here rather than on /admin/roles: a role is
           granted to a PERSON, and what they hold and have bought — the context
           for that decision — is on this page (note 06 §13.1). */}
-      <section className="mt-10">
-        <h2 className="mb-1 font-display text-lg font-semibold">Roles</h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          {detail.roles.length
+      <AdminSection
+        title="Roles"
+        description={
+          detail.roles.length
             ? `Currently holds ${detail.roles.map((r) => r.replace(/_/g, " ")).join(", ")}.`
-            : "This account holds no staff roles — it is a customer."}
-        </p>
+            : "This account holds no staff roles — it is a customer."
+        }
+      >
         <RoleForm
           userId={id}
           roles={roles.map((role) => role.name)}
           held={detail.roles}
         />
-      </section>
+      </AdminSection>
 
       {/* The recovery lever note 05 §11.1 always assumed. It matters more now
           that a customer who registers a key is asked for it at sign-in:
           losing the key means losing the account until this is done. */}
-      <section className="mt-10">
-        <h2 className="mb-1 font-display text-lg font-semibold">
-          Security keys
-        </h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          What this account signs in with, and how to hand it back if the key is
-          lost.
-        </p>
+      <AdminSection
+        title="Security keys"
+        description="What this account signs in with, and how to hand it back if the key is lost."
+      >
         <KeysForm userId={id} keys={keys} />
-      </section>
+      </AdminSection>
 
       {/* Public presentation, deliberately separate from roles above — being on
           the team page grants nothing and holding a role shows nothing
           (note 06 §14.1). */}
-      <section className="mt-10">
-        <h2 className="mb-1 font-display text-lg font-semibold">
-          Public team page
-        </h2>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Whether this person appears on /about/team. Separate from their roles.
-        </p>
+      <AdminSection
+        title="Team listing"
+        description="Whether this person appears in the Team list. Separate from their roles."
+      >
         <TeamForm
           userId={id}
           defaultName={name === "Unnamed account" ? "" : name}
           entry={team.entry}
           unlinked={team.unlinked}
         />
-      </section>
+      </AdminSection>
     </>
   );
 }

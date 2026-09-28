@@ -23,6 +23,7 @@ export default async function ResetPasswordPage({
 
   return (
     <AuthCard
+      eyebrow={invited ? "Welcome" : "New password"}
       title={invited ? "Set your password" : "Set a new password"}
       description={
         invited

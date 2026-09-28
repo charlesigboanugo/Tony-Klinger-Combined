@@ -2,6 +2,7 @@ import "server-only";
 
 import { embedUrl, lessonVideo } from "@/lib/academy/video";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/permissions";
 
 /**
  * Academy delivery queries — note 03 §17–§23, note 07 §32–§36.
@@ -37,11 +38,16 @@ export type EnrolledCourse = {
  * entitlement rather than assumed correct because the query looked plausible).
  */
 export async function myCourses(): Promise<EnrolledCourse[]> {
+  // Filtered to the caller as well as by RLS: staff can read every
+  // entitlement, and their Academy must show their own (see lib/account).
+  const userId = (await getAuthContext())?.userId;
+  if (!userId) return [];
   const supabase = await createClient();
 
   const { data: grants } = await supabase
     .from("entitlements")
     .select("expires_at,resource_id")
+    .eq("user_id", userId)
     .eq("resource_type", "course")
     .eq("status", "active");
 
@@ -94,11 +100,14 @@ export type EnrolledCohort = {
  * polymorphic and has no foreign key an embed could follow.
  */
 export async function myCohorts(): Promise<EnrolledCohort[]> {
+  const userId = (await getAuthContext())?.userId;
+  if (!userId) return [];
   const supabase = await createClient();
 
   const { data: grants } = await supabase
     .from("entitlements")
     .select("resource_id")
+    .eq("user_id", userId)
     .eq("resource_type", "cohort")
     .eq("status", "active");
 
@@ -152,9 +161,11 @@ export type CourseWithContent = {
   title: string;
   slug: string;
   description: string | null;
+  storagePath: string | null;
   modules: Array<{
     id: string;
     title: string;
+    description: string | null;
     position: number;
     lessons: Array<{
       id: string;
@@ -163,6 +174,8 @@ export type CourseWithContent = {
       position: number;
       /** Whether there is video at all — never the address of it. */
       hasVideo: boolean;
+      /** Running time, for the outline. A length reveals nothing a URL would. */
+      durationSeconds: number | null;
     }>;
   }>;
 };
@@ -171,7 +184,7 @@ export type CourseWithContent = {
  * A course with its structure.
  *
  * Modules and lessons come back only when the caller holds a live entitlement —
- * enforced by RLS (migration 0004), not by a check here. Without entitlement
+ * enforced by RLS (migration 0002_security_and_reference_data), not by a check here. Without entitlement
  * the course still resolves but has no content, which is what lets the page
  * distinguish "locked" from "missing".
  */
@@ -183,7 +196,7 @@ export async function courseWithContent(
   const { data } = await supabase
     .from("courses")
     .select(
-      "id,title,slug,description,course_modules(id,title,position,lessons(id,title,slug,position,video_provider,video_id))",
+      "id,title,slug,description,resources!cover_resource_id(storage_path),course_modules(id,title,description,position,lessons(id,title,slug,position,video_provider,video_id,video_duration_seconds))",
     )
     .eq("slug", slug)
     .eq("status", "published")
@@ -196,9 +209,11 @@ export async function courseWithContent(
     title: string;
     slug: string;
     description: string | null;
+    resources: { storage_path: string } | null;
     course_modules: Array<{
       id: string;
       title: string;
+      description: string | null;
       position: number;
       lessons: Array<{
         id: string;
@@ -207,6 +222,7 @@ export async function courseWithContent(
         position: number;
         video_provider: string | null;
         video_id: string | null;
+        video_duration_seconds: number | null;
       }>;
     }>;
   };
@@ -216,12 +232,14 @@ export async function courseWithContent(
     title: course.title,
     slug: course.slug,
     description: course.description,
+    storagePath: course.resources?.storage_path ?? null,
     modules: (course.course_modules ?? [])
       .slice()
       .sort((a, b) => a.position - b.position)
       .map((m) => ({
         id: m.id,
         title: m.title,
+        description: m.description,
         position: m.position,
         lessons: (m.lessons ?? [])
           .slice()
@@ -236,6 +254,7 @@ export async function courseWithContent(
             slug: l.slug,
             position: l.position,
             hasVideo: Boolean(l.video_provider && l.video_id),
+            durationSeconds: l.video_duration_seconds,
           })),
       })),
   };
@@ -275,7 +294,7 @@ export async function lessonBySlug(courseSlug: string, lessonSlug: string) {
 
   /*
     The URL is composed HERE, on the far side of the RLS check that returned
-    this row (migration 0004: a lesson is only readable with a live entitlement
+    this row (migration 0002_security_and_reference_data: a lesson is only readable with a live entitlement
     to its course). A null row is indistinguishable from a missing lesson, so a
     caller without access never learns whether the video exists.
   */
@@ -320,10 +339,13 @@ export async function upcomingSessions(limit = 5) {
 
 /** Consumable session credits, if the customer holds any. */
 export async function sessionCredits(): Promise<{ remaining: number } | null> {
+  const userId = (await getAuthContext())?.userId;
+  if (!userId) return null;
   const supabase = await createClient();
   const { data } = await supabase
     .from("entitlements")
     .select("quantity,quantity_used")
+    .eq("user_id", userId)
     .eq("resource_type", "group_coaching_session")
     .eq("status", "active")
     .not("quantity", "is", null);
@@ -337,10 +359,13 @@ export async function sessionCredits(): Promise<{ remaining: number } | null> {
 }
 
 export async function myMembership() {
+  const userId = (await getAuthContext())?.userId;
+  if (!userId) return null;
   const supabase = await createClient();
   const { data } = await supabase
     .from("subscriptions")
     .select("status,membership_tier,current_period_end")
+    .eq("user_id", userId)
     .in("status", ["active", "trialing", "past_due"])
     .order("created_at", { ascending: false })
     .limit(1)
@@ -360,7 +385,7 @@ export async function myMembership() {
  *
  * A set of lesson ids rather than a count, because the course outline needs to
  * tick individual rows and the summary is derivable from the set. RLS restricts
- * `lesson_progress` to the caller's own rows (migration 0037), so this cannot
+ * `lesson_progress` to the caller's own rows (migration 0007_staff_accounts_and_lesson_video), so this cannot
  * return anybody else's however it is called.
  */
 export async function completedLessonIds(
@@ -421,7 +446,7 @@ export async function progressAcrossCourses(): Promise<
   const supabase = await createClient();
 
   // RLS returns only courses whose modules the caller is entitled to read, so
-  // this is already the enrolled set (migration 0004).
+  // this is already the enrolled set (migration 0002_security_and_reference_data).
   const { data } = await supabase
     .from("courses")
     .select("id,title,slug,course_modules(id,lessons(id,title,slug,position))")

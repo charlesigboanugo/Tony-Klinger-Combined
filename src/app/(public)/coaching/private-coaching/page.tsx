@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { OfferCard } from "@/components/coaching/OfferCard";
+import { OfferGrid } from "@/components/coaching/OfferGrid";
 import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
@@ -21,7 +22,7 @@ export default async function PrivateCoachingPage() {
         <PageHeader
           eyebrow="Coaching"
           title="Private Coaching"
-          description="One to one, scheduled around you. Sessions are booked against your entitlement once you have one — buying access and booking a time are separate steps."
+          description="One to one, scheduled around you. Buy a session, then book the time that suits you."
         />
 
         {services.length === 0 ? (
@@ -30,7 +31,7 @@ export default async function PrivateCoachingPage() {
             description="Private coaching availability is announced here."
           />
         ) : (
-          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <OfferGrid count={services.length}>
             {services.map((service, i) => (
               <Reveal as="li" key={service.id} delay={(i % 3) * 70} className="h-full">
                 <OfferCard
@@ -38,18 +39,20 @@ export default async function PrivateCoachingPage() {
                   title={service.name}
                   description={service.description}
                   eyebrow="One to one"
+                  cta="View and book"
                   meta={`${service.duration_minutes} minutes`}
                   prices={service.prices}
                   storagePath={service.storagePath}
                   seed={service.slug}
                   priority={i < 3}
+                  feature={services.length === 1}
                 />
               </Reveal>
             ))}
-          </ul>
+          </OfferGrid>
         )}
 
-        <p className="mt-8 max-w-2xl text-sm text-muted-foreground">
+        <p className="mt-8 max-w-2xl text-sm leading-relaxed text-muted-foreground">
           Membership covers private coaching only where that benefit is stated
           explicitly. Where it is not, private sessions are bought separately.
         </p>

@@ -245,15 +245,27 @@ export function PeriodLink({
   href,
   className,
   children,
+  overlay = false,
 }: {
   href: string;
   className?: string;
-  children: ReactNode;
+  children?: ReactNode;
+  /**
+   * Stretch an invisible copy of the link over the whole card, so a click
+   * anywhere on it goes where its button goes. Hidden from assistive tech and
+   * the tab order: the visible button is the one real link, so the card is
+   * not announced or tabbed to twice.
+   */
+  overlay?: boolean;
 }) {
   const { period } = useBillingPeriod();
   const sep = href.includes("?") ? "&" : "?";
   return (
-    <Link href={`${href}${sep}billing=${period}`} className={className}>
+    <Link
+      href={`${href}${sep}billing=${period}`}
+      className={overlay ? `absolute inset-0 ${className ?? ""}` : className}
+      {...(overlay ? { "aria-hidden": true, tabIndex: -1 } : {})}
+    >
       {children}
     </Link>
   );

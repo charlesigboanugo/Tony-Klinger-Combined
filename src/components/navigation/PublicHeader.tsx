@@ -7,35 +7,44 @@ import { useEffect, useState } from "react";
 import { Container } from "@/components/layout/Container";
 import { MobileNav } from "@/components/navigation/MobileNav";
 import { NavDropdown } from "@/components/navigation/NavDropdown";
-import { SignedOutActions, UserMenu } from "@/components/navigation/UserMenu";
+import { navLinkType, navLinkUnderline } from "@/components/navigation/navStyles";
+import { UserMenu } from "@/components/navigation/UserMenu";
+import { Wordmark } from "@/components/navigation/Wordmark";
 import { ButtonLink } from "@/components/ui/Button";
 import { isActive, isCurrentPage, publicNavigation } from "@/lib/navigation";
 import { cn } from "@/lib/utils/cn";
 
-/** Top-level link underline — a thin bar that grows from the centre rather
- * than a colour swap, so a hover/active state reads as motion, not a flicker.
- * `scale-x` on a compositor-only transform, never `width`. */
-const navLinkUnderline =
-  "after:absolute after:inset-x-3 after:-bottom-px after:h-0.5 after:origin-center after:scale-x-0 after:bg-primary after:transition-transform after:duration-(--dur-base) after:ease-expo hover:after:scale-x-100";
-
 /**
- * Public site header — note 04 §7, §26, §27.
+ * Public site header — the masthead. Note 04 §7, §26, §27; note 10 §42.2.
  *
- * Desktop navigation must fit without clipping; below `lg` it collapses into
- * the mobile sheet rather than shrinking until unusable (note 04 §26).
+ * THREE WIDTHS, THREE ARRANGEMENTS:
+ *   phone     mark + Menu
+ *   tablet    mark + Sign in (or the account menu) + Menu
+ *   desktop   mark · navigation in tracked capitals · cart · Sign in
  *
- * Items with children render as dropdowns (note 04 §5, §38, note 11). Before
- * this, `children` was read only by the mobile menu, so the Coaching and
- * Catalogue submenus simply did not exist on desktop.
+ * The cart icon carries a count badge when the cart is non-empty, and below
+ * `lg` it appears ONLY then: an empty cart is reachable from the menu, but a
+ * full one should be visible without opening anything.
+ *
+ * Below `lg` the navigation collapses into the full-screen menu rather than
+ * shrinking until unusable (note 04 §26). It aligns to the WIDE grid, the same
+ * edges as the catalogue's screening-room pages, so the mark sits directly
+ * over the hero's title rather than a column's width inside it.
+ *
+ * Items with children render as dropdown panels (note 04 §5, §38, note 11).
  */
-export function PublicHeader({ userEmail }: { userEmail?: string | null }) {
+export function PublicHeader({
+  userEmail,
+  cartCount = 0,
+}: {
+  userEmail?: string | null;
+  cartCount?: number;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  // Scroll state — the header gains a visible edge and a firmer blur once the
-  // page has actually moved, instead of carrying a border at the very top
-  // where there is nothing yet to separate from. Passive listener, one
-  // boolean flip per threshold crossing rather than per pixel.
+  // Hairline and shadow only once the page has scrolled, so the header reads
+  // as part of the page at rest and as a floating bar in motion.
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -44,14 +53,8 @@ export function PublicHeader({ userEmail }: { userEmail?: string | null }) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close on navigation — otherwise the sheet stays open over the page just
-  // opened, still holding the scroll lock.
-  //
-  // Adjusted DURING RENDER rather than in an effect. React re-runs the
-  // component immediately with the new state and never paints the stale open
-  // sheet; an effect would paint it over the new page first and then close it,
-  // which shows as a flash. This is React's documented pattern for deriving
-  // state from a changed prop.
+  // Close the menu on navigation. Adjusting state during render when a value
+  // changes is React's recommended alternative to a setState-in-effect.
   const [renderedPath, setRenderedPath] = useState(pathname);
   if (renderedPath !== pathname) {
     setRenderedPath(pathname);
@@ -61,110 +64,141 @@ export function PublicHeader({ userEmail }: { userEmail?: string | null }) {
   return (
     /* MobileNav is a SIBLING of <header>, not a child, and that placement is
        load-bearing.
-    
+
        The header carries `backdrop-blur`. A `backdrop-filter` makes an element
        a CONTAINING BLOCK for its position:fixed descendants — exactly as
        `transform` and `filter` do. Nested inside, the sheet's
-       `fixed inset-x-0 top-16 bottom-0` resolved against the header's own 64px
-       box instead of the viewport: top:64px with bottom:0 inside a 64px-tall
-       block collapses it to zero height, so pressing the hamburger opened a
-       menu that was there in the DOM, focus-trapped and scroll-locked, but
-       invisible. */
+       `fixed inset-x-0 top-16 bottom-0` resolved against the header's own
+       box instead of the viewport, collapsing it to zero height: a menu that
+       was there in the DOM, focus-trapped and scroll-locked, but invisible. */
     <>
-    <header
-      className={cn(
-        "sticky top-0 z-50 border-b bg-background/95 backdrop-blur transition-[border-color,box-shadow] duration-(--dur-base) ease-expo",
-        scrolled ? "border-border shadow-card" : "border-transparent",
-      )}
-    >
-      <Container>
-        <div className="flex h-16 items-center justify-between gap-4">
-          <Link
-            href="/"
-            className="text-lg font-semibold tracking-tight transition-transform duration-(--dur-fast) ease-expo hover:scale-[1.03] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            Tony Klinger
-          </Link>
+      <header
+        className={cn(
+          "sticky top-0 z-50 border-b bg-background/90 backdrop-blur-md transition-[border-color,box-shadow] duration-(--dur-base) ease-expo",
+          scrolled || open ? "border-border shadow-card" : "border-transparent",
+        )}
+      >
+        <Container width="wide">
+          <div className="flex h-16 items-center justify-between gap-4 lg:h-18 xl:gap-6">
+            <Wordmark />
 
-          <nav aria-label="Main" className="hidden lg:block">
-            <ul className="flex items-center gap-0.5">
-              {publicNavigation.map((item) =>
-                item.children?.length ? (
-                  <NavDropdown key={item.href} item={item} pathname={pathname} />
-                ) : (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      aria-current={isCurrentPage(pathname, item.href) ? "page" : undefined}
-                      className={cn(
-                        "relative block rounded-(--radius) px-3 py-2 text-sm transition-colors",
-                        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-                        navLinkUnderline,
-                        isActive(pathname, item.href)
-                          ? "font-medium text-foreground after:scale-x-100"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                ),
+            <nav aria-label="Main" className="hidden lg:block">
+              <ul className="flex items-center">
+                {publicNavigation.map((item) =>
+                  item.children?.length ? (
+                    <NavDropdown key={item.href} item={item} pathname={pathname} />
+                  ) : (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        aria-current={isCurrentPage(pathname, item.href) ? "page" : undefined}
+                        className={cn(
+                          "relative block rounded-sm px-2 py-3 transition-colors xl:px-3",
+                          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                          navLinkType,
+                          navLinkUnderline,
+                          isActive(pathname, item.href)
+                            ? "text-foreground after:scale-x-100"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  ),
+                )}
+              </ul>
+            </nav>
+
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Link
+                href="/cart"
+                aria-label={cartCount > 0 ? `Cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}` : "Cart"}
+                className={cn(
+                  "relative h-10 w-10 place-items-center rounded-full transition-colors hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring lg:grid",
+                  cartCount > 0 ? "grid text-foreground" : "hidden text-muted-foreground",
+                )}
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[1.15rem] w-[1.15rem]">
+                  <path
+                    d="M5 8h14l-1.2 11.1a2 2 0 0 1-2 1.9H8.2a2 2 0 0 1-2-1.9L5 8Zm4 0V6.5a3 3 0 0 1 6 0V8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                {cartCount > 0 ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-0.5 right-0.5 grid h-4.5 min-w-4.5 place-items-center rounded-full bg-button px-1 text-[0.6875rem] leading-none font-semibold text-button-foreground tabular-nums ring-2 ring-background"
+                  >
+                    {cartCount > 9 ? "9+" : cartCount}
+                  </span>
+                ) : null}
+              </Link>
+
+              {/* The one filled action in the masthead is the account: Sign in
+                  when signed out, the account menu when signed in. Hidden on a
+                  WRAPPER, not on the button: `cn()` is a plain join, so `hidden`
+                  beside ButtonLink's own `inline-flex` would lose and show it on
+                  phones, pushing the Menu toggle off-screen. */}
+              {userEmail ? (
+                <div className="hidden sm:block">
+                  <UserMenu email={userEmail} />
+                </div>
+              ) : (
+                <span className="hidden sm:block">
+                  <ButtonLink href="/auth/sign-in" size="sm">
+                    Sign in
+                  </ButtonLink>
+                </span>
               )}
-            </ul>
-          </nav>
 
-          <div className="hidden items-center gap-2 lg:flex">
-            {userEmail ? (
-              <>
-                <ButtonLink href="/cart" variant="ghost" size="sm">
-                  Cart
-                </ButtonLink>
-                <UserMenu email={userEmail} />
-              </>
-            ) : (
-              <SignedOutActions />
-            )}
+              <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                aria-expanded={open}
+                aria-controls="mobile-navigation"
+                aria-label={open ? "Close menu" : "Open menu"}
+                className={cn(
+                  "ml-1 flex h-10 items-center gap-2.5 rounded-full border border-border pr-4 pl-3.5 lg:hidden",
+                  "transition-colors hover:border-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                  navLinkType,
+                  open && "border-foreground bg-foreground text-background",
+                )}
+              >
+                {/* Two bars that cross into an X — the state change is visible
+                    rather than requiring the label to be read. */}
+                <span aria-hidden="true" className="relative block h-3 w-4">
+                  <span
+                    className={cn(
+                      "absolute left-0 block h-px w-4 bg-current transition-all duration-200",
+                      open ? "top-1.5 rotate-45" : "top-0.5",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "absolute left-0 block h-px w-4 bg-current transition-all duration-200",
+                      open ? "top-1.5 -rotate-45" : "top-2.5",
+                    )}
+                  />
+                </span>
+                <span aria-hidden="true">{open ? "Close" : "Menu"}</span>
+              </button>
+            </div>
           </div>
+        </Container>
+      </header>
 
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            aria-controls="mobile-navigation"
-            aria-label={open ? "Close menu" : "Open menu"}
-            className={cn(
-              "flex h-11 w-11 items-center justify-center rounded-(--radius) border border-border lg:hidden",
-              "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-              open && "bg-surface-muted",
-            )}
-          >
-            {/* Two bars that cross into an X — the state change is visible
-                rather than requiring the label to be read. */}
-            <span aria-hidden="true" className="relative block h-4 w-5">
-              <span
-                className={cn(
-                  "absolute left-0 block h-0.5 w-5 bg-current transition-all duration-200",
-                  open ? "top-1.5 rotate-45" : "top-0.5",
-                )}
-              />
-              <span
-                className={cn(
-                  "absolute left-0 block h-0.5 w-5 bg-current transition-all duration-200",
-                  open ? "top-1.5 -rotate-45" : "top-3",
-                )}
-              />
-            </span>
-          </button>
-        </div>
-      </Container>
-    </header>
-
-    <MobileNav
-      open={open}
-      onClose={() => setOpen(false)}
-      userEmail={userEmail}
-      pathname={pathname}
-    />
+      <MobileNav
+        open={open}
+        onClose={() => setOpen(false)}
+        userEmail={userEmail}
+        cartCount={cartCount}
+        pathname={pathname}
+      />
     </>
   );
 }

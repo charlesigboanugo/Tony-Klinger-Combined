@@ -6,6 +6,7 @@ import { recordCustomer, recordMember, removeMember } from "@/lib/email/audience
 import { queueEmail } from "@/lib/email/send";
 import { requireServerEnv } from "@/lib/env/server";
 import { stripe } from "@/lib/stripe/client";
+import { rememberCustomer } from "@/lib/stripe/customer";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -110,6 +111,8 @@ async function handleEvent(event: Stripe.Event, admin: AdminClient) {
 
       if (error) throw new Error(`fulfil_order failed: ${error.message}`);
 
+      await recordReceipt(session, orderId, admin);
+
       // A guest order is paid but has no owner yet, so it has no entitlements
       // either. Issue the single-use claim token that links it to an account
       // (note 05 §29.3). The order stays valid indefinitely in the meantime —
@@ -150,6 +153,19 @@ async function handleEvent(event: Stripe.Event, admin: AdminClient) {
       return;
     }
 
+    case "checkout.session.expired": {
+      // An unpaid private coaching checkout gives its held time back now
+      // rather than when the hold lapses (migration 0020). Nothing else is
+      // held against a checkout, so for every other order this is a no-op.
+      const session = event.data.object as Stripe.Checkout.Session;
+      const orderId = session.metadata?.order_id;
+      if (!orderId) return;
+
+      const { error } = await admin.rpc("release_private_coaching_hold", { p_order_id: orderId });
+      if (error) throw new Error(`release_private_coaching_hold failed: ${error.message}`);
+      return;
+    }
+
     case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
@@ -182,17 +198,36 @@ async function handleEvent(event: Stripe.Event, admin: AdminClient) {
             status: mapSubscriptionStatus(subscription.status),
             current_period_start: toIso(item?.current_period_start),
             current_period_end: toIso(item?.current_period_end),
-            cancel_at: toIso(subscription.cancel_at),
+            // "Cancel at the end of the period" (the Customer Portal's
+            // default) is shown to the customer as a state, not a guess.
+            cancel_at: toIso(
+              subscription.cancel_at ??
+                (subscription.cancel_at_period_end ? item?.current_period_end : null),
+            ),
+            cancel_at_period_end: subscription.cancel_at_period_end || subscription.cancel_at != null,
             // Omitted rather than nulled on an update, so a tier already
             // recorded is not wiped by an event that omits the metadata.
             ...(tier ? { membership_tier: tier } : {}),
           },
           { onConflict: "provider,provider_subscription_id" },
         )
-        .select("membership_tier,current_period_end")
+        .select("id,membership_tier,current_period_end")
         .single();
 
       if (error) throw new Error(`subscription upsert failed: ${error.message}`);
+
+      // Invoices that arrived before this subscription row existed.
+      if (row) {
+        await admin
+          .from("invoices")
+          .update({ subscription_id: row.id })
+          .eq("provider_subscription_id", subscription.id)
+          .is("subscription_id", null);
+      }
+
+      // Members who subscribed before customers were stored get theirs now.
+      const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id;
+      if (customerId) await rememberCustomer(userId, customerId);
 
       // Looked up once and used for both the announcement and the list sync.
       const { data: account } = await admin.auth.admin.getUserById(userId);
@@ -237,15 +272,110 @@ async function handleEvent(event: Stripe.Event, admin: AdminClient) {
       return;
     }
 
-    case "invoice.payment_failed": {
-      // Access is not removed here. A failed renewal follows the configured
-      // grace-period policy rather than an immediate cut-off (note 09 §17, §24).
+    case "invoice.paid":
+    case "invoice.payment_failed":
+    case "invoice.finalized":
+    case "invoice.voided": {
+      // Recorded for the billing page's history and receipts (migration 0021).
+      // Access is NOT changed here: a failed renewal follows the grace-period
+      // policy rather than an immediate cut-off (note 09 §17, §24), and the
+      // subscription events carry the status that matters.
+      await recordInvoice(event.data.object as Stripe.Invoice, admin);
       return;
     }
 
     default:
       return;
   }
+}
+
+/**
+ * Keep Stripe's hosted receipt for a one-off payment, and the buyer's Stripe
+ * Customer. A failure here must not fail fulfilment (the order is already
+ * paid and access granted): the order page fetches a missing receipt later.
+ */
+async function recordReceipt(session: Stripe.Checkout.Session, orderId: string, admin: AdminClient) {
+  const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
+  if (customerId) {
+    const { data: order } = await admin.from("orders").select("user_id").eq("id", orderId).maybeSingle();
+    if (order?.user_id) await rememberCustomer(order.user_id, customerId);
+  }
+
+  const intentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+  if (!intentId) return; // A subscription checkout is receipted by its invoice.
+
+  try {
+    const intent = await stripe().paymentIntents.retrieve(intentId, { expand: ["latest_charge"] });
+    const charge = intent.latest_charge as Stripe.Charge | null;
+    if (charge?.receipt_url) {
+      await admin
+        .from("payments")
+        .update({ receipt_url: charge.receipt_url })
+        .eq("provider", "stripe")
+        .eq("provider_payment_id", intentId);
+    }
+  } catch (error) {
+    console.error("receipt lookup failed", { orderId, message: error instanceof Error ? error.message : "unknown" });
+  }
+}
+
+/**
+ * Upsert a subscription invoice. The owner comes from the subscription's
+ * metadata (set at checkout), falling back to the stored customer.
+ */
+async function recordInvoice(invoice: Stripe.Invoice, admin: AdminClient) {
+  const details = invoice.parent?.subscription_details ?? null;
+  if (!details) return; // Only subscription invoices are recorded here.
+
+  const providerSubscriptionId = typeof details.subscription === "string" ? details.subscription : details.subscription.id;
+  const metadata = details.metadata ?? {};
+  const customerId = typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id;
+
+  let userId: string | null = metadata.user_id ?? null;
+  if (!userId && customerId) {
+    const { data } = await admin
+      .from("billing_customers")
+      .select("user_id")
+      .eq("stripe_customer_id", customerId)
+      .maybeSingle();
+    userId = data?.user_id ?? null;
+  }
+  if (!userId) return; // Not one of ours (or not yet linked); nothing to show anyone.
+
+  const { data: sub } = await admin
+    .from("subscriptions")
+    .select("id")
+    .eq("provider", "stripe")
+    .eq("provider_subscription_id", providerSubscriptionId)
+    .maybeSingle();
+
+  const toIso = (seconds: number | null | undefined) => (seconds ? new Date(seconds * 1000).toISOString() : null);
+  const line = invoice.lines?.data?.[0];
+
+  const { error } = await admin.from("invoices").upsert(
+    {
+      user_id: userId,
+      subscription_id: sub?.id ?? null,
+      // The first invoice pays the checkout order; renewals have none.
+      order_id: invoice.billing_reason === "subscription_create" ? (metadata.order_id ?? null) : null,
+      provider: "stripe",
+      provider_invoice_id: invoice.id,
+      provider_subscription_id: providerSubscriptionId,
+      membership_tier: MEMBERSHIP_TIERS.find((t) => t === metadata.membership_tier) ?? null,
+      number: invoice.number,
+      status: invoice.status ?? "draft",
+      amount_due: invoice.amount_due,
+      amount_paid: invoice.amount_paid,
+      currency: (invoice.currency ?? "gbp").toUpperCase(),
+      hosted_invoice_url: invoice.hosted_invoice_url ?? null,
+      invoice_pdf: invoice.invoice_pdf ?? null,
+      period_start: toIso(line?.period?.start ?? invoice.period_start),
+      period_end: toIso(line?.period?.end ?? invoice.period_end),
+      paid_at: toIso(invoice.status_transitions?.paid_at),
+    },
+    { onConflict: "provider,provider_invoice_id" },
+  );
+  if (error) throw new Error(`invoice upsert failed: ${error.message}`);
 }
 
 /**

@@ -2,7 +2,7 @@
 
 import { useFormStatus } from "react-dom";
 
-import { Button, type ButtonVariant } from "@/components/ui/Button";
+import { Button, type ButtonSize, type ButtonVariant } from "@/components/ui/Button";
 
 /**
  * Submit button that reflects pending state — note 10 §21, §22.
@@ -13,12 +13,14 @@ export function SubmitButton({
   children,
   pendingLabel = "Working…",
   variant = "primary",
+  size,
   className,
   disabled = false,
 }: {
   children: React.ReactNode;
   pendingLabel?: string;
   variant?: ButtonVariant;
+  size?: ButtonSize;
   className?: string;
   /** Blocked for a reason of the caller's own, beyond "currently submitting". */
   disabled?: boolean;
@@ -29,6 +31,7 @@ export function SubmitButton({
     <Button
       type="submit"
       variant={variant}
+      size={size}
       disabled={pending || disabled}
       aria-busy={pending}
       className={className}

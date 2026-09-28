@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CheckoutForm } from "@/app/checkout/CheckoutForm";
+import { BackLink } from "@/components/ui/BackLink";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { isBillingPeriod } from "@/lib/commerce/billing";
@@ -36,6 +37,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
     (typeof params.membership === "string" && params.membership) ||
     (typeof params.series === "string" && params.series) ||
     (typeof params.retreat === "string" && params.retreat) ||
+    (typeof params.event === "string" && params.event) ||
     null;
 
   const supabase = await createClient();
@@ -64,7 +66,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
 
   if (lines.length === 0) {
     return (
-      <EmptyState
+      <EmptyState icon="bag"
         title={slug ? "Nothing to check out" : "Your cart is empty"}
         description={
           slug
@@ -87,86 +89,93 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   const mixed = hasRecurring && hasOneOff;
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[1fr_0.85fr]">
-      <div>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
-          Checkout
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          You&apos;ll be taken to Stripe to pay. Card details never reach this
-          site.
-        </p>
+    <>
+      {slug ? (
+        <BackLink href="/coaching">Keep browsing</BackLink>
+      ) : (
+        <BackLink href="/cart">Back to your cart</BackLink>
+      )}
+      <div className="grid gap-10 lg:grid-cols-[1fr_0.85fr]">
+        <div>
+          <h1 className="font-display">
+            Checkout
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            You&apos;ll be taken to Stripe to pay. Card details never reach this
+            site.
+          </p>
 
-        {mixed ? (
-          <div
-            role="alert"
-            className="mt-6 rounded-(--radius) border border-warning bg-warning/10 p-4 text-sm"
-          >
-            <p className="font-semibold">These need two separate payments</p>
-            <p className="mt-1 text-muted-foreground">
-              A membership is a subscription and has to be bought on its own.
-              Please check it out separately from the one-off items — your cart
-              keeps everything else.
-            </p>
-            <p className="mt-3">
-              <Link href="/cart" className="font-medium text-primary underline underline-offset-4">
-                Back to cart
-              </Link>
-            </p>
-          </div>
-        ) : (
-          <div className="mt-6">
-            <CheckoutForm
-              product={slug ?? undefined}
-              billing={slug ? billing : undefined}
-              signedInEmail={user?.email ?? null}
-            />
-          </div>
-        )}
-      </div>
-
-      <aside className="h-fit rounded-(--radius-lg) border border-border bg-surface p-6 shadow-card">
-        <h2 className="font-display text-lg font-semibold">Order summary</h2>
-
-        <ul className="mt-4 space-y-3">
-          {lines.map((line) => (
-            <li key={line.productId} className="flex justify-between gap-4 text-sm">
-              <span>
-                {line.name}
-                {line.quantity > 1 ? (
-                  <span className="text-muted-foreground"> × {line.quantity}</span>
-                ) : null}
-                {/* State the commitment, not just the amount (note 07 §37.1). */}
-                <span className="block text-xs text-muted-foreground">
-                  {line.billingType === "recurring"
-                    ? `Renews every ${line.interval ?? "month"}`
-                    : "One payment"}
-                </span>
-              </span>
-              <span className="shrink-0 font-medium tabular-nums">
-                {formatPrice(line.unitAmount * line.quantity, line.currency)}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-5 flex items-baseline justify-between border-t border-border pt-4">
-          <span className="font-medium">
-            {hasRecurring && !hasOneOff ? "Due today" : "Total"}
-          </span>
-          <span className="font-display text-2xl font-semibold tabular-nums">
-            {formatPrice(total, currency)}
-          </span>
+          {mixed ? (
+            <div
+              role="alert"
+              className="mt-6 rounded-(--radius) border border-warning bg-warning/10 p-4 text-sm"
+            >
+              <p className="font-semibold">These need two separate payments</p>
+              <p className="mt-1 text-muted-foreground">
+                A membership is a subscription and has to be bought on its own.
+                Please check it out separately from the one-off items — your cart
+                keeps everything else.
+              </p>
+              <p className="mt-3">
+                <Link href="/cart" className="font-medium text-primary underline underline-offset-4">
+                  Back to cart
+                </Link>
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6">
+              <CheckoutForm
+                product={slug ?? undefined}
+                billing={slug ? billing : undefined}
+                signedInEmail={user?.email ?? null}
+              />
+            </div>
+          )}
         </div>
 
-        {!slug ? (
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            <Link href="/cart" className="underline underline-offset-4 hover:text-foreground">
-              Edit your cart
-            </Link>
-          </p>
-        ) : null}
-      </aside>
-    </div>
+        <aside className="h-fit rounded-(--radius-lg) border border-border bg-surface p-6 shadow-card">
+          <h3 className="font-display text-lg font-semibold">Order summary</h3>
+
+          <ul className="mt-4 space-y-3">
+            {lines.map((line) => (
+              <li key={line.productId} className="flex justify-between gap-4 text-sm">
+                <span>
+                  {line.name}
+                  {line.quantity > 1 ? (
+                    <span className="text-muted-foreground"> × {line.quantity}</span>
+                  ) : null}
+                  {/* State the commitment, not just the amount (note 07 §37.1). */}
+                  <span className="block text-xs text-muted-foreground">
+                    {line.billingType === "recurring"
+                      ? `Renews every ${line.interval ?? "month"}`
+                      : "One payment"}
+                  </span>
+                </span>
+                <span className="shrink-0 font-medium tabular-nums">
+                  {formatPrice(line.unitAmount * line.quantity, line.currency)}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-5 flex items-baseline justify-between border-t border-border pt-4">
+            <span className="font-medium">
+              {hasRecurring && !hasOneOff ? "Due today" : "Total"}
+            </span>
+            <span className="font-display text-2xl font-semibold tabular-nums">
+              {formatPrice(total, currency)}
+            </span>
+          </div>
+
+          {!slug ? (
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              <Link href="/cart" className="underline underline-offset-4 hover:text-foreground">
+                Edit your cart
+              </Link>
+            </p>
+          ) : null}
+        </aside>
+      </div>
+    </>
   );
 }

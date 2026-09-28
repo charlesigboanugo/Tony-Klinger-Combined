@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AuthCard } from "@/app/auth/AuthCard";
 import { SignUpForm } from "@/app/auth/sign-up/SignUpForm";
+import { OrRule } from "@/app/auth/AuthParts";
 import { GoogleButton } from "@/app/auth/GoogleButton";
 import { safeRedirect } from "@/lib/auth/safe-redirect";
 
@@ -14,6 +15,7 @@ export default async function SignUpPage({ searchParams }: PageProps<"/auth/sign
 
   return (
     <AuthCard
+      eyebrow="Create account"
       title="Create your account"
       description="Browsing is open to everyone. An account is only needed for what you buy."
       altPrompt="Already have an account?"
@@ -23,15 +25,7 @@ export default async function SignUpPage({ searchParams }: PageProps<"/auth/sign
       <div className="space-y-6">
         <GoogleButton next={next} label="Continue with Google" />
 
-        {/* "or" rule. aria-hidden because it is a visual separator; announcing
-            "or" between two labelled regions adds nothing for a screen reader. */}
-        <div className="flex items-center gap-3" aria-hidden="true">
-          <span className="h-px flex-1 bg-border" />
-          <span className="text-xs tracking-wide text-muted-foreground uppercase">
-            or sign up with email
-          </span>
-          <span className="h-px flex-1 bg-border" />
-        </div>
+        <OrRule>or sign up with email</OrRule>
 
         <SignUpForm next={next} />
       </div>

@@ -1,21 +1,22 @@
 import { headers } from "next/headers";
-import Link from "next/link";
 
-import { signOutAction } from "@/app/auth/actions";
 import { AccountNav } from "@/components/account/AccountNav";
 import { Container } from "@/components/layout/Container";
+import { WorkspaceHeader } from "@/components/navigation/WorkspaceHeader";
 import { requireSession, requireUser } from "@/lib/permissions";
 
 /**
- * Account layout — note 04 §13, §31, §32.2.
+ * Account layout — note 04 §13, §31.
  *
- * Compact by design: the account area manages a relationship, it is not a
- * second workspace (note 01 §6). It still gets the same workspace chrome
- * Academy and Admin do — a colour strip, a sticky header whose brand column
- * anchors the sidebar's sticky offset, and a sidebar that scrolls
- * independently of the page beside it — because "compact" describes its
- * content, not a licence to skip the alignment rules every other workspace
- * follows.
+ * A focused workspace, like the Academy: the shared `WorkspaceHeader` (the
+ * site mark, "Account", a way back to the site and the account menu) with no
+ * main site menu, then the sidebar and the page. The public masthead was
+ * tried here on 2026-09-26 and withdrawn the same day at the owner's
+ * direction. Oxblood is Account's identity colour, on the strip.
+ *
+ * The sidebar sticks flush under the header and runs to the bottom of the
+ * viewport, scrolling on its own if its items outgrow it (note 04 §32.2). Below lg the navigation collapses to
+ * one section button above the page (AccountNav).
  */
 export default async function AccountLayout({
   children,
@@ -38,63 +39,27 @@ export default async function AccountLayout({
     ? await requireSession("/account/security/mfa")
     : await requireUser("/account");
 
+
   return (
     <div className="flex min-h-svh flex-col">
-      {/* A thin colour strip identifies the workspace — note 04 §32.2. Oxblood
-          is Account's own identity colour, and it happens to be the site's
-          `--primary` too (see AccountNav), unlike Academy's teal which
-          needed a separate token from the site's red brand colour. */}
-      <div aria-hidden="true" className="h-[3px] w-full bg-block-oxblood" />
-      {/* Sticky, matching Academy's and Admin's headers (note 04 §16, §32.2)
-          — the sidebar below sticks to a `top` offset measured from this
-          header's height, which only stays correct if the header itself
-          never scrolls out of view. */}
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur">
-        <Container>
-          <div className="flex h-16 items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Link href="/" className="font-semibold tracking-tight">
-                Tony Klinger
-              </Link>
-              <span className="rounded-full bg-block-oxblood px-2.5 py-0.5 text-[0.6875rem] font-semibold tracking-widest text-block-foreground uppercase">
-                Account
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Link href="/academy" className="text-sm text-muted-foreground hover:text-foreground">
-                Academy
-              </Link>
-              {context.isStaff ? (
-                <Link href="/admin" className="text-sm text-muted-foreground hover:text-foreground">
-                  Admin
-                </Link>
-              ) : null}
-              <form action={signOutAction}>
-                <button
-                  type="submit"
-                  className="rounded-(--radius) border border-border px-3 py-1.5 text-sm"
-                >
-                  Sign out
-                </button>
-              </form>
-            </div>
-          </div>
-        </Container>
-      </header>
+      <WorkspaceHeader
+        label="Account"
+        home="/account"
+        strip="bg-block-oxblood"
+        email={context.email ?? ""}
+        links={context.isStaff ? [{ href: "/admin", label: "Admin" }] : []}
+      />
 
-      <Container>
-        {/*
-          Sidebar and content scroll INDEPENDENTLY, same as Academy and Admin
-          (note 04 §32.2/§32.3) — no drawn border pretending to be a
-          separation. `lg:sticky` plus its own `overflow-y-auto` and a height
-          capped to the viewport means the nav pins under the header and
-          scrolls on its own only if it ever grows taller than the viewport.
-        */}
-        <div className="flex flex-col gap-8 py-8 lg:flex-row lg:items-start">
-          <div className="lg:sticky lg:top-16.75 lg:h-[calc(100svh-4rem-3px)] lg:w-56 lg:shrink-0 lg:overflow-y-auto lg:overscroll-contain">
-            <AccountNav />
-          </div>
-          <main id="main" className="min-w-0 flex-1">{children}</main>
+      <Container className="flex-1">
+        <div className="flex flex-col gap-6 pt-6 pb-20 sm:pt-8 lg:flex-row lg:items-start lg:gap-12 lg:pt-0 lg:pb-0">
+          <aside className="z-30 lg:sticky lg:top-16.25 lg:h-[calc(100svh-4.0625rem)] lg:w-52 lg:shrink-0 lg:overflow-y-auto">
+            <div className="lg:pt-10 lg:pb-10">
+              <AccountNav />
+            </div>
+          </aside>
+          <main id="main" className="workspace min-w-0 flex-1 lg:pt-10 lg:pb-20">
+            {children}
+          </main>
         </div>
       </Container>
     </div>

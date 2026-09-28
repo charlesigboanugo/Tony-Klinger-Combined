@@ -63,7 +63,7 @@ export function TierPurchase({
   if (!selected || !productSlug) {
     return (
       <div className="rounded-(--radius-lg) border border-border bg-surface p-6">
-        <h2 className="font-display text-lg font-semibold">What it costs</h2>
+        <h3 className="text-base font-semibold">What it costs</h3>
         <p className="mt-2 text-sm text-muted-foreground">
           Pricing for {tierName} has not been published yet. Everything listed
           above is included when it is.
@@ -78,8 +78,8 @@ export function TierPurchase({
   ];
 
   return (
-    <div className="rounded-(--radius-lg) border border-border bg-surface p-6 shadow-card">
-      <h2 className="font-display text-lg font-semibold">What it costs</h2>
+    <div className="rounded-(--radius-lg) border border-border bg-surface p-6 shadow-lift">
+      <h3 className="text-base font-semibold">How you pay</h3>
 
       {bothWays ? (
         <div
@@ -164,7 +164,7 @@ export function TierPurchase({
           "bg-button text-[0.9375rem] font-semibold text-button-foreground shadow-card",
           "transition-[transform,box-shadow,filter] duration-(--dur-fast) ease-expo",
           "hover:-translate-y-0.5 hover:shadow-lift hover:brightness-110",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--ring)",
+          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
           "active:translate-y-px motion-reduce:transform-none",
         )}
       >

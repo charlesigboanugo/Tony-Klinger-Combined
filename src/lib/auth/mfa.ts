@@ -3,6 +3,10 @@ import "server-only";
 import { cache } from "react";
 
 import { createClient } from "@/lib/supabase/server";
+import { timeAgo } from "@/lib/utils/device";
+import type { Database } from "@/types/database";
+
+type Fns = Database["public"]["Functions"];
 
 /**
  * Multi-factor authentication — note 05 §11.1, note 06 §25.1.
@@ -14,6 +18,13 @@ import { createClient } from "@/lib/supabase/server";
 
 /** Minimum factors a staff account must hold, so losing one is not a lockout. */
 export const REQUIRED_STAFF_FACTORS = 2;
+
+/**
+ * How recently a key must have been used on this session before a key can be
+ * REMOVED. Mirrors the database gate (migration 0022), which is what enforces
+ * it; this copy only decides whether to ask for a key before offering Remove.
+ */
+export const KEY_RECONFIRM_MINUTES = 10;
 
 export type AalLevel = "aal1" | "aal2";
 
@@ -34,6 +45,8 @@ export type MfaState = {
    * why every sign-in registered another redundant credential.
    */
   factors: MfaFactor[];
+  /** This session presented a key within KEY_RECONFIRM_MINUTES. */
+  keyRecentlyConfirmed: boolean;
 };
 
 /**
@@ -44,7 +57,10 @@ export type MfaState = {
  * If that token were forged, `getUser()` would have failed and we would not
  * reach this line. Never use it on a token that has not been checked.
  */
-function claims(token: string): { aal?: string } {
+function claims(token: string): {
+  aal?: string;
+  amr?: Array<{ method?: string; timestamp?: number }>;
+} {
   try {
     const payload = token.split(".")[1];
     return JSON.parse(Buffer.from(payload, "base64").toString("utf8"));
@@ -79,6 +95,7 @@ export const getMfaState = cache(async (): Promise<MfaState> => {
       verifiedFactors: 0,
       unverifiedFactors: 0,
       factors: [],
+      keyRecentlyConfirmed: false,
     };
   }
 
@@ -92,8 +109,9 @@ export const getMfaState = cache(async (): Promise<MfaState> => {
   const all = user.factors ?? [];
   const verified = all.filter((f) => f.status === "verified");
 
-  const current =
-    claims(session?.access_token ?? "").aal === "aal2" ? "aal2" : "aal1";
+  const token = claims(session?.access_token ?? "");
+  const current = token.aal === "aal2" ? "aal2" : "aal1";
+  const keyUse = token.amr?.find((m) => m.method === "mfa/webauthn")?.timestamp;
 
   return {
     current,
@@ -106,8 +124,67 @@ export const getMfaState = cache(async (): Promise<MfaState> => {
       id: f.id,
       name: f.friendly_name?.trim() || `Security key ${i + 1}`,
     })),
+    // The clock is read here, with the data, not in a component's render.
+    keyRecentlyConfirmed:
+      current === "aal2" && keyUse !== undefined && Date.now() - keyUse * 1000 < KEY_RECONFIRM_MINUTES * 60_000,
   };
 });
+
+export type SecurityKey = {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  /** "3 days ago", or null if never used to sign in. */
+  lastUsedAgo: string | null;
+  aaguid: string | null;
+};
+
+/** The caller's own keys, with model id and last use — migration 0022. */
+export async function mySecurityKeys(): Promise<SecurityKey[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("my_security_keys");
+  const rows = (data ?? []) as Fns["my_security_keys"]["Returns"];
+  const now = Date.now();
+  return rows.map((k, i) => ({
+    id: k.id,
+    name: k.name?.trim() || `Security key ${i + 1}`,
+    createdAt: k.created_at,
+    lastUsedAt: k.last_used_at ?? null,
+    lastUsedAgo: timeAgo(k.last_used_at, now),
+    aaguid: k.aaguid ?? null,
+  }));
+}
+
+export type SignedInSession = {
+  id: string;
+  createdAt: string;
+  lastActiveAt: string;
+  lastActiveAgo: string | null;
+  userAgent: string | null;
+  ip: string | null;
+  verifiedWithKey: boolean;
+  current: boolean;
+};
+
+/** The caller's own signed-in sessions, this one first — migration 0022. */
+export async function mySessions(): Promise<SignedInSession[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("my_sessions");
+  const rows = (data ?? []) as Fns["my_sessions"]["Returns"];
+  const now = Date.now();
+  return rows.map((s) => ({
+    id: s.id,
+    createdAt: s.created_at,
+    lastActiveAt: s.last_active_at,
+    lastActiveAgo: timeAgo(s.last_active_at, now),
+    userAgent: s.user_agent ?? null,
+    // A private or loopback address is the server or a proxy, not the visitor.
+    ip: s.ip && !/^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|fc|fd)/i.test(s.ip) ? s.ip : null,
+    verifiedWithKey: s.aal === "aal2",
+    current: s.is_current,
+  }));
+}
 
 /** True when this session has actually presented a second factor. */
 export async function hasSecondFactor(): Promise<boolean> {

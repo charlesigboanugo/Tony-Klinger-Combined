@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 
+// The one list of allowed `quality` values — also read by eslint.config.mjs,
+// which rejects any other value at lint time.
+import imageQualities from "./src/lib/site/image-qualities.json";
+
 /**
  * Image optimisation and remote asset hosts.
  *
@@ -62,7 +66,6 @@ function supabasePattern() {
     return [];
   }
 }
-
 
 /**
  * Security response headers — note 05 §35, note 09 §48.
@@ -134,7 +137,7 @@ const nextConfig: NextConfig = {
     // is full of. The step from 75 to 90 costs roughly 30% more bytes on
     // photographic content, which is worth paying on the few images a page
     // shows at size and not worth paying on a grid of sixty thumbnails.
-    qualities: [75, 90],
+    qualities: imageQualities,
 
     // Next 16 refuses to optimise an image whose host resolves to a private
     // IP. That is SSRF protection worth having: otherwise the public
@@ -160,6 +163,62 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      {
+        // The one exception to camera=(): staff scan tickets at the door on the
+        // check-in screens (migration 0018). Same-origin only, and listed after
+        // the rule above so this value wins for these paths.
+        source: "/admin/check-in/:path*",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(), geolocation=(), interest-cohort=()",
+          },
+        ],
+      },
+      {
+        source: "/admin/check-in",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(), geolocation=(), interest-cohort=()",
+          },
+        ],
+      },
+    ];
+  },
+
+  /*
+    Catalogue entries retired because they duplicated another book (owner,
+    2026-09-25; supabase/content/02_catalogue.sql). A URL that was once live
+    may be linked or indexed, so it moves permanently to the book it was
+    part of, rather than becoming a 404.
+  */
+  async redirects() {
+    return [
+      {
+        // "How it works" is a section of the coaching overview (2026-09-26).
+        source: "/coaching/about",
+        destination: "/coaching#how-it-works",
+        permanent: true,
+      },
+      {
+        // Printed in the same volume as How to Get Into the Movie Business.
+        source: "/catalogue/books/how-to-get-your-movie-made",
+        destination: "/catalogue/books/how-to-get-into-the-movie-business",
+        permanent: true,
+      },
+      {
+        // The first edition of Who Knows.
+        source: "/catalogue/books/twilight-of-the-gods",
+        destination: "/catalogue/books/who-knows-making-of-a-rock-movie",
+        permanent: true,
+      },
+      // Give-Get-Go is one page (2026-09-25); its sections were routes.
+      ...["publishing", "films", "documentaries"].map((section) => ({
+        source: `/give-get-go/${section}`,
+        destination: `/give-get-go#${section}`,
+        permanent: true,
+      })),
     ];
   },
 };

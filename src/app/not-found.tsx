@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Container, Section } from "@/components/layout/Container";
+import { Eyebrow } from "@/components/ui/Eyebrow";
 import { ButtonLink } from "@/components/ui/Button";
 
 /** Global 404 — note 03 §16. */
@@ -9,9 +10,7 @@ export default function NotFound() {
     <Section>
       <Container width="narrow">
         <div className="space-y-6 py-12 text-center">
-          <p className="text-sm font-medium tracking-widest text-accent uppercase">
-            404
-          </p>
+          <Eyebrow align="center">404</Eyebrow>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
             We couldn&apos;t find that page
           </h1>

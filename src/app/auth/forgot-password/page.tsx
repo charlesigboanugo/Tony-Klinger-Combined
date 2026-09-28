@@ -9,6 +9,7 @@ export const metadata: Metadata = { title: "Reset password", robots: { index: fa
 export default function ForgotPasswordPage() {
   return (
     <AuthCard
+      eyebrow="Reset"
       title="Reset your password"
       description="Enter the address you signed up with and we'll email you a link to set a new one. The link works once and expires."
       altPrompt="Remembered it?"
@@ -17,7 +18,7 @@ export default function ForgotPasswordPage() {
       footer={
         <Link
           href="/auth/sign-up"
-          className="underline-offset-4 hover:text-foreground hover:underline"
+          className="underline decoration-current/40 underline-offset-4 transition-colors hover:text-accent hover:decoration-current"
         >
           Don&apos;t have an account? Create one
         </Link>

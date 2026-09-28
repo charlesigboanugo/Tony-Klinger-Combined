@@ -10,7 +10,7 @@ export default function CheckoutCancelPage() {
       <p className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
         Nothing charged
       </p>
-      <h1 className="font-display text-3xl font-semibold text-balance sm:text-4xl">
+      <h1 className="font-display text-balance">
         Checkout cancelled
       </h1>
       <p className="mx-auto max-w-md text-pretty text-muted-foreground">

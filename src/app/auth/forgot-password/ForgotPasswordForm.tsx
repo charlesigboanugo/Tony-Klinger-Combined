@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { forgotPasswordAction } from "@/app/auth/actions";
+import { AuthNotice } from "@/app/auth/AuthParts";
 import { Field, FormMessage, Input } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import type { AuthFormState } from "@/lib/validation/auth";
@@ -13,7 +14,7 @@ export function ForgotPasswordForm() {
   const [state, action] = useActionState(forgotPasswordAction, initialState);
 
   if (state.success) {
-    return <FormMessage tone="success">{state.success}</FormMessage>;
+    return <AuthNotice title="Check your inbox">{state.success}</AuthNotice>;
   }
 
   return (
@@ -30,7 +31,7 @@ export function ForgotPasswordForm() {
         />
       </Field>
 
-      <SubmitButton className="w-full" pendingLabel="Sending…">
+      <SubmitButton size="lg" className="w-full" pendingLabel="Sending…">
         Send reset link
       </SubmitButton>
     </form>

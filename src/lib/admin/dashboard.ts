@@ -121,6 +121,7 @@ export type RecentOrder = {
   currency: string;
   created_at: string;
   guest_email: string | null;
+  user_id: string | null;
 };
 
 /** The last few orders, newest first — the "what just happened" list. */
@@ -128,7 +129,7 @@ export async function recentOrders(limit = 6): Promise<RecentOrder[]> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("orders")
-    .select("id,status,total,currency,created_at,guest_email")
+    .select("id,status,total,currency,created_at,guest_email,user_id")
     .order("created_at", { ascending: false })
     .limit(limit);
   return (data as RecentOrder[] | null) ?? [];

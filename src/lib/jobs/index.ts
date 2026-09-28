@@ -161,6 +161,46 @@ async function syncMarketingAudiences() {
   return syncAudiences();
 }
 
+/**
+ * Event reminders — migration 0018.
+ *
+ * Every live ticket gets one reminder in the day before its event, and every
+ * online or hybrid ticket gets the joining link again in the hour before the
+ * start. Each message is keyed on the booking and its kind, so a run that
+ * repeats, overlaps or catches up after a missed schedule sends nothing twice.
+ */
+export async function sendEventReminders() {
+  const admin = createAdminClient();
+  const summary = { dayBefore: 0, starting: 0 };
+
+  for (const kind of ["day_before", "starting"] as const) {
+    const { data, error } = await admin.rpc("event_reminders_due", { p_kind: kind });
+    if (error) throw new Error(`event_reminders_due(${kind}): ${error.message}`);
+
+    for (const row of data ?? []) {
+      const queued = await queueEmail({
+        idempotencyKey: `event-${kind}:${row.booking_id}`,
+        template: kind === "day_before" ? "event_reminder" : "event_starting",
+        to: row.email,
+        payload: {
+          bookingId: row.booking_id,
+          reference: row.reference,
+          title: row.title,
+          startsAt: row.starts_at,
+          location: row.location,
+          venueAddress: row.format === "online" ? null : row.venue_address,
+          // The link only for tickets that join online.
+          joinUrl: row.format === "in_person" || !/^https?:\/\//i.test(row.join_url ?? "") ? null : row.join_url,
+          joiningNotes: row.joining_notes,
+        },
+      });
+      if (queued) summary[kind === "day_before" ? "dayBefore" : "starting"] += 1;
+    }
+  }
+
+  return summary;
+}
+
 export const JOBS = {
   "sync-stripe": syncCatalogueToStripe,
   "send-emails": sendPendingEmails,
@@ -168,6 +208,7 @@ export const JOBS = {
   "cleanup-tokens": cleanupTokens,
   "reconcile-stripe": reconcileStripeOrders,
   "sync-audiences": syncMarketingAudiences,
+  "event-reminders": sendEventReminders,
 } as const;
 
 export type JobName = keyof typeof JOBS;

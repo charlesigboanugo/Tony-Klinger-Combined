@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { BookButton } from "@/app/bookings/BookButton";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { AccountHeader } from "@/components/account/AccountHeader";
 import { BackLink } from "@/components/ui/BackLink";
 import { sessionCredits } from "@/lib/academy";
 import { getBookableSession } from "@/lib/bookings";
@@ -25,19 +25,17 @@ export default async function ConfirmBookingPage({
 
   return (
     <>
-      <BackLink href="/bookings">All sessions</BackLink>
+      <BackLink href="/bookings">Book a session</BackLink>
 
-      <div className="mt-6">
-        <PageHeader title={session.title} description={session.seriesName ?? undefined} />
-      </div>
+      <AccountHeader title={session.title} description={session.seriesName ?? undefined} />
 
-      <dl className="mb-6 grid gap-4 rounded-(--radius) border border-border bg-surface p-6 sm:grid-cols-2">
+      <dl className="mb-6 grid gap-4 rounded-(--radius-lg) border border-border bg-surface p-6 shadow-card sm:grid-cols-2">
         <div>
           <dt className="text-sm text-muted-foreground">When</dt>
           <dd className="mt-1 font-medium">
             {new Date(session.starts_at).toLocaleString("en-GB", {
               weekday: "long", day: "numeric", month: "long",
-              hour: "2-digit", minute: "2-digit",
+              hour: "2-digit", minute: "2-digit", timeZone: "Europe/London",
             })}
           </dd>
         </div>

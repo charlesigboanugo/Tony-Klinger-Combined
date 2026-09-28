@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { Container, Section } from "@/components/layout/Container";
+import {
+  CheckList,
+  MobileBuyBar,
+  ProductFacts,
+  ProductHero,
+  ProductLayout,
+  ProductSection,
+  PurchasePanel,
+} from "@/components/coaching/ProductPage";
+import { ButtonLink } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/commerce/pricing";
 import { getCoachingService } from "@/lib/content/coaching";
-import { BackLink } from "@/components/ui/BackLink";
-import { ButtonLink } from "@/components/ui/Button";
 
 export async function generateMetadata({
   params,
@@ -16,7 +23,8 @@ export async function generateMetadata({
 }
 
 /** Private coaching service detail — note 07 §37.1: what it is, what it costs,
- * how long, what happens next, all on this page rather than the card alone. */
+ * how long, what happens next, all on this page rather than the card alone.
+ * The shared product page (ProductPage.tsx). */
 export default async function PrivateCoachingServicePage({
   params,
 }: PageProps<"/coaching/private-coaching/[slug]">) {
@@ -25,56 +33,57 @@ export default async function PrivateCoachingServicePage({
   if (!service) notFound();
 
   const price = service.prices[0] ?? null;
+  const shown = price ? formatPrice(price.amount, price.currency) : null;
+  // Choose a time, then pay (note 09 §35, migration 0020).
+  const bookHref = `/bookings/private/${service.slug}`;
 
   return (
-    <Section>
-      <Container width="narrow">
-        <BackLink href="/coaching/private-coaching">Private coaching</BackLink>
+    <>
+      <ProductHero
+        backHref="/coaching/private-coaching"
+        backLabel="Private coaching"
+        eyebrow="One to one"
+        title={service.name}
+        description={service.description}
+        cover={{ path: service.storagePath }}
+        price={shown ?? "Price on application"}
+        priceNote={shown ? "a session" : null}
+      />
 
-        <div className="mt-6 space-y-6">
-          <div className="space-y-3">
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{service.name}</h1>
-            {service.description ? (
-              <p className="text-lg text-muted-foreground text-pretty">{service.description}</p>
-            ) : null}
-          </div>
+      <ProductLayout
+        aside={
+          <PurchasePanel
+            price={shown}
+            priceNote={shown ? "a session" : null}
+            // Cancellation policy, recovered from the coaching site's own
+            // service page and enforced by `cancel_booking` (migration 0020).
+            footnote="Cancel at least 48 hours ahead and the session is returned to your account to rebook."
+          >
+            <ButtonLink href={bookHref} size="lg" className="w-full">
+              Check availability
+            </ButtonLink>
+            <p className="mt-4 text-center text-sm text-muted-foreground">
+              {service.duration_minutes} minutes with Tony, at a time that suits you.
+            </p>
+          </PurchasePanel>
+        }
+      >
+        <ProductFacts
+          facts={[
+            { label: "Length", value: `${service.duration_minutes} minutes` },
+            { label: "With", value: "Tony, one to one" },
+            { label: "When", value: "Around your diary" },
+          ]}
+        />
 
-          <dl className="grid gap-4 rounded-(--radius) border border-border bg-surface p-6 sm:grid-cols-2">
-            <div>
-              <dt className="text-sm text-muted-foreground">Length</dt>
-              <dd className="mt-1 font-medium">{service.duration_minutes} minutes</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-muted-foreground">Price</dt>
-              <dd className="mt-1 font-medium">
-                {price ? formatPrice(price.amount, price.currency) : "Price on application"}
-              </dd>
-            </div>
-          </dl>
+        {service.benefits.length > 0 ? (
+          <ProductSection title="What's included">
+            <CheckList items={service.benefits} />
+          </ProductSection>
+        ) : null}
+      </ProductLayout>
 
-          {service.benefits.length > 0 ? (
-            <div className="rounded-(--radius) border border-border bg-surface p-6">
-              <h2 className="font-medium">What&apos;s included</h2>
-              <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                {service.benefits.map((b) => (
-                  <li key={b} className="flex gap-2">
-                    <span aria-hidden="true" className="text-accent">+</span>
-                    <span>{b}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {/* Cancellation policy, recovered from the coaching site's own
-              service page — a real customer-facing fact, not filler. */}
-          <p className="text-sm text-muted-foreground">
-            To cancel or reschedule, contact us at least 48 hours in advance.
-          </p>
-
-          <ButtonLink href={`/bookings/${service.slug}`}>Check availability</ButtonLink>
-        </div>
-      </Container>
-    </Section>
+      <MobileBuyBar price={shown} priceNote={shown ? "a session" : null} href={bookHref} label="Check availability" />
+    </>
   );
 }

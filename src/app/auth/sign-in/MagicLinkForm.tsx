@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { magicLinkAction } from "@/app/auth/actions";
+import { AuthNotice } from "@/app/auth/AuthParts";
 import { Field, FormMessage, Input } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import type { AuthFormState } from "@/lib/validation/auth";
@@ -13,7 +14,7 @@ export function MagicLinkForm({ next }: { next?: string }) {
   const [state, action] = useActionState(magicLinkAction, initialState);
 
   if (state.success) {
-    return <FormMessage tone="success">{state.success}</FormMessage>;
+    return <AuthNotice title="Check your inbox">{state.success}</AuthNotice>;
   }
 
   return (
@@ -37,7 +38,7 @@ export function MagicLinkForm({ next }: { next?: string }) {
         />
       </Field>
 
-      <SubmitButton className="w-full" pendingLabel="Sending…">
+      <SubmitButton size="lg" className="w-full" pendingLabel="Sending…">
         Email me a link
       </SubmitButton>
     </form>

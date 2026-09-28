@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { OfferCard } from "@/components/coaching/OfferCard";
+import { OfferGrid } from "@/components/coaching/OfferGrid";
 import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
@@ -28,22 +29,28 @@ export default async function CoursesPage() {
         {courses.length === 0 ? (
           <EmptyState title="No courses published yet" />
         ) : (
-          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <OfferGrid count={courses.length}>
             {courses.map((course, i) => (
               <Reveal as="li" key={course.id} delay={(i % 3) * 70} className="h-full">
                 <OfferCard
                   href={`/coaching/courses/${course.slug}`}
                   title={course.title}
                   description={course.description}
-                  eyebrow="Course"
+                  // The level is the label; the title says what it teaches.
+                  eyebrow={course.level ?? "Course"}
+                  cta="View course"
+                  // Neither course is a prerequisite: the lead one says so,
+                  // so "Level Two" does not read as "not for me yet".
+                  meta={i === 0 && courses.length > 1 ? "No need to take Level One first" : null}
                   prices={course.prices}
                   storagePath={course.storagePath}
                   seed={course.slug}
                   priority={i < 3}
+                  feature={courses.length === 1}
                 />
               </Reveal>
             ))}
-          </ul>
+          </OfferGrid>
         )}
       </Container>
     </Section>

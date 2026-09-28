@@ -18,8 +18,12 @@ export function Container({
 }) {
   const widths = {
     narrow: "max-w-3xl",
-    default: "max-w-6xl",
-    wide: "max-w-[90rem]",
+    // 76rem (1216px): the content column. Deliberately narrower than the
+    // header and footer (`wide`), so the page body sits inset from the chrome
+    // rather than on its edges — owner's call, 2026-09-24: 72rem felt narrow,
+    // 80rem too wide.
+    default: "max-w-304",
+    wide: "max-w-360",
   } as const;
 
   return (

@@ -105,7 +105,7 @@ export function activePrices(
  *
  * PostgREST returns a one-to-one embed as an object while the generated types
  * describe it as an array — the same normalisation `activePrices` needs. Only
- * PUBLIC-bucket paths come back at all (migration 0026), so an unassigned or
+ * PUBLIC-bucket paths come back at all (migration 0006_public_content_and_benefits), so an unassigned or
  * private cover simply yields null and the image is not rendered.
  */
 type CoverEmbed = { storage_path?: string | null };
@@ -149,6 +149,8 @@ export type Course = {
   title: string;
   slug: string;
   description: string | null;
+  /** Place in the sequence ("Level Two"), shown as a label, not the title (migration 0016). */
+  level: string | null;
   product_id: string | null;
   prices: ProductPrice[];
 };
@@ -293,8 +295,10 @@ export async function listCourses(): Promise<Course[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("courses")
-    .select("id,title,slug,description,product_id,resources!cover_resource_id(storage_path),products(slug,status,prices(amount,currency,billing_type,interval,active))")
+    .select("id,title,slug,description,level,product_id,resources!cover_resource_id(storage_path),products(slug,status,prices(amount,currency,billing_type,interval,active))")
     .eq("status", "published")
+    // Curated order (owner, 2026-09-26: How to Get Your Movie Made leads).
+    .order("position")
     .order("title");
 
   return (
@@ -313,7 +317,7 @@ export async function getCourse(slug: string): Promise<Course | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("courses")
-    .select("id,title,slug,description,product_id,resources!cover_resource_id(storage_path),products(slug,status,prices(amount,currency,billing_type,interval,active))")
+    .select("id,title,slug,description,level,product_id,resources!cover_resource_id(storage_path),products(slug,status,prices(amount,currency,billing_type,interval,active))")
     .eq("status", "published")
     .eq("slug", slug)
     .maybeSingle();

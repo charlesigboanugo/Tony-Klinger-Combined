@@ -44,6 +44,7 @@ export async function entitlementFor(
   let query = supabase
     .from("entitlements")
     .select("status,expires_at,quantity,quantity_used")
+    .eq("user_id", user.id)
     .eq("resource_type", resourceType);
 
   // A membership-derived entitlement may cover a whole resource type with a

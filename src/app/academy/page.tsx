@@ -1,22 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AccountHeader, AccountSection } from "@/components/account/AccountHeader";
+import { AcademyLanding } from "@/components/academy/AcademyLanding";
+import { CohortCard } from "@/components/academy/CohortCard";
 import { CourseCard } from "@/components/academy/CourseCard";
-import { Band } from "@/components/layout/Band";
-import { Container, Section } from "@/components/layout/Container";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { GeneratedCover } from "@/components/media/GeneratedCover";
+import { ProgressBar } from "@/components/academy/ProgressBar";
+import { DateBadge, JoinAction } from "@/components/academy/SessionParts";
 import { StoredImage } from "@/components/media/StoredImage";
 import { Reveal } from "@/components/motion/Reveal";
-import {
-  Card,
-  CardBody,
-  CardLink,
-  CardMedia,
-  CardTitle,
-} from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { IconTile, type IconName } from "@/components/ui/Icon";
+import { Eyebrow } from "@/components/ui/Eyebrow";
 import {
   myCohorts,
   myCourses,
@@ -24,226 +19,262 @@ import {
   progressAcrossCourses,
   sessionCredits,
 } from "@/lib/academy";
-import { myBookingsByTime } from "@/lib/bookings";
+import { myCoaching, nextWorkshops } from "@/lib/academy/delivery";
+import { formatSlot, greetingFor } from "@/lib/academy/format";
+import { myProfile } from "@/lib/account";
+import { formatDate } from "@/lib/account/format";
 import { getAuthContext } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "Academy",
-  description: "Your courses, coaching and resources.",
+  description: "Your courses, coaching and cohorts.",
   robots: { index: false },
 };
 
 /**
  * Academy entry — three renderings (note 03 §18, R14):
  *
- *   no session            -> public landing with a sign-in entry point
- *   session, nothing owned -> dashboard with an empty state pointing at /coaching
- *   session, entitled      -> dashboard showing only entitled areas
+ *   no session             -> public landing with a sign-in entry point
+ *   session, nothing owned -> the three areas, each pointing at where to get it
+ *   session, entitled      -> the personalised dashboard (note 07 §33)
  *
- * Organised around the four Academy areas (note 04 §9): Courses, Cohorts and
- * Coaching each get a tile and, where the customer holds something, a
- * section below; Membership and Session credits sit alongside them as the
- * two facts that govern access to all three rather than a section of their
- * own. Masterclasses and standalone Resources were both removed the same
- * day they were built — Masterclasses folds into Courses conceptually,
- * Resources are delivered inside whichever course, cohort or coaching
- * session they belong to (see `src/lib/academy/index.ts`).
+ * The dashboard answers, in order, what someone opens the Academy to do:
+ *
+ *   1. Carry on learning      the course under way and its next lesson, one press away
+ *   2. What's coming up       booked coaching and cohort workshops, joinable in the window
+ *   3. What I have            courses and cohorts, with membership and credits beside them
+ *
+ * No count tiles ("Courses: 2"): the owner rejects decorative counts site-wide
+ * and the sections below show the things themselves (note 10, Account overview).
  */
 export default async function AcademyPage() {
   const context = await getAuthContext();
-
   if (!context) return <AcademyLanding />;
 
-  const [courses, progress, bookings, credits, membership, cohorts] = await Promise.all([
-    myCourses(),
-    progressAcrossCourses(),
-    myBookingsByTime(),
-    sessionCredits(),
-    myMembership(),
-    myCohorts(),
-  ]);
-  const upcomingBookings = bookings.upcoming.slice(0, 3);
+  const [courses, progress, credits, membership, cohorts, coaching, workshops, profile] =
+    await Promise.all([
+      myCourses(),
+      progressAcrossCourses(),
+      sessionCredits(),
+      myMembership(),
+      myCohorts(),
+      myCoaching(),
+      nextWorkshops(3),
+      myProfile(),
+    ]);
 
+  const firstName = profile?.first_name?.trim() || profile?.display_name?.trim().split(" ")[0];
+  const greeting = greetingFor();
   const hasAnything =
     courses.length > 0 || credits !== null || membership !== null || cohorts.length > 0;
+
   const progressBySlug = new Map(progress.map((p) => [p.slug, p]));
+
+  // The course to resume: one already under way beats one not yet started;
+  // a finished course is never the thing to "continue".
+  const resumable = courses
+    .map((c) => ({ course: c, p: progressBySlug.get(c.slug) }))
+    .filter((x) => x.p && !x.p.done && x.p.resume);
+  const resume =
+    resumable.find((x) => x.p!.completed > 0) ?? resumable[0] ?? null;
+
+  // One timeline of what's coming: booked coaching and cohort workshops.
+  const upcoming = [
+    ...coaching.booked.map((s) => ({
+      key: `s-${s.id}`,
+      title: s.title,
+      startsAt: s.startsAt,
+      endsAt: s.endsAt,
+      context: s.seriesName ?? "Group Coaching",
+      join: s.join,
+      href: "/academy/coaching",
+    })),
+    ...workshops.map((w) => ({
+      key: `w-${w.id}`,
+      title: w.title,
+      startsAt: w.startsAt,
+      endsAt: w.endsAt,
+      context: w.cohortName ?? "Cohort workshop",
+      join: w.join,
+      href: w.cohortSlug ? `/academy/cohorts/${w.cohortSlug}` : "/academy/cohorts",
+    })),
+  ]
+    .sort((a, b) => +new Date(a.startsAt) - +new Date(b.startsAt))
+    .slice(0, 4);
 
   return (
     <>
-      <PageHeader
-        title="Your Academy"
+      <AccountHeader
+        title={firstName ? `${greeting}, ${firstName}` : greeting}
         description={
           hasAnything
-            ? "Everything you have access to, in one place."
-            : "You're signed in — this fills up as soon as you have something."
+            ? "Everything you're learning, and everything coming up, in one place."
+            : "You're signed in. Your Academy fills up the moment you have a course, a cohort place or coaching."
         }
       />
 
       {!hasAnything ? (
-        <EmptyState
-          title="Nothing here yet"
-          description="Courses, coaching and memberships appear here the moment they're yours."
-          action={<ButtonLink href="/coaching">Explore coaching</ButtonLink>}
-        />
+        <ExploreAreas />
       ) : (
-        <div className="space-y-10">
-          {/*
-            Every area the Academy offers gets a tile here, held or not — an
-            empty tile states that plainly and points at where to get it,
-            rather than only appearing once somebody happens to hold one.
-          */}
-          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MembershipTile membership={membership} />
-            <CreditsTile credits={credits} />
-            <CountTile
-              delay={120}
-              label="Courses"
-              count={courses.length}
-              ownedHref="/academy/courses"
-              ownedLabel="View all"
-              browseHref="/coaching/courses"
-              browseLabel="Browse courses"
-            />
-            <CountTile
-              delay={150}
-              label="Cohorts"
-              count={cohorts.length}
-              ownedHref="/academy/cohorts"
-              ownedLabel="View all"
-              browseHref="/coaching/cohorts"
-              browseLabel="Explore cohorts"
-            />
-          </dl>
-
-          {courses.length > 0 ? (
-            <section>
-              <div className="mb-4 flex items-baseline justify-between">
-                <h2 className="font-display text-xl font-semibold">
-                  Continue learning
-                </h2>
-                <Link
-                  href="/academy/courses"
-                  className="text-sm font-medium text-accent underline-offset-4 hover:underline"
-                >
-                  All courses
-                </Link>
+        <div className="space-y-14 sm:space-y-16">
+          {resume ? (
+            <Reveal as="section" aria-labelledby="resume">
+              <div className="relative isolate overflow-hidden rounded-(--radius-lg) bg-block-noir p-6 text-block-foreground shadow-lift sm:p-8">
+                {resume.course.storagePath ? (
+                  <div aria-hidden="true" className="absolute inset-y-0 right-0 -z-10 w-full sm:w-3/5">
+                    <StoredImage path={resume.course.storagePath} alt="" fill sizes="(min-width: 640px) 50vw, 100vw" className="opacity-40" />
+                    <div className="absolute inset-0 bg-linear-to-r from-block-noir via-block-noir/80 to-block-noir/20" />
+                  </div>
+                ) : null}
+                <Eyebrow id="resume">
+                  {resume.p!.completed > 0 ? "Pick up where you left off" : "Ready when you are"}
+                </Eyebrow>
+                <p className="mt-4 max-w-2xl font-display text-3xl leading-tight font-semibold text-balance sm:text-4xl">
+                  {resume.course.title}
+                </p>
+                <p className="mt-3 text-block-foreground/80">
+                  {resume.p!.completed > 0 ? "Next lesson" : "First lesson"}:{" "}
+                  <span className="text-block-foreground">{resume.p!.resume!.title}</span>
+                </p>
+                <div className="mt-6 flex max-w-md items-center gap-3">
+                  <ProgressBar completed={resume.p!.completed} total={resume.p!.total} onBlock />
+                  <span className="shrink-0 text-sm text-block-foreground/75 tabular-nums">
+                    {resume.p!.completed} of {resume.p!.total}
+                  </span>
+                </div>
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <ButtonLink
+                    href={`/academy/courses/${resume.course.slug}/lessons/${resume.p!.resume!.slug}`}
+                    variant="onBlock"
+                  >
+                    {resume.p!.completed > 0 ? "Continue lesson" : "Start the course"}
+                    <span aria-hidden="true">&rarr;</span>
+                  </ButtonLink>
+                  <ButtonLink href={`/academy/courses/${resume.course.slug}`} variant="onBlockOutline">
+                    Course overview
+                  </ButtonLink>
+                </div>
               </div>
-              <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            </Reveal>
+          ) : null}
+
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-8">
+            <AccountSection
+              title="Coming up"
+              className="min-w-0"
+              action={
+                upcoming.length ? (
+                  <Link href="/account/bookings" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+                    All bookings
+                  </Link>
+                ) : null
+              }
+            >
+              {upcoming.length ? (
+                <ul className="divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface">
+                  {upcoming.map((item) => (
+                    <li key={item.key} className="flex flex-wrap items-center gap-4 p-4">
+                      <DateBadge value={item.startsAt} />
+                      <div className="min-w-0 flex-1">
+                        <Link href={item.href} className="font-medium hover:underline hover:underline-offset-4">
+                          {item.title}
+                        </Link>
+                        <p className="text-sm text-muted-foreground">
+                          {formatSlot(item.startsAt, item.endsAt)} · {item.context}
+                        </p>
+                      </div>
+                      {item.join ? <JoinAction join={item.join} /> : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : credits && credits.remaining > 0 ? (
+                <div className="flex flex-col gap-4 rounded-(--radius-lg) border border-dashed border-border p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium">Nothing booked yet</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      You have {credits.remaining} session credit{credits.remaining === 1 ? "" : "s"} waiting to be used.
+                    </p>
+                  </div>
+                  <ButtonLink href="/academy/coaching" size="sm">
+                    Book a session
+                  </ButtonLink>
+                </div>
+              ) : (
+                <p className="rounded-(--radius-lg) border border-dashed border-border p-5 text-sm text-muted-foreground">
+                  Nothing scheduled. Booked coaching and cohort workshops appear here.
+                </p>
+              )}
+            </AccountSection>
+
+            <div className="space-y-5">
+              <StatusCard
+                icon="star"
+                label="Membership"
+                value={membership ? (membership.membership_tier ?? membership.status) : "None"}
+                muted={!membership}
+                note={
+                  membership?.current_period_end
+                    ? `${membership.status === "active" ? "Renews" : "Ends"} ${formatDate(membership.current_period_end)}`
+                    : undefined
+                }
+                href={membership ? "/account/memberships" : "/coaching/memberships"}
+                linkLabel={membership ? "Manage" : "Compare tiers"}
+              />
+              <StatusCard
+                icon="chat"
+                label="Session credits"
+                value={credits ? String(credits.remaining) : "None"}
+                muted={!credits || credits.remaining === 0}
+                note={credits ? (credits.remaining > 0 ? "Ready to book" : "All used") : undefined}
+                href={credits && credits.remaining > 0 ? "/academy/coaching" : "/coaching/group-coaching"}
+                linkLabel={credits && credits.remaining > 0 ? "Book a session" : "Get coaching"}
+              />
+            </div>
+          </div>
+
+          <AccountSection
+            title="Your courses"
+            action={
+              <Link
+                href={courses.length ? "/academy/courses" : "/coaching/courses"}
+                className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
+                {courses.length ? "All courses" : "Browse courses"}
+              </Link>
+            }
+          >
+            {courses.length ? (
+              <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {courses.map((course, index) => (
                   <Reveal as="li" key={course.id} delay={index * 60}>
-                    <CourseCard
-                      course={course}
-                      progress={progressBySlug.get(course.slug) ?? null}
-                    />
+                    <CourseCard course={course} progress={progressBySlug.get(course.slug) ?? null} />
                   </Reveal>
                 ))}
               </ul>
-            </section>
-          ) : null}
-
-          {upcomingBookings.length > 0 ? (
-            /*
-              This is CONFIRMED bookings — a reservation, not merely a session
-              your credits could reach. It was reading the bookable SCHEDULE
-              instead (`upcomingSessions()`), so it showed every entitled
-              session as though already booked, with no way to tell the two
-              apart, while still linking to "All bookings" as if it agreed
-              with that page. `myBookingsByTime()` is what `/account/bookings`
-              itself reads, so the two now show the same thing (note 09 §29).
-              Booking a NEW session is `/academy/coaching`'s job, not this
-              widget's — see the nudge below when nothing is booked yet.
-            */
-            <section>
-              <div className="mb-4 flex items-baseline justify-between">
-                <h2 className="font-display text-xl font-semibold">Coming up</h2>
-                <Link
-                  href="/account/bookings"
-                  className="text-sm font-medium text-accent underline-offset-4 hover:underline"
-                >
-                  All bookings
-                </Link>
-              </div>
-              <ul className="overflow-hidden rounded-(--radius-lg) border border-border bg-surface">
-                {upcomingBookings.map((b, index) => {
-                  const date = new Date(b.starts_at!);
-                  return (
-                    <li
-                      key={b.id}
-                      className={
-                        index > 0
-                          ? "flex items-center gap-4 border-t border-border p-4"
-                          : "flex items-center gap-4 p-4"
-                      }
-                    >
-                      <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-(--radius) bg-accent/10 text-accent">
-                        <span className="text-[0.625rem] font-semibold tracking-wide uppercase">
-                          {date.toLocaleDateString("en-GB", { month: "short" })}
-                        </span>
-                        <span className="text-lg leading-none font-semibold">
-                          {date.getDate()}
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">
-                          {b.title ?? b.bookable_type.replace(/_/g, " ")}
-                        </p>
-                        {b.seriesName ? (
-                          <p className="truncate text-sm text-muted-foreground">
-                            {b.seriesName}
-                          </p>
-                        ) : null}
-                      </div>
-                      <time
-                        dateTime={b.starts_at!}
-                        className="shrink-0 text-sm text-muted-foreground"
-                      >
-                        {date.toLocaleTimeString("en-GB", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </time>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ) : credits && credits.remaining > 0 ? (
-            // Held credits, nothing reserved yet — the gap this dashboard
-            // exists to close, not a state to render as though there were
-            // simply nothing here.
-            <section className="rounded-(--radius-lg) border border-border bg-surface p-5">
-              <p className="font-medium">
-                You have {credits.remaining} session credit{credits.remaining === 1 ? "" : "s"}{" "}
-                waiting to be used
+            ) : (
+              <p className="rounded-(--radius-lg) border border-dashed border-border p-5 text-sm text-muted-foreground">
+                No courses yet. Courses you buy, or that come with a membership, appear here.
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Nothing booked yet — pick a date from your entitled coaching.
-              </p>
-              <ButtonLink href="/academy/coaching" size="sm" className="mt-4">
-                Book a session
-              </ButtonLink>
-            </section>
-          ) : null}
+            )}
+          </AccountSection>
 
-          {cohorts.length > 0 ? (
-            <section>
-              <div className="mb-4 flex items-baseline justify-between">
-                <h2 className="font-display text-xl font-semibold">Your cohorts</h2>
-                <Link
-                  href="/academy/cohorts"
-                  className="text-sm font-medium text-accent underline-offset-4 hover:underline"
-                >
+          {cohorts.length ? (
+            <AccountSection
+              title="Your cohorts"
+              action={
+                <Link href="/academy/cohorts" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
                   All cohorts
                 </Link>
-              </div>
-              <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              }
+            >
+              <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {cohorts.map((cohort, index) => (
                   <Reveal as="li" key={cohort.id} delay={index * 60}>
                     <CohortCard cohort={cohort} />
                   </Reveal>
                 ))}
               </ul>
-            </section>
+            </AccountSection>
           ) : null}
         </div>
       )}
@@ -251,219 +282,96 @@ export default async function AcademyPage() {
   );
 }
 
-function CountTile({
+function StatusCard({
+  icon,
   label,
-  count,
-  ownedHref,
-  ownedLabel,
-  browseHref,
-  browseLabel,
-  delay,
+  value,
+  note,
+  href,
+  linkLabel,
+  muted = false,
 }: {
+  icon: IconName;
   label: string;
-  count: number;
-  ownedHref: string;
-  ownedLabel: string;
-  browseHref: string;
-  browseLabel: string;
-  delay: number;
+  value: string;
+  note?: string;
+  href: string;
+  linkLabel: string;
+  muted?: boolean;
 }) {
   return (
-    <Reveal
-      as="div"
-      delay={delay}
-      className="rounded-(--radius-lg) border border-border bg-surface p-5"
-    >
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="mt-1 font-display text-3xl font-semibold">{count}</dd>
-      <Link
-        href={count > 0 ? ownedHref : browseHref}
-        className="mt-2 inline-block text-sm font-medium text-accent underline-offset-4 hover:underline"
-      >
-        {count > 0 ? ownedLabel : browseLabel}
+    <div className="rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card">
+      <div className="flex items-center gap-3">
+        <IconTile name={icon} tone={muted ? "neutral" : "accent"} size="sm" />
+        <p className="text-sm text-muted-foreground">{label}</p>
+      </div>
+      {/* Aligned with the label's text, not the tile beside it. */}
+      <div className="pl-11">
+      <p className={`mt-1 font-display text-2xl font-semibold capitalize ${muted ? "text-muted-foreground" : ""}`}>
+        {value}
+      </p>
+      {note ? <p className="mt-1 text-sm text-muted-foreground">{note}</p> : null}
+      <Link href={href} className="mt-2 inline-block text-sm font-medium text-accent underline-offset-4 hover:underline">
+        {linkLabel}
       </Link>
-    </Reveal>
+      </div>
+    </div>
   );
 }
 
-function CohortCard({
-  cohort,
-}: {
-  cohort: {
-    id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    cohortLevel: "silver" | "gold" | "platinum";
-    startsAt: string | null;
-    storagePath: string | null;
-  };
-}) {
+/** Signed in, nothing held: the three areas, each with where to get it. */
+function ExploreAreas() {
+  const areas = [
+    {
+      title: "Courses",
+      icon: "play" as IconName,
+      blurb: "Self-paced lessons from Tony, from first steps in the industry to getting your film made.",
+      href: "/coaching/courses",
+      cta: "Browse courses",
+    },
+    {
+      title: "Cohorts",
+      icon: "users" as IconName,
+      blurb: "Live workshops with a small, fixed group, with recordings to go back to.",
+      href: "/coaching/cohorts",
+      cta: "Explore cohorts",
+    },
+    {
+      title: "Group Coaching",
+      icon: "chat" as IconName,
+      blurb: "Book seats in live coaching sessions and bring your own project to the table.",
+      href: "/coaching/group-coaching",
+      cta: "See Group Coaching",
+    },
+  ];
   return (
-    <Card interactive className="h-full">
-      <CardMedia ratio="16/9">
-        {cohort.storagePath ? (
-          <StoredImage
-            path={cohort.storagePath}
-            alt={cohort.name}
-            fill
-            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-          />
-        ) : (
-          <GeneratedCover title={cohort.name} seed={cohort.slug} showTitle={false} />
-        )}
-      </CardMedia>
-      <CardBody>
-        <p className="text-[0.6875rem] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-          {cohort.cohortLevel} level
-        </p>
-        <CardTitle className="mt-1.5 text-lg">
-          <CardLink href={`/coaching/cohorts/${cohort.slug}`}>{cohort.name}</CardLink>
-        </CardTitle>
-        <p className="mt-3 text-xs text-muted-foreground">
-          {cohort.startsAt
-            ? `Starts ${new Date(cohort.startsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
-            : "Schedule to be announced"}
-        </p>
-      </CardBody>
-    </Card>
-  );
-}
-
-function MembershipTile({
-  membership,
-}: {
-  membership: { status: string; membership_tier: string | null; current_period_end: string | null } | null;
-}) {
-  return (
-    <Reveal
-      as="div"
-      delay={60}
-      className="rounded-(--radius-lg) border border-border bg-surface p-5"
-    >
-      <dt className="text-sm text-muted-foreground">Membership</dt>
-      {membership ? (
-        <>
-          <dd className="mt-1 font-display text-3xl font-semibold capitalize">
-            {membership.membership_tier ?? membership.status}
-          </dd>
-          {membership.current_period_end ? (
-            <p className="mt-2 text-sm text-muted-foreground">
-              {membership.status === "active" ? "Renews" : "Ends"}{" "}
-              {new Date(membership.current_period_end).toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
-            </p>
-          ) : null}
-          <Link
-            href="/account/membership"
-            className="mt-1 inline-block text-sm font-medium text-accent underline-offset-4 hover:underline"
-          >
-            Manage
-          </Link>
-        </>
-      ) : (
-        <>
-          <dd className="mt-1 font-display text-3xl font-semibold text-muted-foreground">
-            None
-          </dd>
-          <Link
-            href="/coaching/memberships"
-            className="mt-2 inline-block text-sm font-medium text-accent underline-offset-4 hover:underline"
-          >
-            Compare tiers
-          </Link>
-        </>
-      )}
-    </Reveal>
-  );
-}
-
-function CreditsTile({ credits }: { credits: { remaining: number } | null }) {
-  return (
-    <Reveal
-      as="div"
-      delay={90}
-      className="rounded-(--radius-lg) border border-border bg-surface p-5"
-    >
-      <dt className="text-sm text-muted-foreground">Session credits</dt>
-      <dd className="mt-1 font-display text-3xl font-semibold">
-        {credits ? credits.remaining : "—"}
-      </dd>
-      {credits && credits.remaining > 0 ? (
-        <Link
-          href="/account/bookings"
-          className="mt-2 inline-block text-sm font-medium text-accent underline-offset-4 hover:underline"
-        >
-          Book a session
-        </Link>
-      ) : (
-        <p className="mt-2 text-sm text-muted-foreground">
-          {credits ? "None remaining" : "None held"}
-        </p>
-      )}
-    </Reveal>
-  );
-}
-
-/** Public landing — the only Academy page a guest may see (note 01 §8). */
-function AcademyLanding() {
-  return (
-    <>
-      <Band tone="teal">
-        <div className="max-w-2xl space-y-5">
-          <Reveal as="p" className="text-sm font-medium tracking-widest uppercase">
-            The Academy
-          </Reveal>
+    <div className="space-y-8">
+      <ul className="grid gap-6 md:grid-cols-3">
+        {areas.map((a, i) => (
           <Reveal
-            as="h1"
-            delay={60}
-            className="font-display text-4xl leading-[1.05] font-semibold text-balance sm:text-5xl"
+            as="li"
+            key={a.title}
+            delay={i * 70}
+            className="flex flex-col rounded-(--radius-lg) border border-border bg-surface p-6 shadow-card"
           >
-            Where everything you buy is delivered
+            <IconTile name={a.icon} tone="accent" size="lg" className="mb-4" />
+            <h2 className="font-display text-xl">{a.title}</h2>
+            <p className="mt-2 flex-1 text-sm leading-relaxed text-muted-foreground">{a.blurb}</p>
+            <Link href={a.href} className="mt-5 text-sm font-medium text-accent underline-offset-4 hover:underline">
+              {a.cta} &rarr;
+            </Link>
           </Reveal>
-          <Reveal as="p" delay={120} className="text-lg text-pretty opacity-90">
-            Courses, coaching sessions and cohort workshops — all in one
-            place, tied to a single account.
-          </Reveal>
-          <Reveal delay={180} className="flex flex-wrap gap-3">
-            <ButtonLink href="/auth/sign-in?next=%2Facademy" variant="onBlock" size="lg">
-              Sign in
-            </ButtonLink>
-            <ButtonLink href="/coaching" variant="onBlockOutline" size="lg">
-              See what&apos;s available
-            </ButtonLink>
-          </Reveal>
+        ))}
+      </ul>
+      <div className="flex flex-col gap-4 rounded-(--radius-lg) bg-block-noir p-6 text-block-foreground sm:flex-row sm:items-center sm:justify-between sm:p-8">
+        <div>
+          <p className="font-display text-2xl font-semibold">Everything in one membership</p>
+          <p className="mt-1 text-block-foreground/80">Courses, coaching and more, from Silver to Ultimate.</p>
         </div>
-      </Band>
-
-      <Section>
-        <Container>
-          <ul className="grid gap-4 sm:grid-cols-3">
-            {[
-              ["Courses", "Modules and lessons, at your own pace."],
-              ["Coaching", "Book sessions from the series you hold."],
-              ["Cohorts", "Workshop schedules, resources and recordings."],
-            ].map(([title, blurb], index) => (
-              <Reveal
-                as="li"
-                key={title}
-                delay={index * 70}
-                className="rounded-(--radius-lg) border border-border bg-surface p-6"
-              >
-                <h2 className="font-display text-lg font-semibold">{title}</h2>
-                <p className="mt-2 text-sm text-muted-foreground">{blurb}</p>
-              </Reveal>
-            ))}
-          </ul>
-          <Reveal delay={280} className="mt-8 text-sm text-muted-foreground">
-            Access is tied to what you have bought or been granted. Signing in
-            does not by itself unlock anything.
-          </Reveal>
-        </Container>
-      </Section>
-    </>
+        <ButtonLink href="/coaching/memberships" variant="onBlock">
+          Compare memberships
+        </ButtonLink>
+      </div>
+    </div>
   );
 }

@@ -19,7 +19,7 @@ select plan(91);
 -- text goes stale silently (it had already drifted to 34 while asserting 35).
 select is(
   (select count(*)::int from information_schema.tables where table_schema = 'public'),
-  41,
+  49,
   'public schema table count matches the migrations'
 );
 
@@ -41,7 +41,7 @@ select isnt(
 );
 
 -- ---------------------------------------------------------------------------
--- Reference data — shipped by migration 0005, so it must exist everywhere
+-- Reference data — shipped by migration 0002_security_and_reference_data, so it must exist everywhere
 -- ---------------------------------------------------------------------------
 
 select cmp_ok(
@@ -279,7 +279,7 @@ select throws_ok(
 );
 
 -- An OWNER at aal2 with fewer than two registered keys is refused before the
--- action is even considered (migration 0014): an owner account cannot be
+-- action is even considered (migration 0004_operations): an owner account cannot be
 -- recovered by anyone else, so it must hold a spare.
 set local request.jwt.claim.aal = 'aal2';
 
@@ -354,7 +354,7 @@ select lives_ok(
 );
 
 -- ---------------------------------------------------------------------------
--- Storage buckets (migration 0019)
+-- Storage buckets (migration 0005_storage_contact_and_consent)
 --
 -- `public` is a per-BUCKET flag. Flipping one by accident exposes every object
 -- in it at a guessable URL, with no error and no sign that anything changed —
@@ -394,7 +394,7 @@ select isnt(
 );
 
 -- ---------------------------------------------------------------------------
--- Function execute privileges (migration 0018)
+-- Function execute privileges (migration 0004_operations)
 --
 -- PostgreSQL grants EXECUTE to PUBLIC by default, and `revoke ... from anon`
 -- does NOT remove a privilege inherited that way. These assertions exist
@@ -473,7 +473,7 @@ select is(
 );
 
 -- ---------------------------------------------------------------------------
--- Welcome (migration 0017)
+-- Welcome (migration 0004_operations)
 -- ---------------------------------------------------------------------------
 
 select has_column('public', 'profiles', 'welcomed_at', 'profiles records the welcome');

@@ -60,7 +60,6 @@ const ROUTES = [
   "/coaching/courses/level-one",
   "/about/testimonials",
   "/coaching/about",
-  "/give-get-go/publishing",
   "/this-route-does-not-exist",
 ];
 

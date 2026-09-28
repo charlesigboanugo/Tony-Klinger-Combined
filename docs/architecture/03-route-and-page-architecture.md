@@ -123,7 +123,7 @@ About is a **section, not a single page**:
 
 ```text
 /about                    Tony's Story — the biography
-/about/team               Meet the Team
+/about/team               (removed 2026-09-24 — permanent redirect to /about)
 /about/testimonials       Testimonials
 ```
 
@@ -153,6 +153,17 @@ The dynamic route displays an individual article.
 
 The exact content management implementation is defined elsewhere.
 
+**Page model (2026-09-25, revised the same day by the owner).** `/blog` opens on a centred
+hero — the title parted around an arched portrait, not the site's usual words-beside-photo
+split — then a card grid: the newest essay as a poster card filling a 2×2 cell on page 1,
+the rest as cards with their generated covers, 24 per page with a numbered pager. No
+dates, counts or essay numbers are shown (the stored dates are republication dates; they
+only order the archive). `/blog/[slug]` is a centred noir title card (title, byline,
+reading time) with the essay's cover as a ribbon across its lower edge, a single reading
+column (`Prose`), an author signature on Tony's own essays, and links to the adjacent
+newer and older essays. Each article emits `BlogPosting` JSON-LD and article Open Graph
+metadata with a canonical URL.
+
 ---
 
 # 7. Catalogue
@@ -162,6 +173,12 @@ The exact content management implementation is defined elsewhere.
 ```
 
 The Catalogue is the public discovery area for Tony Klinger's work and media.
+
+**Page model (2026-09-25, owner).** `/catalogue` ("All works" in the menu) is a hub of
+collections, not a list of works: a poster-wall hero, then one card per collection with
+published work, each leading to `/catalogue/[category]`, which lists that collection's
+works. Individual works are not repeated on the hub. All seven collections have a card;
+one with nothing published is marked "Coming soon" and does not link until it has work.
 
 The existing site catalogue contains destinations including:
 
@@ -291,6 +308,31 @@ must be tracked.
 
 Events are administered under `/admin/events`.
 
+**Implementation status (2026-09-26, migrations 0017–0018).** A booking on an event is its
+ticket: it carries a reference (`TK-` + eight characters, no look-alikes) shown as text and
+as a QR code on `/account/tickets/[id]`, which also offers an `.ics` calendar file and, for
+online and hybrid events, the private joining link.
+
+- **Free events** register on the event page (`register_for_event`).
+- **Paid events** sell a product of type `event` through the normal checkout
+  (`/checkout?event=<product slug>`), signed-in buyers only, one ticket each; checkout
+  refuses a full, past or undated event (`event_sale_status`). When the order grants its
+  `event` entitlement, a trigger issues the booking, so payment and ticket cannot drift.
+  A paid ticket is not self-cancellable; the account points to `/contact`.
+- **Waitlist**: a full event offers one; a cancelled place emails the earliest person not
+  yet told (first come, first served, not held).
+- **Formats**: `in_person`, `online`, `hybrid`. Joining links live in `event_access`,
+  readable only by ticket holders and staff.
+- **Event day**: a reminder the day before, and the joining link again within the hour for
+  online/hybrid (`event-reminders` job, every 15 minutes). Staff use `/admin/check-in`:
+  an in-page **scanner** (the phone's camera, decoded with the browser's BarcodeDetector or
+  jsQR) that checks tickets in one after another, with typing the code as its backup; it
+  refuses a ticket for a different event. The same page has the attendee list (check in /
+  undo) and the joining link form. A QR scanned with a phone's own camera app opens
+  `/admin/check-in/[reference]`, a one-tap check-in screen.
+- Events, covers and ticket products are edited in the generic admin at `/admin/events`;
+  gallery photos at `/admin/event-photos`.
+
 An event is distinct from a retreat and from a cohort. Retreats have their own commercial
 workflow under `/coaching/retreats`, and cohorts are a coaching product under
 `/coaching/cohorts`. `/events` is for public events that are not part of the coaching
@@ -315,6 +357,12 @@ compliance tooling expect to find.
 
 Each is a single static content page. They require no session, no entitlement and no
 dynamic segment.
+
+All three render through one shared layout (`src/components/content/LegalDocument.tsx`):
+a noir title band, an "In short" summary, a contents list beside the text from `lg`, and
+links to the other two policies. The site shows no consent banner because everything it stores is strictly necessary
+under PECR; the reasoning, and what would change it, is recorded in the `/cookies` page
+source (not shown to visitors, at the owner's request).
 
 ---
 
@@ -343,7 +391,6 @@ A baseline structure is:
 
 ```text
 /coaching
-├── /about
 ├── /memberships
 ├── /courses
 ├── /group-coaching
@@ -351,6 +398,10 @@ A baseline structure is:
 ├── /private-coaching
 └── /retreats
 ```
+
+How buying, access and booking fit together is a section of the `/coaching` overview
+(`#how-it-works`), not a page of its own. `/coaching/about` existed until 2026-09-26 and
+now redirects there permanently, so the storefront has one overview rather than two.
 
 Coaching enquiries use the site-wide `/contact` route rather than a separate
 `/coaching/contact`, so that one resource is not addressable at two URLs (§37).
@@ -690,6 +741,16 @@ Every route beneath `/academy` requires a session and the appropriate entitlemen
 no guest rendering of a course, cohort workspace, resource or recording. See note 01 §8 and
 note 05 §16.
 
+**Implemented 2026-09-26.** The entitled dashboard opens on a "pick up where you left off"
+panel (the course under way and its first unfinished lesson), then one "Coming up" timeline
+merging booked Group Coaching sessions and cohort workshops (joinable in the window, note 07
+§36), membership and session-credit cards, and the customer's courses and cohorts. The
+earlier four count tiles were removed (the owner rejects decorative counts site-wide). The
+signed-in empty state shows the three Academy areas with where to get each. The guest
+landing renders inside the public masthead and footer (note 04 §9). `/academy` has its own
+`loading.tsx` and `not-found.tsx`; the 404 deliberately reads "not found or not yours",
+because a withheld lesson and a missing one are indistinguishable (note 06 §38).
+
 ---
 
 # 19. Academy Courses
@@ -710,6 +771,11 @@ Further nested routes may be introduced if required, for example:
 ```
 
 The exact lesson URL structure should be chosen based on the final learning experience.
+
+**Chosen 2026-09-26:** `/academy/courses/[courseSlug]/lessons/[lessonSlug]` — the only
+nested course route. The lesson page carries the course outline beside the lesson (from
+`xl`; a disclosure above it below that), course progress at the top, and a single "Complete
+and continue" action (note 07 §34).
 
 ---
 
@@ -734,6 +800,13 @@ It may include:
 
 Access must be entitlement-based.
 
+**`/academy/cohorts/[cohortSlug]` built 2026-09-26.** Until then the Academy's cohort
+cards linked to the public sales page. The route shows the next workshop with its joining
+link, the rest of the schedule, recordings of past workshops and what the place includes.
+Workshops come back only with a live cohort entitlement (RLS); without one the page shows
+the cohort and a way to get it, never a bare 404 (§14). Progress and attendance are not
+tracked for cohorts — there is no data for them yet.
+
 ---
 
 # 21. Academy Coaching
@@ -753,6 +826,13 @@ It may include:
 - Relevant recordings/resources
 
 The public product information remains under `/coaching`.
+
+**Implemented 2026-09-26** as three lists: *Booked* (with the joining link in the window,
+note 07 §36), *Available to book* (linking to `/bookings/[id]`), and *Replays* (booked
+sessions that have ended, with their recording).
+
+**2026-09-27:** confirmed private coaching sessions join the *Booked* list, and an unspent
+private session shows as a "Choose a time" prompt (note 07 §27).
 
 ---
 
@@ -841,6 +921,11 @@ It is read-only and strictly scoped to the signed-in customer. It is not related
 `/admin/entitlements` (§25), which is the staff area for granting, adjusting and revoking
 entitlements across all customers.
 
+`/account/billing` (2026-09-27) shows the membership (renewal date, cancel, or "Keep my
+membership" once cancelling), the card on file, and billing history with Stripe receipts and
+invoice PDFs. Cancelling (with a confirmation dialog) and keeping a membership happen on the
+page; card changes and billing details open the Stripe Customer Portal (note 09 §17). `/account/orders/[id]` links the order's receipt.
+
 The exact grouping may be refined during UI design.
 
 ---
@@ -886,6 +971,20 @@ A dashboard may be:
 Additional operational pages can be introduced where required.
 
 Admin routes must be protected by server-side authorization.
+
+**Built out 2026-09-27.** Every baseline area now has a working page — Bookings, Payments,
+Emails and Settings were permission-checked placeholders. Three operational pages were added:
+
+```text
+/admin/orders/[id]   one order: lines, payments, entitlements granted, bookings   orders.read
+/admin/enquiries     contact-form messages, filter + mark read/replied/spam      users.read (update: users.update, via RLS)
+/admin/audit         the audit log, read-only                                     audit.read
+```
+
+`/admin/testimonial-videos` (already served by `[resource]`) is now linked from the
+navigation. Settings reports integration status (configured / mode / last activity) and
+never shows a secret; configuration itself stays in environment variables (note 09 §49).
+List filters and searches are GET parameters, so a filtered view is a URL.
 
 ---
 
@@ -1054,6 +1153,12 @@ Booking
 
 Customers should be able to view relevant bookings through Account and/or Academy where appropriate.
 
+**Private coaching (2026-09-27):** `/bookings/private/[serviceSlug]` — choose one of the
+service's open times, then pay (or book with an unspent session). Reached from the service
+page's "Check availability", which previously pointed at `/bookings/[bookableId]` with a
+service slug and so returned 404. The static `private` segment keeps it apart from
+`/bookings/[bookableId]` (group sessions). Staff manage times at `/admin/coaching-slots`.
+
 ---
 
 # 30. API
@@ -1212,7 +1317,6 @@ Examples:
 ```text
 /
 /about
-/about/team
 /about/testimonials
 /blog
 /catalogue
@@ -1483,6 +1587,7 @@ The exact pages, nested routes and supporting files may be expanded where later 
 
 | Date | Amendment |
 |------|-----------|
+| 2026-09-24 | **Public team page removed** at the client's request. `/about/team` now permanently redirects to `/about`; the "Meet the Team" nav item and the team teaser on `/about` are gone. Admin Team management and the `team_members` table are unchanged. Home page reordered: hero → About Tony → catalogue → coaching pitch → "Something for everyone" (the offers grid) → Testimonials. `/contact` gains social links and Substack, read from `src/lib/site/links.ts`. |
 | 2026-09-04 | §5, §34, §40: About made a **section** rather than a single page — `/about` (Tony's Story), `/about/team` and `/about/testimonials`. The test in §5 was already "only when the content genuinely requires separate destinations"; the reasoning that it is met is now recorded, since the default is one page. Team copy is ~4x the biography and is about other people; testimonials are a data-driven view already reused on the home and coaching pages, so the page is a "see all" destination rather than a second copy. Tony is excluded from the team page by slug so one person is not at two URLs (§37). |
 | 2026-08-28 | §7, §8, §34, §35, §40: canonical Catalogue structure recorded — `/catalogue` hub with seven categories (books, films, audio, interviews, stories-from-the-front-line, podcasts, watch), each following the collection/detail model. Individual works such as The Havana Chronicles, Solo2Darwin and Lights, Chutzpah, Action!! are detail pages within a category, not top-level entries; external works remain external links. Closes R9. |
 | 2026-08-28 | §25, §40: `/admin/blog` and `/admin/catalogue` added, making Blog and Catalogue first-class managed content domains. Supports R15. |
@@ -1504,3 +1609,16 @@ The exact pages, nested routes and supporting files may be expanded where later 
 | 2026-09-02 | §26.1 (new), §34, §40: `/welcome` recorded as the first-sign-in destination, per note 05 §7.3. Placed outside `/auth/` because it is the first page of the product rather than a step in authenticating; listed as protected, and excluded from indexing. |
 | 2026-09-02 | §7, §35, §40: `/give-get-go` added as a public overview route with `/give-get-go/[section]` covering Publishing, Films and Documentaries, per note 11. The section pages are VIEWS over existing `catalogue_items` — no content is duplicated and no new content entity is introduced. Give-Get-Go Education is an external destination (`give-get-go.com`) and deliberately has no route here. Opens R25: Documentaries has no catalogue category to draw from, so that section renders an explicit empty state rather than a mapping chosen by inference. |
 | 2026-09-05 | §26, §40: `/auth/2fa` added as the second-factor challenge, per note 05 §11.1. Placed inside `/auth/` because it is a step in authenticating, unlike `/welcome` (§26.1); enrolment stays in Account. Protected and excluded from indexing. |
+| 2026-09-25 | §6: blog page model recorded — contents-page index with lead spread, stable oldest-first essay numbers, numbered pager; article title card, reading column, adjacent-essay navigation, JSON-LD and canonical metadata. |
+| 2026-09-25 | §6: blog dates removed from every page and from article metadata (owner). Catalogue: two duplicate book entries retired (`how-to-get-your-movie-made` is part of *How to Get Into the Movie Business*; `twilight-of-the-gods` is the first edition of *Who Knows*); their URLs redirect permanently via `redirects()` in `next.config.ts`, the first config-level redirects in the app. |
+| 2026-09-25 | §6: blog revised (owner) — centred arch hero replacing the split, card grid with a poster lead replacing the numbered list, archive figures and essay numbers removed, article header centred. |
+| 2026-09-25 | §7: catalogue hub recorded as a hub of collections (poster wall, collection cards); works are listed only on their collection's page; empty collections are omitted from the hub. |
+| 2026-09-25 | §7: all seven collections shown on the hub; empty ones as unlinked "Coming soon" cards (owner). |
+| 2026-09-25 | §7, §35, §40: **`/give-get-go/[section]` removed** (owner: one page). Publishing, Films and Documentaries are now anchored sections of `/give-get-go`. `/give-get-go/{publishing,films,documentaries}` 308-redirect to `/give-get-go#{section}`. Dropped from the sitemap. See note 11, amendment 2026-09-25. |
+| 2026-09-26 | §9: **`/coaching/about` removed** (owner: one overview, not two). Its five-step "How it works" is now a section of `/coaching` (`#how-it-works`), and the old URL redirects there permanently (`next.config.ts`). Dropped from the sitemap and the Coaching menu. |
+| 2026-09-26 | §8.1: free-event registration implemented on the event page (`register_for_event`); paid events route to a ticket request until an event product exists; `/admin/events` recorded as not yet built. §8.2: legal pages share one layout; the no-banner cookie position recorded. |
+| 2026-09-26 | §8.1: event tickets (reference + QR), paid tickets via checkout, waitlist, formats, private joining links, reminders and staff check-in (`/admin/check-in`, `/admin/check-in/[reference]`), and `/account/tickets/[id]` (+ `/calendar`). Corrects the same day's note that `/admin/events` was unbuilt: it exists in the generic admin. |
+| 2026-09-26 | §8.1: in-page ticket scanner on `/admin/check-in`, with the typed code as backup, and a wrong-event guard. |
+| 2026-09-27 | §21, §29: `/bookings/private/[serviceSlug]` (choose a time and pay) and `/admin/coaching-slots`; private sessions shown in `/academy/coaching`. Fixes the service page's "Check availability" link, which 404'd. |
+| 2026-09-27 | §24: `/account/billing` rebuilt for self-service (membership cancel/keep, card, history with receipts) via the Stripe Customer Portal; order pages link their receipt. |
+| 2026-09-27 | §25: every baseline Admin page built (Bookings, Payments, Emails, Settings were placeholders). New `/admin/orders/[id]`, `/admin/enquiries` (contact messages — previously stored with no admin view) and `/admin/audit`. |

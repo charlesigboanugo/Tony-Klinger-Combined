@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { PageHeader } from "@/components/layout/PageHeader";
+import { AccountHeader } from "@/components/account/AccountHeader";
+import { IconTile, type IconName } from "@/components/ui/Icon";
 import { myProfile } from "@/lib/account";
 import { requireUser } from "@/lib/permissions";
 
@@ -23,24 +24,28 @@ export const metadata: Metadata = { title: "Settings", robots: { index: false } 
  * would either lie about what it does or destroy records that must be kept.
  * The page says plainly how to request it and what happens.
  */
-const AREAS = [
+const AREAS: Array<{ href: string; title: string; description: string; icon: IconName }> = [
   {
     href: "/account/profile",
+    icon: "user",
     title: "Profile",
     description: "Your name, display name and avatar.",
   },
   {
     href: "/account/security",
+    icon: "shield",
     title: "Security",
     description: "Password and two-factor keys.",
   },
   {
     href: "/account/notifications",
+    icon: "bell",
     title: "Notifications",
     description: "Which emails you receive, and opting out of marketing.",
   },
   {
     href: "/account/entitlements",
+    icon: "key",
     title: "Your access",
     description: "What you can use, how long it lasts and when it renews.",
   },
@@ -52,30 +57,31 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <PageHeader
+      <AccountHeader
         title="Settings"
         description="Everything about your account, and where to change it."
       />
 
-      <ul className="grid gap-4 sm:grid-cols-2">
+      <ul className="grid gap-5 sm:grid-cols-2">
         {AREAS.map((area) => (
           <li key={area.href}>
             <Link
               href={area.href}
-              className="group flex h-full flex-col rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card transition-[transform,box-shadow,border-color] duration-(--dur-base) ease-expo hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lift motion-reduce:transform-none motion-reduce:transition-none"
+              className="group flex h-full flex-col rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card transition-[transform,box-shadow,border-color] duration-(--dur-base) ease-expo hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-lift motion-reduce:transform-none motion-reduce:transition-none"
             >
-              <p className="font-display text-base font-semibold group-hover:text-primary">
-                {area.title}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {area.description}
-              </p>
-              <span
-                aria-hidden="true"
-                className="mt-3 text-sm text-primary transition-transform duration-(--dur-base) ease-expo group-hover:translate-x-1 motion-reduce:transform-none"
-              >
-                &rarr;
-              </span>
+              <div className="flex items-start gap-4">
+                <IconTile name={area.icon} tone="accent" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold group-hover:text-accent">{area.title}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{area.description}</p>
+                </div>
+                <span
+                  aria-hidden="true"
+                  className="mt-2 text-muted-foreground transition-transform duration-(--dur-base) ease-expo group-hover:translate-x-1 group-hover:text-accent motion-reduce:transform-none"
+                >
+                  &rarr;
+                </span>
+              </div>
             </Link>
           </li>
         ))}
@@ -85,9 +91,10 @@ export default async function SettingsPage() {
         aria-labelledby="closing"
         className="mt-10 rounded-(--radius-lg) border border-error/40 bg-error/5 p-5"
       >
-        <h2 id="closing" className="font-display text-base font-semibold">
+        <h2 id="closing" className="text-base font-semibold">
           Closing your account
         </h2>
+        <div>
         <p className="mt-2 text-sm text-muted-foreground">
           Email us from{" "}
           <span className="font-medium text-foreground">
@@ -108,6 +115,7 @@ export default async function SettingsPage() {
             Request account closure &rarr;
           </Link>
         </p>
+        </div>
       </section>
     </>
   );

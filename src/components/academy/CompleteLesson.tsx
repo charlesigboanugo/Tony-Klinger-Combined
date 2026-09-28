@@ -17,15 +17,21 @@ const initialState: ProgressState = {};
  *
  * Undo is the same control inverted, because a mis-click that cannot be
  * reversed turns a progress tracker into a liability.
+ *
+ * With a `nextHref` the one button both records the lesson and opens the next
+ * — the step a learner takes forty times a course, made one press instead of
+ * two. The last lesson has no next, so it simply marks complete.
  */
 export function CompleteLesson({
   lessonId,
   path,
   complete,
+  nextHref,
 }: {
   lessonId: string;
   path: string;
   complete: boolean;
+  nextHref?: string;
 }) {
   const [state, action] = useActionState(setLessonCompleteAction, initialState);
 
@@ -34,6 +40,7 @@ export function CompleteLesson({
       <input type="hidden" name="lessonId" value={lessonId} />
       <input type="hidden" name="path" value={path} />
       <input type="hidden" name="complete" value={complete ? "false" : "true"} />
+      {nextHref && !complete ? <input type="hidden" name="next" value={nextHref} /> : null}
 
       {state.error ? <FormMessage>{state.error}</FormMessage> : null}
 
@@ -47,7 +54,15 @@ export function CompleteLesson({
           </SubmitButton>
         </div>
       ) : (
-        <SubmitButton pendingLabel="Saving…">Mark as complete</SubmitButton>
+        <SubmitButton pendingLabel="Saving…">
+          {nextHref ? (
+            <>
+              Complete and continue <span aria-hidden="true">&rarr;</span>
+            </>
+          ) : (
+            "Mark as complete"
+          )}
+        </SubmitButton>
       )}
     </form>
   );

@@ -61,11 +61,11 @@ export function CardMedia({
   className?: string;
 }) {
   const ratios = {
-    "4/3": "aspect-[4/3]",
-    "3/4": "aspect-[3/4]",
-    "16/9": "aspect-[16/9]",
+    "4/3": "aspect-4/3",
+    "3/4": "aspect-3/4",
+    "16/9": "aspect-video",
     "1/1": "aspect-square",
-    "2/3": "aspect-[2/3]",
+    "2/3": "aspect-2/3",
   } as const;
 
   return (
@@ -151,7 +151,7 @@ export function CardLink({
       {...props}
       className={cn(
         "after:absolute after:inset-0 after:content-['']",
-        "rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-(--ring)",
+        "rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring",
         className,
       )}
     >

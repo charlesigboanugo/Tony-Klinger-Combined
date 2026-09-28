@@ -19,6 +19,7 @@ export function OwnedState({
   buyLabel,
   deliveryHref,
   priceLabel,
+  plain = false,
 }: {
   entitlement: EntitlementState;
   /**
@@ -31,6 +32,11 @@ export function OwnedState({
   buyLabel: string;
   deliveryHref: string;
   priceLabel?: string;
+  /**
+   * Inside a `PurchasePanel`, which already shows the price in a card of its
+   * own: render only the button, not a second card and a second price.
+   */
+  plain?: boolean;
 }) {
   if (entitlement.state === "active") {
     return (
@@ -65,6 +71,16 @@ export function OwnedState({
           </div>
         ) : null}
       </div>
+    );
+  }
+
+  if (plain) {
+    return buyHref ? (
+      <ButtonLink href={buyHref} size="lg" className="w-full">
+        {buyLabel}
+      </ButtonLink>
+    ) : (
+      <p className="text-sm text-muted-foreground">Not available to buy at the moment.</p>
     );
   }
 

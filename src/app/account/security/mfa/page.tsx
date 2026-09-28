@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 
 import { EnrolWebAuthn } from "@/app/account/security/mfa/EnrolWebAuthn";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { RemoveKey } from "@/app/account/security/mfa/RemoveKey";
+import { AccountHeader } from "@/components/account/AccountHeader";
+import { BackLink } from "@/components/ui/BackLink";
 import { ButtonLink } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/Field";
-import { REQUIRED_STAFF_FACTORS, getMfaState } from "@/lib/auth/mfa";
+import { KEY_RECONFIRM_MINUTES, REQUIRED_STAFF_FACTORS, getMfaState, mySecurityKeys } from "@/lib/auth/mfa";
 import { publicEnv } from "@/lib/env/public";
 import { requireSession } from "@/lib/permissions";
+import { describeAuthenticator } from "@/lib/utils/device";
 
 export const metadata: Metadata = {
   title: "Security keys",
@@ -42,9 +45,10 @@ export default async function MfaPage({
   const params = await searchParams;
   const required = params.required === "1";
   const ownerBlocked = params.owner === "1";
+  const removed = typeof params.removed === "string" ? params.removed : null;
 
   const context = await requireSession("/account/security/mfa");
-  const mfa = await getMfaState();
+  const [mfa, keys] = await Promise.all([getMfaState(), mySecurityKeys()]);
 
   const site = new URL(publicEnv.NEXT_PUBLIC_SITE_URL);
   const remaining = REQUIRED_STAFF_FACTORS - mfa.verifiedFactors;
@@ -53,15 +57,36 @@ export default async function MfaPage({
   const verified = mfa.current === "aal2";
   const needsVerification = hasKeys && !verified;
 
+  // The same minimum the database enforces on removal (migration 0022):
+  // an owner keeps two, other staff one, customers none.
+  const minimum = context.roles.includes("owner") ? 2 : context.isStaff ? 1 : 0;
+  const atMinimum = keys.length <= minimum;
+  const recentlyConfirmed = mfa.keyRecentlyConfirmed;
+
   /*
     NO Section/Container of its own. This page renders inside the account
     layout, which already provides the container and the column — wrapping
     again indented the heading 64px and dropped it 64px, so it no longer lined
     up with the sidebar the way every sibling page does.
   */
+  /*
+    The way back (note 04 §32.3). Normally to Security, which links here. An
+    owner sent here from Admin goes back there. A staff account held at the
+    gate (`required`, no verified session yet) gets no button: every other
+    account page would only send it straight back, and the header's "Back to
+    site" is the honest exit.
+  */
+  const back = ownerBlocked
+    ? { href: "/admin", label: "Admin" }
+    : required && !verified
+      ? null
+      : { href: "/account/security", label: "Security" };
+
   return (
     <>
-      <PageHeader
+      {back ? <BackLink href={back.href}>{back.label}</BackLink> : null}
+
+      <AccountHeader
         title="Security keys"
         description={
           context.isStaff
@@ -69,6 +94,14 @@ export default async function MfaPage({
             : "Add a security key for stronger protection. Optional for customers."
         }
       />
+
+      {removed ? (
+        <div className="mb-6">
+          <FormMessage tone="success">
+            {removed === "key" ? "The key" : `“${removed}”`} was removed. We&apos;ve emailed you to confirm.
+          </FormMessage>
+        </div>
+      ) : null}
 
       {/* Only shown when the operator still has something to do. Repeating
             "you need a key" after they have just used one is noise. */}
@@ -113,14 +146,14 @@ export default async function MfaPage({
           </div>
         ) : null}
 
-        <div className="rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card">
-          <div className="flex items-baseline justify-between gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Registered keys</p>
-              <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
-                {mfa.verifiedFactors}
-              </p>
-            </div>
+        <section
+          aria-labelledby="your-keys"
+          className="rounded-(--radius-lg) border border-border bg-surface shadow-card"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+            <h2 id="your-keys" className="text-lg">
+              Your keys <span className="text-sm font-normal text-muted-foreground">({keys.length})</span>
+            </h2>
             {verified ? (
               <span className="rounded-full border border-success/40 bg-success/10 px-3 py-1 text-xs font-medium text-success">
                 This session is verified
@@ -128,27 +161,62 @@ export default async function MfaPage({
             ) : null}
           </div>
 
-          {mfa.factors.length > 0 ? (
-            <ul className="mt-4 space-y-1.5 border-t border-border pt-4 text-sm">
-              {mfa.factors.map((factor) => (
-                <li key={factor.id} className="flex items-center gap-2">
-                  <span aria-hidden="true" className="text-success">
-                    &#10003;
-                  </span>
-                  <span>{factor.name}</span>
-                </li>
-              ))}
+          {keys.length === 0 ? (
+            <p className="px-5 py-6 text-sm text-muted-foreground">No keys registered yet.</p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {keys.map((key) => {
+                const where = describeAuthenticator(key.aaguid);
+                const used = key.lastUsedAgo;
+                return (
+                  <li key={key.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+                    <span
+                      aria-hidden="true"
+                      className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-surface-muted text-muted-foreground"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="8" cy="12" r="3.5" />
+                        <path d="M11.5 12H21M17 12v3M20 12v2" />
+                      </svg>
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{key.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {where ? `${where} · ` : ""}
+                        Added{" "}
+                        {new Date(key.createdAt).toLocaleDateString("en-GB", {
+                          day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London",
+                        })}
+                        {" · "}
+                        {used ? `last used ${used}` : "not used to sign in yet"}
+                      </p>
+                    </div>
+                    {atMinimum && minimum > 0 ? (
+                      <span className="text-xs text-muted-foreground">Required — add another to remove</span>
+                    ) : (
+                      <RemoveKey factorId={key.id} name={key.name} />
+                    )}
+                  </li>
+                );
+              })}
             </ul>
+          )}
+
+          {keys.length > 0 && !recentlyConfirmed && !atMinimum ? (
+            <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+              Removing a key asks you to confirm with one of your keys first, if you haven&apos;t in the last{" "}
+              {KEY_RECONFIRM_MINUTES} minutes.
+            </p>
           ) : null}
 
           {context.isStaff ? (
-            <p className="mt-4 text-sm text-muted-foreground">
+            <p className="border-t border-border px-5 py-3 text-sm text-muted-foreground">
               {remaining > 0
                 ? `${remaining} more recommended. Two keys means losing one is an inconvenience rather than a lockout.`
                 : "Requirement met."}
             </p>
           ) : null}
-        </div>
+        </section>
 
         {/* Enrolment is secondary once a key exists — it adds a spare, it is
               not how you get in. */}

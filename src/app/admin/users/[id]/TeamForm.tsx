@@ -95,7 +95,7 @@ export function TeamForm({
             type="checkbox"
             name="publish"
             defaultChecked
-            className="mt-0.5 size-4 accent-[var(--color-primary)]"
+            className="mt-0.5 size-4 accent-primary"
           />
           <span>
             Show on the public team page straight away. Untick to create it as a

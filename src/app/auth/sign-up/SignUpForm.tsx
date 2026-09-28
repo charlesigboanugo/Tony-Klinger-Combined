@@ -3,7 +3,9 @@
 import { useActionState } from "react";
 
 import { signUpAction } from "@/app/auth/actions";
+import { AuthNotice } from "@/app/auth/AuthParts";
 import { Field, FormMessage, Input } from "@/components/ui/Field";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import type { AuthFormState } from "@/lib/validation/auth";
 
@@ -13,7 +15,7 @@ export function SignUpForm({ next }: { next?: string }) {
   const [state, action] = useActionState(signUpAction, initialState);
 
   if (state.success) {
-    return <FormMessage tone="success">{state.success}</FormMessage>;
+    return <AuthNotice title="One last step">{state.success}</AuthNotice>;
   }
 
   return (
@@ -46,16 +48,15 @@ export function SignUpForm({ next }: { next?: string }) {
         hint="At least 8 characters."
         errors={state.fieldErrors?.password}
       >
-        <Input
+        <PasswordInput
           name="password"
-          type="password"
           autoComplete="new-password"
           required
           errors={state.fieldErrors?.password}
         />
       </Field>
 
-      <SubmitButton className="w-full" pendingLabel="Creating account…">
+      <SubmitButton size="lg" className="w-full" pendingLabel="Creating account…">
         Create account
       </SubmitButton>
     </form>

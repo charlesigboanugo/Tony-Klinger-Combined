@@ -43,7 +43,7 @@ const PUBLIC_ROUTES = [
   // Detail pages, where a template renders content it does not control.
   "/catalogue/films", "/catalogue/audio", "/coaching/courses/level-one",
   "/coaching/group-coaching", "/about/testimonials", "/coaching/about",
-  "/give-get-go/publishing", "/give-get-go/films", "/terms", "/accessibility",
+  "/terms", "/accessibility",
   "/this-route-does-not-exist",
 ];
 
