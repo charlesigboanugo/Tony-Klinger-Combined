@@ -1722,6 +1722,30 @@ Verified 2026-09-29 on a production build: a 166-check whole-site run (every pub
 catalogue/blog/coaching/event details, customer area as `gold@test.local`, access gates,
 404s, mobile menu, cart, ownership, sign-in/out) passed; click-to-new-page median 34–193 ms.
 
+### 47.2 Navigation feedback: menu prefetch and the progress bar
+
+*Recorded 2026-09-29 (owner). Client-side navigation never turns the browser's own spinner,
+so a click on a page that is not ready yet looked like a pause — worse on phones.*
+
+**Menu prefetch.** Next prefetches links as they scroll into view, which covers the desktop
+header, but on a phone the links are inside the closed menu, so nothing was fetched until
+it opened and the tap then waited on the network. `PublicHeader` prefetches every internal
+page in `publicNavigation` (top level and submenus) with `router.prefetch` once the browser
+is idle (`requestIdleCallback`, 4 s timeout). Skipped under data-saver or 2G. The pages are
+pre-built, so each costs a few KB.
+
+**Progress bar.** `NavigationProgress`, mounted once in the root layout so it covers every
+area: a 3 px `--accent` bar at the top of the screen, started by a click on any internal
+link (capture phase, before `next/link`), shown only after 100 ms so an instant navigation
+never flashes it, creeping towards 85% and completing and fading when the URL changes
+(pathname, or the query for filter links); a 12 s cap clears it if a navigation never lands.
+Transform and opacity only, hand-built, no library (the §37.1 motion rule).
+
+Verified 2026-09-29 on a production build at phone size: all menu pages prefetched while
+idle; a menu tap to /catalogue/books took 102 ms with no bar flash; on a throttled network
+the bar showed and cleared on arrival; a same-page link showed none; no errors on public,
+nonce and 404 pages.
+
 ---
 
 ## 48. Mobile Quality

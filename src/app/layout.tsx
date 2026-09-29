@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Poppins } from "next/font/google";
 
+import { NavigationProgress } from "@/components/navigation/NavigationProgress";
+
 import "./globals.css";
 
 /**
@@ -79,6 +81,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
+        <NavigationProgress />
         {children}
       </body>
     </html>

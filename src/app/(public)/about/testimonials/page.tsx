@@ -57,7 +57,7 @@ export default async function TestimonialsPage() {
         centred. The cinema's name is in the photo itself, so there is no
         venue tag, and split heroes are out.
       */}
-      <section className="grain relative isolate flex h-[min(calc(100svh-6rem),60rem)] min-h-[36rem] flex-col justify-end overflow-hidden bg-block-noir text-block-foreground lg:h-[min(calc(100svh-6.5rem),60rem)]">
+      <section className="grain relative isolate flex h-[min(calc(100svh-6rem),60rem)] min-h-144 flex-col justify-end overflow-hidden bg-block-noir text-block-foreground lg:h-[min(calc(100svh-6.5rem),60rem)]">
         {/* The room's light: the same photo, small, blurred and dim. */}
         <div aria-hidden="true" className="absolute inset-0 -z-20 opacity-45">
           <Image

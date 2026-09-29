@@ -559,6 +559,17 @@
  * Applied only via Tailwind's `motion-safe:` variant, and the reduced-motion
  * block above collapses any that slip through. Short and easing-out: a menu
  * that takes longer than ~200ms to appear feels broken rather than polished. */
+/* NavigationProgress: fast at first, then creeping, never reaching the end on
+   its own — completion is shown only when the page has actually arrived. */
+@keyframes nav-progress {
+  from {
+    transform: scaleX(0.08);
+  }
+  to {
+    transform: scaleX(0.85);
+  }
+}
+
 @keyframes nav-in {
   from {
     opacity: 0;

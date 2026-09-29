@@ -428,7 +428,7 @@ export default async function AboutPage() {
                         from lg. It grows on hover, and the title brightens. */}
                     <span
                       aria-hidden="true"
-                      className="absolute top-[1.05rem] -left-[1.8rem] size-2.5 rounded-full bg-primary ring-4 ring-block-noir transition-transform duration-(--dur-base) ease-expo group-hover:scale-150 lg:-top-[1.85rem] lg:left-0"
+                      className="absolute top-[1.05rem] left-[-1.8rem] size-2.5 rounded-full bg-primary ring-4 ring-block-noir transition-transform duration-(--dur-base) ease-expo group-hover:scale-150 lg:top-[-1.85rem] lg:left-0"
                     />
                     <span className={cn(eyebrow, "block text-block-foreground/65")}>{c.era}</span>
                     <span className="mt-1.5 flex items-baseline gap-2.5">

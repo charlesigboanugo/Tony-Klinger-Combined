@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Container } from "@/components/layout/Container";
@@ -39,7 +39,36 @@ import { cn } from "@/lib/utils/cn";
  */
 export function PublicHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const visitor = useVisitor(pathname);
+
+  /*
+    Prefetch every page in the menu once the browser is idle (note 10 §47.2).
+    Next prefetches links as they scroll into view, which covers the desktop
+    bar — but on a phone the links live in the closed menu, so nothing was
+    fetched until it opened and the tap then waited on the network. Skipped
+    under data-saver or 2G. The pages are pre-built, so each is a few KB.
+  */
+  useEffect(() => {
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } })
+      .connection;
+    if (connection?.saveData || /2g/.test(connection?.effectiveType ?? "")) return;
+
+    const hrefs = new Set(
+      publicNavigation
+        .flatMap((item) => [item, ...(item.children ?? [])])
+        .filter((item) => !item.external && item.href.startsWith("/"))
+        .map((item) => item.href.split("#")[0]),
+    );
+    const run = () => hrefs.forEach((href) => router.prefetch(href));
+
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(run, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = globalThis.setTimeout(run, 2000);
+    return () => globalThis.clearTimeout(id);
+  }, [router]);
   const userEmail = visitor?.email ?? null;
   const cartCount = visitor?.cartCount ?? 0;
   const [open, setOpen] = useState(false);
