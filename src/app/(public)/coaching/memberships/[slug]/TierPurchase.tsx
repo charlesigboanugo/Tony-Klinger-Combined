@@ -32,12 +32,22 @@ import { cn } from "@/lib/utils/cn";
  *
  * A tier sold only one way renders no chooser at all, because there is no
  * choice to make.
+ *
+ * `?billing=` is read by `TierPurchaseFromUrl`, rendered inside <Suspense>
+ * with a plain `TierPurchase` as the fallback, because the page is pre-built
+ * (note 10 §47.1) and the pre-built HTML still has to carry the price.
  */
+export function TierPurchaseFromUrl(props: Omit<Parameters<typeof TierPurchase>[0], "fromUrl">) {
+  return <TierPurchase {...props} fromUrl={useSearchParams().get("billing")} />;
+}
+
 export function TierPurchase({
   tierName,
   productSlug,
   prices,
+  fromUrl = null,
 }: {
+  fromUrl?: string | null;
   tierName: string;
   /**
    * The PRODUCT slug, never the tier slug. The tier is `gold` and the product
@@ -47,9 +57,6 @@ export function TierPurchase({
   productSlug: string | null;
   prices: SelectablePrice[];
 }) {
-  const params = useSearchParams();
-  const fromUrl = params.get("billing");
-
   const [period, setPeriod] = useState<BillingPeriod>(
     isBillingPeriod(fromUrl) ? fromUrl : "monthly",
   );

@@ -1169,6 +1169,39 @@ Examples include:
 - Sensitive account changes
 - External API calls using secrets
 
+## 32.1 Content-Security-Policy: nonce where it counts
+
+*Recorded 2026-09-29 (owner's decision, "middle ground"); implemented in `src/proxy.ts`.*
+
+A per-request nonce CSP (`script-src 'self' 'nonce-…' 'strict-dynamic'`) can only be
+stamped into a page that is rendered for that request. Public pages are now pre-built
+(note 10 §47.1), so the policy is split by area:
+
+| Area | Rendering | `script-src` |
+|------|-----------|--------------|
+| `/`, `/about*`, `/blog*`, `/catalogue*`, `/coaching*`, `/events` (index), `/give-get-go`, `/privacy`, `/terms`, `/cookies`, `/contact` | pre-built (SSG/ISR) | `'self' 'unsafe-inline'`, no nonce |
+| `/events/<slug>` | per request | `'self' 'unsafe-inline'`, no nonce (public area) |
+| any unknown URL (the pre-built 404 page) | pre-built | `'self' 'unsafe-inline'`, no nonce |
+| `/account`, `/academy`, `/admin`, `/auth`, `/checkout`, `/bookings`, `/cart`, `/welcome` | per request (auth and checkout layouts force it) | nonce + `'strict-dynamic'` |
+
+The nonce is applied by an allow-list of these sensitive prefixes (`NONCE_PREFIXES` in
+`proxy.ts`), not by excluding public ones: an unknown URL is answered by the pre-built 404
+page, which has no nonce, so a default-nonce rule blocked its scripts. Every page under a
+nonce prefix must render per request; one that is pre-built there loses its scripts.
+
+Every other directive (origins, `frame-src`, `form-action`, `frame-ancestors`,
+`object-src`, `base-uri`) is identical in both policies.
+
+**Accepted risk.** On public pages an injected script would run, and the Supabase session
+cookies are readable by page scripts, so it could act as a signed-in visitor. Content there
+is written only by staff and React escapes output, so injection is unlikely; the nonce stays
+on every area that handles money, access or credentials.
+
+**Session refresh.** The proxy skips `getUser()` on pre-built public paths (they read
+nothing about the visitor). The header's `/api/session` call and Server Actions refresh the
+session instead, both of which can write cookies. `/events/<slug>` is excluded from the
+skip because it reads the visitor server-side and a rotated refresh token must be saved.
+
 ---
 
 # 33. Row Level Security

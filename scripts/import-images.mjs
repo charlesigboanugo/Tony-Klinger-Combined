@@ -159,9 +159,9 @@ const COVERS = {
   // artwork, the caricature of Tony in the Southeast Media section, the Look
   // Back Machine logo, and a signed Kirk Douglas portrait from Tony's library
   // for the Danny Kelly interview about Douglas's death.
-  "the-sods-law-podcast": "67987d_28a4456f63d74d41a8098b7198cf64fa~mv2.jpg",
-  "southeast-media-podcasts": "67987d_85af3cfb4f9a4865bf5cc6518006c439~mv2.png",
-  "the-look-back-machine-podcast": "67987d_a20071b5c7ed43c1bf075fbd9a95339a~mv2.jpg",
+  "the-sods-law-podcast": "189276425_10158675473589262_3134665764272631719_n.jpg",
+  "southeast-media-podcasts": "12_front.PNG",
+  "the-look-back-machine-podcast": "thumbnail.jpg",
   "bbc-radio-birmingham-danny-kelly": "Kirk_douglas_photo_signed.jpg",
   // The rest had no usable image on the old site; each is the show's or the
   // platform's own artwork (supabase/content/images/CREDITS.md).

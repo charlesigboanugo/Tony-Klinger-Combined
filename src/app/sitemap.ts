@@ -14,7 +14,13 @@ import { absoluteUrl } from "@/lib/urls";
  * Content routes are generated from the database rather than hand-listed, so a
  * newly published post or catalogue entry appears without anyone remembering to
  * add it here. Only PUBLISHED rows are returned by those queries.
+ *
+ * Those queries read no cookies, so without a refresh time this would be built
+ * once at deploy and never list anything published afterwards (note 10 §47.1).
+ * Admin saves also revalidate it directly.
  */
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = [
     "/",

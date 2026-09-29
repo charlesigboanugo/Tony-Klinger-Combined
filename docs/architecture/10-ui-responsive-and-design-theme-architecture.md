@@ -1670,6 +1670,58 @@ Prefer:
 
 Do not make the entire application a Client Component merely for convenience.
 
+### 47.1 Rendering strategy: pre-built public pages, per-request private ones
+
+*Recorded 2026-09-29 ("Plan A"). Fixes the pause-then-jump on navigation: every public page
+was rendered per request because the public layout read the session cookie.*
+
+**Pre-built (SSG/ISR).** All public content pages, including every detail page
+(`generateStaticParams` returns `[]`, so each is built on its first visit and then cached).
+The `(public)` layout sets `revalidate = 3600`; `/events` uses 300 seconds so an event moves
+to "past" promptly. Any admin content save or delete calls `revalidatePath("/", "layout")`,
+so edits appear immediately rather than at the hourly refresh. `sitemap.ts` also sets
+`revalidate = 3600` and is revalidated by name on admin saves: it reads the database without
+cookies, so without that it would be frozen at deploy.
+
+Rules that keep them pre-built:
+
+- Content loaders in `src/lib/content/` read through `createPublicClient()`
+  (`src/lib/supabase/public.ts`): the anon key, no cookies, so exactly the signed-out view.
+  The cookie-bound `createClient()` must not be used by a public page.
+- The public layout reads nothing about the visitor. The masthead fetches the account email
+  and cart count after load from `GET /api/session` (`useVisitor`), refetching on navigation,
+  after "Add to cart" and cart changes, and clearing at once on sign-out.
+- Per-visitor parts load in the browser after the page: coaching product pages show the
+  guest view, then `viewerEntitlementAction` switches them to "You already have access"
+  (`ViewerOwnership.tsx`). Checkout still re-checks entitlement server-side.
+- No `searchParams` on the server: the blog archive pages are paths (`/blog/page/N`; the
+  proxy 308-redirects old `?page=N`), and the testimonials `?about=` filter runs in the
+  browser inside `<Suspense>`.
+
+**Per request (SSR).** Account, Academy, Admin, auth, checkout, bookings, cart, welcome, and
+`/events/<slug>` (its booking panel is the visitor's ticket, waiting-list place and live
+place count). These keep the CSP nonce (note 05 §32.1).
+
+**Loading states.** `loading.tsx` in `account`, `admin`, `bookings`, `checkout` and
+`academy`, all through `PageSkeleton`, so a click always answers at once. **Deliberately none
+in `(public)`:** a loading boundary makes the response stream with status 200 before the page
+knows it is missing, so `notFound()` produced soft 404s (200 + noindex) on every public URL.
+Public pages are pre-built, so they need no skeleton.
+
+**`useSearchParams()` on pre-built pages must sit inside `<Suspense>`**, with a fallback that
+still renders the content (so it is in the HTML): the membership pricing (`?billing=`) uses
+`BillingPeriodFromUrl` / `TierPurchaseFromUrl` inside Suspense, with the plain component as
+the fallback. The removed `(public)` loading boundary had been providing this implicitly.
+
+**Sensitive areas are forced per request.** The `auth` and `checkout` layouts set
+`dynamic = "force-dynamic"`: pages there that read nothing per request (forgot-password,
+verify, checkout/cancel) were otherwise pre-built with no nonce, and the nonce policy
+blocked their scripts, so their forms never ran.
+
+Verified 2026-09-29 on a production build: a 166-check whole-site run (every public page,
+catalogue/blog/coaching/event details, customer area as `gold@test.local`, access gates,
+404s, mobile menu, cart, ownership, sign-in/out) passed; click-to-new-page median 34–193 ms.
+
 ---
 
 ## 48. Mobile Quality

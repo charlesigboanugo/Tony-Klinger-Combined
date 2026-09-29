@@ -947,6 +947,10 @@ It should be applied to the public routes.
 
 The public layout should not wrap Admin or Academy with the public footer/header unless deliberately required.
 
+**It reads nothing about the visitor** (2026-09-29). Public pages are pre-built, so the
+header's sign-in state and cart badge are fetched after load from `/api/session` rather than
+passed down from the layout (note 10 §47.1).
+
 ---
 
 # 30. Academy Layout

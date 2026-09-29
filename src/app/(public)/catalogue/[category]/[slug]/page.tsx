@@ -284,3 +284,8 @@ function Neighbour({ item, direction }: { item: CatalogueItem | null; direction:
     </Link>
   );
 }
+
+/** Built on its first visit, then served from cache (note 10 §47.1). */
+export function generateStaticParams() {
+  return [];
+}

@@ -21,12 +21,71 @@ import { requestOrigin } from "@/lib/urls";
  * code can read it via headers() if it ever needs to pass one to <Script>.
  *
  * COST: nonces require dynamic rendering, because a nonce can only be injected
- * during SSR. That is already true of 83 of this app's 85 routes — the public
- * header reads the session cookie to show sign-in state — so this gives up
- * almost nothing here.
+ * during SSR. So the nonce is applied to the sensitive, per-request areas only;
+ * pre-built public pages get the nonce-free policy below.
  */
-function contentSecurityPolicy(nonce: string): string {
+/*
+  PRE-BUILT PUBLIC PAGES CANNOT CARRY A NONCE (owner's decision, 2026-09-29;
+  note 05 §32.1, note 10 §47.1).
+
+  Their HTML is built once and served to everyone, so no per-request value can
+  be in it. They get the same policy WITHOUT the nonce: 'unsafe-inline' for
+  scripts, which Next's inline hydration scripts need, and no 'strict-dynamic'
+  (which would make browsers ignore 'self' and 'unsafe-inline'). Every other
+  directive — origins, frames, forms, framing — is unchanged. Everything
+  sensitive (Account, Academy, Admin, checkout, bookings, cart, sign-in) keeps
+  the nonce and stays rendered per request.
+
+  They also skip the session refresh below: they read nothing about the
+  visitor, and the header's /api/session call refreshes the session itself.
+  /events/<slug> is the exception inside a public prefix: it reads the
+  visitor's ticket on the server, so its session must be refreshed here or a
+  rotated refresh token would be lost.
+*/
+const PUBLIC_PREFIXES = [
+  "/about",
+  "/blog",
+  "/catalogue",
+  "/coaching",
+  "/events",
+  "/give-get-go",
+  "/privacy",
+  "/terms",
+  "/cookies",
+  "/contact",
+] as const;
+
+function isPrebuiltPublic(pathname: string): boolean {
+  if (pathname === "/") return true;
+  if (pathname.startsWith("/events/")) return false;
+  return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+/*
+  The nonce goes to the sensitive areas only, all of which render per request.
+  Everything else — public pages, /events/<slug>, and any unknown URL — gets
+  the nonce-free policy. Unknown URLs matter: they are answered by the
+  pre-built 404 page, which has no nonce, so the nonce policy blocked its
+  scripts.
+*/
+const NONCE_PREFIXES = [
+  "/account",
+  "/academy",
+  "/admin",
+  "/auth",
+  "/bookings",
+  "/cart",
+  "/checkout",
+  "/welcome",
+] as const;
+
+function needsNonce(pathname: string): boolean {
+  return NONCE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+function contentSecurityPolicy(nonce: string | null): string {
   const isDev = process.env.NODE_ENV === "development";
+  const scripts = nonce ? `'nonce-${nonce}' 'strict-dynamic'` : "'unsafe-inline'";
 
   // The browser talks to Supabase directly from client components (WebAuthn
   // enrolment), so its origin must be reachable by fetch and websocket.
@@ -39,10 +98,10 @@ function contentSecurityPolicy(nonce: string): string {
     // browsers that honour it, so the nonce becomes the only key.
     // 'unsafe-eval' is required in development ONLY: React uses eval to rebuild
     // server error stacks in the browser. It is never sent in production.
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://challenges.cloudflare.com${isDev ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' ${scripts} https://challenges.cloudflare.com${isDev ? " 'unsafe-eval'" : ""}`,
     // Tailwind ships a real stylesheet, but Next still emits some inline style
     // during development's fast refresh.
-    `style-src 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}' 'unsafe-inline'`}`,
+    `style-src 'self' ${isDev || !nonce ? "'unsafe-inline'" : `'nonce-${nonce}' 'unsafe-inline'`}`,
     /*
       STYLE ATTRIBUTES ARE GOVERNED SEPARATELY, and must be allowed.
 
@@ -154,8 +213,25 @@ function signInUrl(request: NextRequest): URL {
 }
 
 export async function proxy(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+
+  // Blog archive pages moved from ?page=N to /blog/page/N so they can be
+  // pre-built; keep old links working.
+  if (pathname === "/blog" && searchParams.has("page")) {
+    const n = Math.floor(Number(searchParams.get("page")));
+    const url = new URL(n > 1 ? `/blog/page/${n}` : "/blog", requestOrigin(request.headers));
+    return NextResponse.redirect(url, 308);
+  }
+
+  if (isPrebuiltPublic(pathname)) {
+    const response = NextResponse.next();
+    response.headers.set("Content-Security-Policy", contentSecurityPolicy(null));
+    response.headers.set("Accept-CH", "Sec-CH-UA-Model, Sec-CH-UA-Platform-Version");
+    return response;
+  }
+
   // crypto.randomUUID is available on the Node runtime the proxy runs on.
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const nonce = needsNonce(pathname) ? Buffer.from(crypto.randomUUID()).toString("base64") : null;
   const csp = contentSecurityPolicy(nonce);
 
   /**
@@ -168,8 +244,10 @@ export async function proxy(request: NextRequest) {
    */
   const headersWithNonce = () => {
     const headers = new Headers(request.headers);
-    headers.set("x-nonce", nonce);
-    headers.set("Content-Security-Policy", csp);
+    if (nonce) {
+      headers.set("x-nonce", nonce);
+      headers.set("Content-Security-Policy", csp);
+    }
     /*
       The path being requested, so a LAYOUT can name it.
 

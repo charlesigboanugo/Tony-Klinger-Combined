@@ -8,6 +8,7 @@ import {
 } from "@/app/(public)/cart/actions";
 import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { VisitorSync } from "@/components/navigation/VisitorSync";
 import { ButtonLink } from "@/components/ui/Button";
 import { readCart } from "@/lib/commerce/cart";
 import { cartTotal, priceCart } from "@/lib/commerce/orders";
@@ -45,6 +46,7 @@ export default async function CartPage() {
 
   return (
     <Section>
+      <VisitorSync signal={stored.reduce((n, l) => n + l.qty, 0)} />
       <Container>
         <PageHeader
           eyebrow="Checkout"

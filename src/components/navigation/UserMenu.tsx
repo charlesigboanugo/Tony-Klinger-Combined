@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { signOutAction } from "@/app/auth/actions";
+import { announceSignedOut } from "@/components/navigation/useVisitor";
 import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 
@@ -124,7 +125,7 @@ export function UserMenu({ email }: { email: string }) {
               {item.label}
             </Link>
           ))}
-          <form action={signOutAction} className="mt-1 border-t border-border pt-1">
+          <form action={signOutAction} onSubmit={announceSignedOut} className="mt-1 border-t border-border pt-1">
             <button
               type="submit"
               role="menuitem"

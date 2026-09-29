@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import type { CSSProperties } from "react";
 
 import { Container, Section } from "@/components/layout/Container";
@@ -34,6 +35,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/blog" },
 };
 
+export const revalidate = 3600;
+
 const PER_PAGE = 24;
 
 const beat = (ms: number) => ({ animationDelay: `${ms}ms` }) as CSSProperties;
@@ -59,14 +62,17 @@ const H1_LOOK =
  * the writing (owner, 2026-09-25); they order the archive and nothing else.
  * Counts and essay numbers were removed on the owner's instruction the same
  * day.
+ *
+ * Later pages live at /blog/page/N (which re-exports this component), not
+ * ?page=N: a path can be pre-built, a query string cannot (note 10 §47.1).
  */
-export default async function BlogPage({ searchParams }: PageProps<"/blog">) {
-  const params = await searchParams;
-  const raw = typeof params.page === "string" ? Number(params.page) : 1;
+export default async function BlogPage({ params }: { params: Promise<{ page?: string }> }) {
+  const raw = Number((await params).page ?? 1);
   const page = Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 1;
 
   const [posts, total] = await Promise.all([listPostsPage(page, PER_PAGE), countPosts()]);
   const lastPage = Math.max(1, Math.ceil(total / PER_PAGE));
+  if (page > lastPage) notFound();
 
   // The newest post leads page 1 only — on page 3 of an archive there is no
   // "lead story", and promoting an arbitrary one would misstate its weight.
@@ -304,7 +310,7 @@ function ReadMore({ className }: { className?: string }) {
  * so a long archive never produces a row of forty numbers.
  */
 function Pager({ page, lastPage }: { page: number; lastPage: number }) {
-  const href = (n: number) => (n === 1 ? "/blog" : `/blog?page=${n}`);
+  const href = (n: number) => (n === 1 ? "/blog" : `/blog/page/${n}`);
 
   const wanted = new Set([1, lastPage, page - 1, page, page + 1]);
   const pages = [...wanted].filter((n) => n >= 1 && n <= lastPage).sort((a, b) => a - b);

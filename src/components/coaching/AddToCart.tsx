@@ -3,6 +3,7 @@
 import { useFormStatus } from "react-dom";
 
 import { addToCartAction } from "@/app/(public)/cart/actions";
+import { announceVisitorChange } from "@/components/navigation/useVisitor";
 import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 
@@ -67,7 +68,12 @@ export function AddToCart({
         </ButtonLink>
       ) : null}
 
-      <form action={addToCartAction}>
+      <form
+        action={async (formData) => {
+          await addToCartAction(formData);
+          announceVisitorChange();
+        }}
+      >
         <input type="hidden" name="slug" value={slug} />
         {billing ? <input type="hidden" name="billing" value={billing} /> : null}
         <AddButton label={label} />

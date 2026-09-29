@@ -1,7 +1,7 @@
 import "server-only";
 
 import { embedUrl, lessonVideo } from "@/lib/academy/video";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 /** A filmed testimonial, with its cover resolved and its player address built. */
 export type TestimonialVideo = {
@@ -25,7 +25,7 @@ export type TestimonialVideo = {
  * stays a data change.
  */
 export async function listTestimonialVideos(): Promise<TestimonialVideo[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("testimonial_videos")
     .select("id,slug,title,attributed_to,duration_seconds,video_provider,video_id,video_hash,resources(storage_path)")

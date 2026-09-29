@@ -3,17 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AddToCart } from "@/components/coaching/AddToCart";
-import { OwnedState } from "@/components/coaching/OwnedState";
+import { CheckList, ProductFacts, ProductHero, ProductLayout, ProductSection } from "@/components/coaching/ProductPage";
 import {
-  CheckList,
-  MobileBuyBar,
-  ProductFacts,
-  ProductHero,
-  ProductLayout,
-  ProductSection,
-  PurchasePanel,
-} from "@/components/coaching/ProductPage";
-import { entitlementFor } from "@/lib/commerce/entitlements";
+  OwnershipProvider,
+  UnlessOwned,
+  ViewerMobileBuyBar,
+  ViewerOwnedState,
+  ViewerPurchasePanel,
+} from "@/components/coaching/ViewerOwnership";
 import { formatPrice } from "@/lib/commerce/pricing";
 import { getSeries, priceForProductSlug } from "@/lib/content/coaching";
 
@@ -39,8 +36,7 @@ export default async function SeriesPage({
   const series = await getSeries(seriesSlug);
   if (!series) notFound();
 
-  const [entitlement, single, bundle] = await Promise.all([
-    entitlementFor("group_coaching_series", series.id),
+  const [single, bundle] = await Promise.all([
     priceForProductSlug("group-coaching-single"),
     priceForProductSlug("group-coaching-x8"),
   ]);
@@ -54,7 +50,6 @@ export default async function SeriesPage({
   */
   const singleSlug = single ? "group-coaching-single" : null;
   const bundleSlug = bundle ? "group-coaching-x8" : null;
-  const owned = entitlement.state === "active";
   const sessions = series.syllabus.length > 0 ? series.syllabus.length : 8;
 
   const singleShown = single ? formatPrice(single.amount, single.currency) : null;
@@ -62,7 +57,7 @@ export default async function SeriesPage({
   const buyHref = bundleSlug ? `/checkout?series=${bundleSlug}` : undefined;
 
   return (
-    <>
+    <OwnershipProvider resourceType="group_coaching_series" resourceId={series.id}>
       <ProductHero
         backHref="/coaching/group-coaching"
         backLabel="All series"
@@ -76,9 +71,9 @@ export default async function SeriesPage({
 
       <ProductLayout
         aside={
-          <PurchasePanel
-            price={owned ? null : bundleShown}
-            priceNote={owned ? null : `all ${sessions} sessions`}
+          <ViewerPurchasePanel
+            price={bundleShown}
+            priceNote={`all ${sessions} sessions`}
             footnote={
               <>
                 Buying access does not book a place: you choose a scheduled
@@ -92,31 +87,32 @@ export default async function SeriesPage({
           >
             {/* Booking a specific session is separate from holding the
                 entitlement — payment ≠ entitlement ≠ booking (note 01 §11). */}
-            <OwnedState
+            <ViewerOwnedState
               plain
-              entitlement={entitlement}
               buyHref={buyHref}
               buyLabel="Buy the series"
               deliveryHref="/academy/coaching"
             />
-            {!owned && bundleSlug ? (
-              <AddToCart
-                slug={bundleSlug}
-                label="Add the series to cart"
-                className="mt-3 [&_button]:w-full [&_form]:w-full"
-              />
-            ) : null}
+            <UnlessOwned>
+              {bundleSlug ? (
+                <AddToCart
+                  slug={bundleSlug}
+                  label="Add the series to cart"
+                  className="mt-3 [&_button]:w-full [&_form]:w-full"
+                />
+              ) : null}
 
-            {!owned && singleSlug && singleShown ? (
-              <div className="mt-6 flex items-center justify-between gap-4 border-t border-border pt-5">
-                <p>
-                  <span className="block text-sm text-muted-foreground">Or one session</span>
-                  <span className="font-display text-2xl font-semibold tabular-nums">{singleShown}</span>
-                </p>
-                <AddToCart slug={singleSlug} label="Add one" />
-              </div>
-            ) : null}
-          </PurchasePanel>
+              {singleSlug && singleShown ? (
+                <div className="mt-6 flex items-center justify-between gap-4 border-t border-border pt-5">
+                  <p>
+                    <span className="block text-sm text-muted-foreground">Or one session</span>
+                    <span className="font-display text-2xl font-semibold tabular-nums">{singleShown}</span>
+                  </p>
+                  <AddToCart slug={singleSlug} label="Add one" />
+                </div>
+              ) : null}
+            </UnlessOwned>
+          </ViewerPurchasePanel>
         }
       >
         <ProductFacts
@@ -135,9 +131,14 @@ export default async function SeriesPage({
         ) : null}
       </ProductLayout>
 
-      {!owned && buyHref ? (
-        <MobileBuyBar price={bundleShown} priceNote={`all ${sessions}`} href={buyHref} label="Buy series" />
+      {buyHref ? (
+        <ViewerMobileBuyBar price={bundleShown} priceNote={`all ${sessions}`} href={buyHref} label="Buy series" />
       ) : null}
-    </>
+    </OwnershipProvider>
   );
+}
+
+/** Built on its first visit, then served from cache (note 10 §47.1). */
+export function generateStaticParams() {
+  return [];
 }

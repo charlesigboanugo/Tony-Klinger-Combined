@@ -1,8 +1,6 @@
 import { NewsletterPopup } from "@/components/content/NewsletterPopup";
 import { PublicFooter } from "@/components/navigation/PublicFooter";
 import { PublicHeader } from "@/components/navigation/PublicHeader";
-import { readCartCount } from "@/lib/commerce/cart";
-import { getCurrentUser } from "@/lib/supabase/server";
 
 /**
  * Public layout — note 04 §29.
@@ -10,19 +8,18 @@ import { getCurrentUser } from "@/lib/supabase/server";
  * `(public)` is a route group: it contributes nothing to any URL (note 02 §5).
  * `/cart` lives inside it so it inherits this header and footer (note 03 §27).
  *
- * The user is resolved here, on the server, via getUser() — which revalidates
- * against the Auth server rather than trusting the cookie (note 05 §12).
- *
- * The cart count is read here too, so the masthead's cart icon can show that
- * something is waiting. Adding to the cart is a Server Action that sets the
- * cookie, and that re-renders this layout, so the badge updates immediately.
+ * It reads nothing about the visitor, deliberately. A cookie read here would
+ * make every public page render per request; instead the header fetches the
+ * account and cart count after load, and the pages can be pre-built
+ * (note 10 §47.1).
  */
-export default async function PublicLayout({ children }: LayoutProps<"/">) {
-  const [user, cartCount] = await Promise.all([getCurrentUser(), readCartCount()]);
+/** Public pages are rebuilt at most hourly; admin edits rebuild them at once. */
+export const revalidate = 3600;
 
+export default function PublicLayout({ children }: LayoutProps<"/">) {
   return (
     <>
-      <PublicHeader userEmail={user?.email ?? null} cartCount={cartCount} />
+      <PublicHeader />
       <main id="main" className="flex-1">{children}</main>
       <PublicFooter />
       <NewsletterPopup />

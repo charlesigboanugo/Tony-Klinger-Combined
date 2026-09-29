@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 export type BlogPost = {
   id: string;
@@ -65,7 +65,7 @@ export function postAuthor(content: string | null): string {
  * publication date, not merely on whether we rendered a link.
  */
 export async function listPosts(limit?: number): Promise<BlogPostSummary[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   let query = supabase
     .from("blog_posts")
     .select(LIST_FIELDS)
@@ -90,7 +90,7 @@ export async function listPostsPage(
   page: number,
   perPage: number,
 ): Promise<BlogPostSummary[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const from = (page - 1) * perPage;
 
   const { data } = await supabase
@@ -105,7 +105,7 @@ export async function listPostsPage(
 
 /** How many published posts exist, without fetching any of them. */
 export async function countPosts(): Promise<number> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { count } = await supabase
     .from("blog_posts")
     .select("id", { count: "exact", head: true })
@@ -118,7 +118,7 @@ export async function countPosts(): Promise<number> {
  * `generateMetadata` both ask for it and would otherwise query twice.
  */
 export const getPost = cache(async (slug: string): Promise<BlogPost | null> => {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("blog_posts")
     .select(FIELDS)
@@ -140,7 +140,7 @@ export const getPost = cache(async (slug: string): Promise<BlogPost | null> => {
 export async function getAdjacentPosts(
   publishedAt: string,
 ): Promise<{ older: BlogPostLink | null; newer: BlogPostLink | null }> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const fields = "title,slug,published_at";
 
   const [older, newer] = await Promise.all([

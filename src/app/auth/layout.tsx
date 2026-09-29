@@ -13,6 +13,14 @@ import { AuthStage } from "@/app/auth/AuthStage";
  * The wordmark on the stage still links home so they are never trapped
  * (note 04 §21).
  */
+/*
+  Rendered per request so every sign-in page carries the CSP nonce (note 05
+  §32.1). Pages that read nothing per request (forgot-password, verify) were
+  otherwise pre-built without a nonce, and the nonce policy blocked their
+  scripts, so their forms never ran.
+*/
+export const dynamic = "force-dynamic";
+
 export default function AuthLayout({ children }: LayoutProps<"/auth">) {
   return (
     <div className="min-h-svh lg:grid lg:grid-cols-2 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 /**
  * Catalogue — note 03 §7–§8, note 08 §28.2.
@@ -200,7 +200,7 @@ const ITEM_COLUMNS =
  * here cannot leak unpublished work (note 08 §28.2).
  */
 export async function listCatalogue(category?: string): Promise<CatalogueItem[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   let query = supabase
     .from("catalogue_items")
@@ -226,7 +226,7 @@ export async function listCatalogue(category?: string): Promise<CatalogueItem[]>
  * scan rather than a sequential filter.
  */
 export async function listCatalogueByTag(tag: string): Promise<CatalogueItem[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data } = await supabase
     .from("catalogue_items")
@@ -243,7 +243,7 @@ export async function getCatalogueItem(
   category: string,
   slug: string,
 ): Promise<CatalogueItem | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("catalogue_items")
     .select(ITEM_COLUMNS)
@@ -282,7 +282,7 @@ type ExtraResource = {
 export async function getCatalogueItemExtras(
   itemId: string,
 ): Promise<{ gallery: CatalogueGalleryImage[]; audio: CatalogueAudio[]; links: CatalogueLink[] }> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const [resourcesRes, linksRes] = await Promise.all([
     supabase

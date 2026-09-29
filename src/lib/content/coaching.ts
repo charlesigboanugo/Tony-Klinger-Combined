@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 /**
  * Coaching storefront queries — note 03 §9–§16, note 07.
@@ -212,7 +212,7 @@ export type CoachingService = {
 
 /** Membership tiers in ladder order — cumulative (note 07 §10). */
 export async function listMembershipTiers(): Promise<MembershipTier[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   // Joined rather than fetched per tier: four sequential price queries on a
   // page that always renders all four is four round trips for one answer.
   const { data } = await supabase
@@ -261,7 +261,7 @@ export async function listMembershipTiers(): Promise<MembershipTier[]> {
  * a series page needs the price without holding a product id of its own.
  */
 export async function priceForProductSlug(slug: string): Promise<Price | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("products")
     .select("prices(amount,currency,billing_type,interval,active)")
@@ -279,7 +279,7 @@ export async function priceForProduct(
   productId: string | null,
 ): Promise<Price | null> {
   if (!productId) return null;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("prices")
     .select("amount,currency,billing_type,interval")
@@ -292,7 +292,7 @@ export async function priceForProduct(
 }
 
 export async function listCourses(): Promise<Course[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("courses")
     .select("id,title,slug,description,level,product_id,resources!cover_resource_id(storage_path),products(slug,status,prices(amount,currency,billing_type,interval,active))")
@@ -314,7 +314,7 @@ export async function listCourses(): Promise<Course[]> {
 }
 
 export async function getCourse(slug: string): Promise<Course | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("courses")
     .select("id,title,slug,description,level,product_id,resources!cover_resource_id(storage_path),products(slug,status,prices(amount,currency,billing_type,interval,active))")
@@ -335,7 +335,7 @@ export async function getCourse(slug: string): Promise<Course | null> {
 }
 
 export async function listSeries(): Promise<Series[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("group_coaching_series")
     .select("id,name,slug,description,syllabus,resources!cover_resource_id(storage_path)")
@@ -347,7 +347,7 @@ export async function listSeries(): Promise<Series[]> {
 }
 
 export async function getSeries(slug: string): Promise<Series | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("group_coaching_series")
     .select("id,name,slug,description,syllabus,resources!cover_resource_id(storage_path)")
@@ -360,7 +360,7 @@ export async function getSeries(slug: string): Promise<Series | null> {
 }
 
 export async function listCohorts(): Promise<Cohort[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("cohorts")
     .select("id,name,slug,description,cohort_level,starts_at,capacity,benefits,resources!cover_resource_id(storage_path),products(slug,status,prices(amount,currency,billing_type,interval,active))")
@@ -379,7 +379,7 @@ export async function listCohorts(): Promise<Cohort[]> {
 
 /** A single published cohort by slug, or null. Powers the detail page. */
 export async function getCohort(slug: string): Promise<Cohort | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("cohorts")
     .select("id,name,slug,description,cohort_level,starts_at,capacity,benefits,resources!cover_resource_id(storage_path),products(slug,status,prices(amount,currency,billing_type,interval,active))")
@@ -397,7 +397,7 @@ export async function getCohort(slug: string): Promise<Cohort | null> {
 }
 
 export async function listRetreats(): Promise<Retreat[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("retreats")
     .select("id,name,slug,description,starts_at,capacity,requires_application,resources!cover_resource_id(storage_path),products(slug,status)")
@@ -409,7 +409,7 @@ export async function listRetreats(): Promise<Retreat[]> {
 }
 
 export async function listCoachingServices(): Promise<CoachingService[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("private_coaching_services")
     .select("id,name,slug,description,benefits,duration_minutes,resources!cover_resource_id(storage_path),products(slug,status,prices(amount,currency,billing_type,interval,active))")
@@ -426,7 +426,7 @@ export async function listCoachingServices(): Promise<CoachingService[]> {
 
 /** A single published service by slug, or null. Powers the detail page. */
 export async function getCoachingService(slug: string): Promise<CoachingService | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("private_coaching_services")
     .select("id,name,slug,description,benefits,duration_minutes,resources!cover_resource_id(storage_path),products(slug,status,prices(amount,currency,billing_type,interval,active))")

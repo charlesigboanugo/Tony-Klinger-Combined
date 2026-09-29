@@ -11,6 +11,9 @@ import { WorkspaceHeader } from "@/components/navigation/WorkspaceHeader";
  * cart". Noir strip — checkout belongs to no workspace, and noir is the
  * site's only colour field (note 10 §5).
  */
+/** Per request, so /checkout/cancel carries the CSP nonce too (note 05 §32.1). */
+export const dynamic = "force-dynamic";
+
 export default function CheckoutLayout({ children }: LayoutProps<"/checkout">) {
   return (
     <div className="flex min-h-svh flex-col">

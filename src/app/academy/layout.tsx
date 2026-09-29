@@ -3,7 +3,6 @@ import { Container } from "@/components/layout/Container";
 import { PublicFooter } from "@/components/navigation/PublicFooter";
 import { PublicHeader } from "@/components/navigation/PublicHeader";
 import { WorkspaceHeader } from "@/components/navigation/WorkspaceHeader";
-import { readCartCount } from "@/lib/commerce/cart";
 import { getAuthContext } from "@/lib/permissions";
 
 /**
@@ -29,10 +28,9 @@ export default async function AcademyLayout({
   const context = await getAuthContext();
 
   if (!context) {
-    const cartCount = await readCartCount();
     return (
       <>
-        <PublicHeader userEmail={null} cartCount={cartCount} />
+        <PublicHeader />
         <main id="main" className="flex-1">
           {children}
         </main>

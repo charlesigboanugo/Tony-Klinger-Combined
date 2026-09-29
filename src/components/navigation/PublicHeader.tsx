@@ -8,6 +8,7 @@ import { Container } from "@/components/layout/Container";
 import { MobileNav } from "@/components/navigation/MobileNav";
 import { NavDropdown } from "@/components/navigation/NavDropdown";
 import { navLinkType, navLinkUnderline } from "@/components/navigation/navStyles";
+import { useVisitor } from "@/components/navigation/useVisitor";
 import { UserMenu } from "@/components/navigation/UserMenu";
 import { Wordmark } from "@/components/navigation/Wordmark";
 import { ButtonLink } from "@/components/ui/Button";
@@ -32,15 +33,15 @@ import { cn } from "@/lib/utils/cn";
  * over the hero's title rather than a column's width inside it.
  *
  * Items with children render as dropdown panels (note 04 §5, §38, note 11).
+ *
+ * The account and cart are fetched after load (`useVisitor`), not passed in:
+ * public pages are pre-built and cannot know the visitor (note 10 §47.1).
  */
-export function PublicHeader({
-  userEmail,
-  cartCount = 0,
-}: {
-  userEmail?: string | null;
-  cartCount?: number;
-}) {
+export function PublicHeader() {
   const pathname = usePathname();
+  const visitor = useVisitor(pathname);
+  const userEmail = visitor?.email ?? null;
+  const cartCount = visitor?.cartCount ?? 0;
   const [open, setOpen] = useState(false);
 
   // Hairline and shadow only once the page has scrolled, so the header reads
@@ -144,7 +145,9 @@ export function PublicHeader({
                   WRAPPER, not on the button: `cn()` is a plain join, so `hidden`
                   beside ButtonLink's own `inline-flex` would lose and show it on
                   phones, pushing the Menu toggle off-screen. */}
-              {userEmail ? (
+              {visitor === null ? (
+                <span aria-hidden="true" className="hidden h-9 w-21 sm:block" />
+              ) : userEmail ? (
                 <div className="hidden sm:block">
                   <UserMenu email={userEmail} />
                 </div>

@@ -9,6 +9,7 @@ import { z } from "zod";
  * `process.env.NEXT_PUBLIC_*` must be referenced by its full literal name so
  * the bundler can inline it — destructuring `process.env` does not work.
  */
+
 const schema = z.object({
   NEXT_PUBLIC_SITE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_URL: z.url(),

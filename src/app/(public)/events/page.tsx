@@ -16,6 +16,9 @@ import {
 } from "@/lib/content/events";
 import { cn } from "@/lib/utils/cn";
 
+/** Short, so an event moves from "coming up" to "past" within minutes. */
+export const revalidate = 300;
+
 export const metadata: Metadata = {
   title: "Events",
   description:

@@ -39,7 +39,11 @@ export async function saveResourceAction(
 
   if (!result.ok) return { error: result.error };
 
-  revalidatePath(`/admin/${resource.slug}`);
+  // Public pages are pre-built (note 10 §47.1); any content edit rebuilds them
+  // now rather than at the hourly refresh. The sitemap is a metadata route
+  // outside the layout tree, so it is named explicitly.
+  revalidatePath("/", "layout");
+  revalidatePath("/sitemap.xml");
   // redirect() throws, so it is called outside any try/catch.
   redirect(`/admin/${resource.slug}`);
 }
@@ -58,7 +62,8 @@ export async function deleteResourceAction(formData: FormData) {
     console.error("admin delete refused", { table: resource.table, error: result.error });
   }
 
-  revalidatePath(`/admin/${resource.slug}`);
+  revalidatePath("/", "layout");
+  revalidatePath("/sitemap.xml");
   redirect(`/admin/${resource.slug}`);
 }
 

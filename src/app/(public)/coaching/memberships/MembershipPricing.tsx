@@ -1,6 +1,9 @@
 "use client";
 
+import { Suspense } from "react";
+
 import {
+  BillingPeriodFromUrl,
   BillingPeriodProvider,
   BillingToggle,
   PeriodLink,
@@ -54,8 +57,8 @@ export type PricedTier = {
 export function MembershipPricing({ tiers }: { tiers: PricedTier[] }) {
   const topRank = Math.max(...tiers.map((t) => t.rank));
 
-  return (
-    <BillingPeriodProvider initial="monthly">
+  const content = (
+    <>
       <div className="mb-10 flex justify-center">
         <BillingToggle savingLabel="Save up to 33% yearly" />
       </div>
@@ -65,7 +68,14 @@ export function MembershipPricing({ tiers }: { tiers: PricedTier[] }) {
           <TierCard key={tier.id} tier={tier} isTop={tier.rank === topRank} delay={index * 70} />
         ))}
       </ol>
-    </BillingPeriodProvider>
+    </>
+  );
+
+  // The pre-built HTML shows monthly prices; `?billing=` applies in the browser.
+  return (
+    <Suspense fallback={<BillingPeriodProvider initial="monthly">{content}</BillingPeriodProvider>}>
+      <BillingPeriodFromUrl initial="monthly">{content}</BillingPeriodFromUrl>
+    </Suspense>
   );
 }
 

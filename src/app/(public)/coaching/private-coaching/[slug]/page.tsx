@@ -87,3 +87,8 @@ export default async function PrivateCoachingServicePage({
     </>
   );
 }
+
+/** Built on its first visit, then served from cache (note 10 §47.1). */
+export function generateStaticParams() {
+  return [];
+}

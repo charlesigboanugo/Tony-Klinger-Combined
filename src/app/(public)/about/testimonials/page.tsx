@@ -1,32 +1,25 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
+import { Suspense } from "react";
 
 import { Band } from "@/components/layout/Band";
 import { Container } from "@/components/layout/Container";
-import { Carousel } from "@/components/motion/Carousel";
 import { TestimonialVideos } from "@/components/content/TestimonialVideos";
 import { Reveal } from "@/components/motion/Reveal";
 import { ButtonArrow, ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { listTestimonialVideos } from "@/lib/content/testimonial-videos";
-import { listTestimonials, type Testimonial } from "@/lib/content/testimonials";
+import { listTestimonials } from "@/lib/content/testimonials";
 import { designPhotos } from "@/lib/site/design-photos";
 import { Eyebrow } from "@/components/ui/Eyebrow";
-import { cn } from "@/lib/utils/cn";
+
+import { FilteredWall, TestimonialWall } from "./TestimonialWall";
 
 export const metadata: Metadata = {
   title: "Testimonials",
   description:
     "What people who have worked with Tony Klinger say about the coaching, the courses and the talks.",
 };
-
-/** How each `context` reads to a visitor. A context not listed is shown under "All" only. */
-const FILTERS: { key: string; label: string }[] = [
-  { key: "coaching", label: "Coaching" },
-  { key: "courses", label: "Courses" },
-  { key: "general", label: "Talks and press" },
-];
 
 /**
  * Testimonials — note 03 §5.
@@ -39,31 +32,13 @@ const FILTERS: { key: string; label: string }[] = [
  * Set as an editorial page (owner, 2026-09-24): a full-screen screening-room
  * header, then every quote on one slider, each quote's type sized to its
  * length. There is no separate lead quote: the owner removed it (2026-09-26)
- * because the slider already shows every voice. `?about=` narrows by context with plain links — no client JS —
- * and "All" never filters, because a visitor looking for proof should be able
- * to see every word of it.
+ * because the slider already shows every voice. `?about=` narrows by context,
+ * applied in the browser so the page can be pre-built (note 10 §47.1); "All"
+ * never filters, because a visitor looking for proof should be able to see
+ * every word of it.
  */
-export default async function TestimonialsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ about?: string }>;
-}) {
-  const { about } = await searchParams;
+export default async function TestimonialsPage() {
   const [all, videos] = await Promise.all([listTestimonials(), listTestimonialVideos()]);
-  const active = FILTERS.some((f) => f.key === about) ? about : undefined;
-
-  // Voices signed by name and survey voices alternate, so the columns mix
-  // the two rather than stacking every named voice at the top.
-  const matching = all.filter((t) => !active || t.context === active);
-  const signed = matching.filter((t) => t.attributed_to);
-  const unsigned = matching.filter((t) => !t.attributed_to);
-  const rest = Array.from({ length: Math.max(signed.length, unsigned.length) }).flatMap((_, n) =>
-    [signed[n], unsigned[n]].filter((t): t is Testimonial => Boolean(t)),
-  );
-
-  const counts = Object.fromEntries(
-    FILTERS.map((f) => [f.key, all.filter((t) => t.context === f.key).length]),
-  );
 
   return (
     <>
@@ -138,73 +113,13 @@ export default async function TestimonialsPage({
           />
         </Container>
       ) : (
-        <>
-          {/*
-            EVERY VOICE — the full set as a wall. Filters are a tab bar with
-            counts (plain links, no client JS). Voices signed by name are set
-            larger on the paper tone; survey voices stay open on a hairline,
-            so the wall has a rhythm rather than eleven identical items. Each
-            carries a monogram and what it is about.
-          */}
-          <section aria-labelledby="voices-heading" className="py-18 sm:py-24">
-            <Container>
-              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                <div>
-                  <Eyebrow>{rest.length}{" "}
-                    {rest.length === 1 ? "voice" : "voices"}
-                    {active ? ` · ${FILTERS.find((f) => f.key === active)?.label}` : null}</Eyebrow>
-                  <h2 id="voices-heading" className="mt-4 scroll-mt-28 font-display">Every voice</h2>
-                </div>
-                <nav aria-label="Filter testimonials" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-                  <ul className="flex min-w-max gap-6 border-b border-foreground/15 sm:gap-8">
-                    {[{ key: undefined, label: "All" }, ...FILTERS].map((f) => {
-                      const current = f.key === active;
-                      const count = f.key ? counts[f.key] : all.length;
-                      if (f.key && !count) return null;
-                      return (
-                        <li key={f.label}>
-                          <Link
-                            href={f.key ? `/about/testimonials?about=${f.key}#voices-heading` : "/about/testimonials#voices-heading"}
-                            scroll={false}
-                            aria-current={current ? "page" : undefined}
-                            className={cn(
-                              "-mb-px inline-flex items-baseline gap-2 border-b-2 pb-3 text-sm font-medium transition-colors",
-                              current
-                                ? "border-accent text-foreground"
-                                : "border-transparent text-muted-foreground hover:border-accent/50 hover:text-accent",
-                            )}
-                          >
-                            {f.label}
-                            <sup className={cn("text-[0.6875rem] tabular-nums", current ? "text-accent" : "text-muted-foreground")}>
-                              {count}
-                            </sup>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </nav>
-              </div>
-
-              {/* Two at a time from md, one on a phone, sliding on the shared
-                  Carousel (owner, 2026-09-26: the three-column wall was too
-                  clustered). The filter tabs above still narrow the set. */}
-              <Reveal>
-                <Carousel
-                  label="Written testimonials"
-                  interval={7000}
-                  className="mt-14"
-                  trackClassName="-mx-4"
-                  slideClassName="w-full px-4 md:w-1/2"
-                >
-                  {rest.map((t) => (
-                    <Quote key={t.id} testimonial={t} />
-                  ))}
-                </Carousel>
-              </Reveal>
-            </Container>
-          </section>
-        </>
+        <section aria-labelledby="voices-heading" className="py-18 sm:py-24">
+          <Container>
+            <Suspense fallback={<TestimonialWall all={all} />}>
+              <FilteredWall all={all} />
+            </Suspense>
+          </Container>
+        </section>
       )}
 
       {/*
@@ -250,71 +165,5 @@ export default async function TestimonialsPage({
         </Container>
       </section>
     </>
-  );
-}
-
-/** How a `context` is named on a quote. */
-const CONTEXT_LABEL: Record<string, string> = Object.fromEntries(FILTERS.map((f) => [f.key, f.label]));
-
-/** "Francesca Lilleystone" → "FL". */
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => w[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
-/**
- * One voice on the wall. Type steps down as the quote grows, so a short
- * remark is set like a headline and a paragraph like a letter. A voice
- * signed by name sits on the paper tone, a step larger; a survey voice stays
- * open on a hairline. The monogram is the person's initials, or a quote mark
- * for an anonymous voice.
- */
-function Quote({ testimonial: t }: { testimonial: Testimonial }) {
-  const named = Boolean(t.attributed_to);
-  const size =
-    t.quote.length < 90
-      ? named ? "text-2xl leading-snug" : "text-xl leading-snug"
-      : t.quote.length < 200
-        ? named ? "text-xl leading-snug" : "text-lg leading-snug"
-        : named ? "text-lg leading-relaxed" : "text-base leading-relaxed";
-  const about = t.context ? CONTEXT_LABEL[t.context] : undefined;
-
-  return (
-    <figure
-      className={cn(
-        "flex h-full flex-col rounded-sm p-7 sm:p-9",
-        named ? "bg-surface-muted" : "border border-foreground/15",
-      )}
-    >
-      {about ? (
-        <p className="mb-4 flex items-center gap-3 text-[0.625rem] font-semibold tracking-[0.2em] text-current/70 uppercase"><span aria-hidden="true" className="h-px w-6 bg-primary" />{about}</p>
-      ) : null}
-      <blockquote className={cn("font-medium text-pretty", size)}>
-        <span aria-hidden="true" className="mr-1 text-primary">&ldquo;</span>
-        {t.quote}
-      </blockquote>
-      <figcaption className="mt-auto flex items-center gap-3 pt-6">
-        <span
-          aria-hidden="true"
-          className={cn(
-            "grid size-10 shrink-0 place-items-center rounded-full text-sm font-semibold",
-            named ? "bg-button text-button-foreground" : "border border-foreground/20 text-primary",
-          )}
-        >
-          {named ? initials(t.attributed_to!) : <span className="text-xl leading-none">&ldquo;</span>}
-        </span>
-        <span className="min-w-0 text-sm leading-snug">
-          {t.attributed_to ? <span className="block font-semibold">{t.attributed_to}</span> : null}
-          {t.attribution_detail ? (
-            <span className="block text-muted-foreground">{t.attribution_detail}</span>
-          ) : null}
-        </span>
-      </figcaption>
-    </figure>
   );
 }

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 /** A team member with their photo's storage path resolved. */
 export type TeamMember = {
@@ -19,7 +19,7 @@ export type TeamMember = {
  * on a page that always renders all five is five round trips for one answer.
  */
 export async function listTeam(): Promise<TeamMember[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("team_members")
     .select("id,name,slug,role,bio,resources(storage_path)")

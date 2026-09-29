@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 
 export type Testimonial = {
   id: string;
@@ -22,7 +22,7 @@ export async function listTestimonials(options?: {
   featuredOnly?: boolean;
   limit?: number;
 }): Promise<Testimonial[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   let query = supabase
     .from("testimonials")

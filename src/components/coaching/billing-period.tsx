@@ -54,20 +54,30 @@ const BillingPeriodContext = createContext<{
   setPeriod: (p: BillingPeriod) => void;
 } | null>(null);
 
+/**
+ * Reads `?billing=` and hands it to the provider. Kept separate because
+ * `useSearchParams()` must sit inside <Suspense> on a pre-built page (note 10
+ * §47.1): callers render this inside Suspense with a plain
+ * `BillingPeriodProvider` as the fallback, so the prices are in the HTML.
+ */
+export function BillingPeriodFromUrl(props: { children: ReactNode; initial?: BillingPeriod }) {
+  return <BillingPeriodProvider {...props} fromUrl={useSearchParams().get("billing")} />;
+}
+
 export function BillingPeriodProvider({
   children,
   initial = "monthly",
+  fromUrl = null,
 }: {
   children: ReactNode;
   initial?: BillingPeriod;
+  fromUrl?: string | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const params = useSearchParams();
 
   // The URL wins on first render, so a shared or reloaded link opens on the
   // period it names rather than snapping back to the default.
-  const fromUrl = params.get("billing");
   const [period, setPeriodState] = useState<BillingPeriod>(
     fromUrl === "monthly" || fromUrl === "yearly" ? fromUrl : initial,
   );
@@ -75,13 +85,13 @@ export function BillingPeriodProvider({
   const setPeriod = useCallback(
     (next: BillingPeriod) => {
       setPeriodState(next);
-      const q = new URLSearchParams(params.toString());
+      const q = new URLSearchParams(window.location.search);
       q.set("billing", next);
       // `scroll: false` — changing a price should not jump the page to the top
       // while the customer is reading a tier's benefits.
       router.replace(`${pathname}?${q.toString()}`, { scroll: false });
     },
-    [params, pathname, router],
+    [pathname, router],
   );
 
   const value = useMemo(() => ({ period, setPeriod }), [period, setPeriod]);

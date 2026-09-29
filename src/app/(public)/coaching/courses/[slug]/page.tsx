@@ -2,17 +2,14 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { AddToCart } from "@/components/coaching/AddToCart";
-import { OwnedState } from "@/components/coaching/OwnedState";
+import { CheckList, ProductFacts, ProductHero, ProductLayout, ProductSection } from "@/components/coaching/ProductPage";
 import {
-  CheckList,
-  MobileBuyBar,
-  ProductFacts,
-  ProductHero,
-  ProductLayout,
-  ProductSection,
-  PurchasePanel,
-} from "@/components/coaching/ProductPage";
-import { entitlementFor } from "@/lib/commerce/entitlements";
+  OwnershipProvider,
+  UnlessOwned,
+  ViewerMobileBuyBar,
+  ViewerOwnedState,
+  ViewerPurchasePanel,
+} from "@/components/coaching/ViewerOwnership";
 import { formatPrice } from "@/lib/commerce/pricing";
 import { getCourse, priceForProduct } from "@/lib/content/coaching";
 
@@ -39,10 +36,7 @@ export default async function CoursePage({
   const course = await getCourse(slug);
   if (!course) notFound();
 
-  const [price, entitlement] = await Promise.all([
-    priceForProduct(course.product_id),
-    entitlementFor("course", course.id),
-  ]);
+  const price = await priceForProduct(course.product_id);
 
   const shown = price ? formatPrice(price.amount, price.currency) : null;
   /*
@@ -51,10 +45,8 @@ export default async function CoursePage({
     with the course slug reached a checkout that could find nothing to sell.
   */
   const buyHref = course.productSlug ? `/checkout?course=${course.productSlug}` : undefined;
-  const owned = entitlement.state === "active";
-
   return (
-    <>
+    <OwnershipProvider resourceType="course" resourceId={course.id}>
       <ProductHero
         backHref="/coaching/courses"
         backLabel="All courses"
@@ -68,24 +60,25 @@ export default async function CoursePage({
 
       <ProductLayout
         aside={
-          <PurchasePanel
-            price={owned ? null : shown}
-            priceNote={owned ? null : "one payment"}
+          <ViewerPurchasePanel
+            price={shown}
+            priceNote="one payment"
             footnote="Pay once for lifetime access in the Academy, on any device."
           >
-            <OwnedState
+            <ViewerOwnedState
               plain
-              entitlement={entitlement}
               buyHref={buyHref}
               buyLabel="Buy this course"
               deliveryHref={`/academy/courses/${course.slug}`}
             />
             {/* A basket is a different intent from buying one thing now, so
                 both are offered rather than forcing everyone through the cart. */}
-            {!owned && course.productSlug ? (
-              <AddToCart slug={course.productSlug} className="mt-3 [&_button]:w-full [&_form]:w-full" />
+            {course.productSlug ? (
+              <UnlessOwned>
+                <AddToCart slug={course.productSlug} className="mt-3 [&_button]:w-full [&_form]:w-full" />
+              </UnlessOwned>
             ) : null}
-          </PurchasePanel>
+          </ViewerPurchasePanel>
         }
       >
         <ProductFacts
@@ -108,9 +101,14 @@ export default async function CoursePage({
         </ProductSection>
       </ProductLayout>
 
-      {!owned && buyHref ? (
-        <MobileBuyBar price={shown} priceNote="one payment" href={buyHref} label="Buy course" />
+      {buyHref ? (
+        <ViewerMobileBuyBar price={shown} priceNote="one payment" href={buyHref} label="Buy course" />
       ) : null}
-    </>
+    </OwnershipProvider>
   );
+}
+
+/** Built on its first visit, then served from cache (note 10 §47.1). */
+export function generateStaticParams() {
+  return [];
 }

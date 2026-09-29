@@ -510,6 +510,26 @@
       visibility 0s;
   }
 
+  /* In-flow variant, for a panel that sits in the layout (the mobile menu's
+     sections). Same motion; the space is released only once the fade ends,
+     via a discrete `display` transition, so height is never animated. */
+  .dropdown-panel.dropdown-inline:not([data-open="true"]) {
+    display: none;
+    transition:
+      opacity var(--dur-menu-out) var(--ease-in-out-menu),
+      transform var(--dur-menu-out) var(--ease-in-out-menu),
+      visibility 0s var(--dur-menu-out),
+      display 0s var(--dur-menu-out);
+    transition-behavior: allow-discrete;
+  }
+
+  @starting-style {
+    .dropdown-panel.dropdown-inline[data-open="true"] {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+  }
+
   /* Reveal-on-scroll initial state. The IntersectionObserver in
      <Reveal> flips data-revealed, so content is visible even if JS never
      runs — the hidden state is applied only when JS has marked the element. */

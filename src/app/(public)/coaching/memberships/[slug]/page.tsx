@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 
 import Link from "next/link";
 
-import { TierPurchase } from "@/app/(public)/coaching/memberships/[slug]/TierPurchase";
+import { Suspense } from "react";
+
+import { TierPurchase, TierPurchaseFromUrl } from "@/app/(public)/coaching/memberships/[slug]/TierPurchase";
 import {
   CheckList,
   MobileBuyBar,
@@ -64,7 +66,9 @@ export default async function MembershipTierPage({
             figure shown is the figure charged (note 09 §16.1).
           */
           <div className="space-y-4">
-            <TierPurchase tierName={tier.name} productSlug={tier.productSlug} prices={tier.prices} />
+            <Suspense fallback={<TierPurchase tierName={tier.name} productSlug={tier.productSlug} prices={tier.prices} />}>
+              <TierPurchaseFromUrl tierName={tier.name} productSlug={tier.productSlug} prices={tier.prices} />
+            </Suspense>
             <p className="text-center text-sm">
               <Link href="/coaching/memberships" className="font-medium underline underline-offset-4 hover:text-accent">
                 Compare all tiers
@@ -95,4 +99,9 @@ export default async function MembershipTierPage({
       <MobileBuyBar price={shown} priceNote={shown ? "a month" : null} href="#buy" label={`Join ${short(tier.name)}`} />
     </>
   );
+}
+
+/** Built on its first visit, then served from cache (note 10 §47.1). */
+export function generateStaticParams() {
+  return [];
 }

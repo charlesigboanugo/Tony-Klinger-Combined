@@ -2,16 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { OwnedState } from "@/components/coaching/OwnedState";
+import { ProductFacts, ProductHero, ProductLayout, ProductSection } from "@/components/coaching/ProductPage";
 import {
-  MobileBuyBar,
-  ProductFacts,
-  ProductHero,
-  ProductLayout,
-  ProductSection,
-  PurchasePanel,
-} from "@/components/coaching/ProductPage";
-import { entitlementFor } from "@/lib/commerce/entitlements";
+  OwnershipProvider,
+  ViewerMobileBuyBar,
+  ViewerOwnedState,
+  ViewerPurchasePanel,
+} from "@/components/coaching/ViewerOwnership";
 import { formatPrice } from "@/lib/commerce/pricing";
 import { getCohort } from "@/lib/content/coaching";
 
@@ -39,9 +36,6 @@ export default async function CohortPage({
   const cohort = await getCohort(slug);
   if (!cohort) notFound();
 
-  const entitlement = await entitlementFor("cohort", cohort.id);
-  const owned = entitlement.state === "active";
-
   const cheapest = cohort.prices.length
     ? cohort.prices.reduce((a, b) => (a.amount <= b.amount ? a : b))
     : null;
@@ -56,7 +50,7 @@ export default async function CohortPage({
   const outcomes = cohort.benefits.filter((b) => !/^eight\s*x/i.test(b.trim()));
 
   return (
-    <>
+    <OwnershipProvider resourceType="cohort" resourceId={cohort.id}>
       <ProductHero
         backHref="/coaching/cohorts"
         backLabel="All cohorts"
@@ -70,9 +64,9 @@ export default async function CohortPage({
 
       <ProductLayout
         aside={
-          <PurchasePanel
-            price={owned ? null : shown}
-            priceNote={owned ? null : "one payment"}
+          <ViewerPurchasePanel
+            price={shown}
+            priceNote="one payment"
             footnote={
               <>
                 Ultimate Membership includes cohort access.{" "}
@@ -82,9 +76,8 @@ export default async function CohortPage({
               </>
             }
           >
-            <OwnedState
+            <ViewerOwnedState
               plain
-              entitlement={entitlement}
               buyHref={buyHref}
               buyLabel={`Join the ${level} cohort`}
               deliveryHref="/academy/cohorts"
@@ -93,7 +86,7 @@ export default async function CohortPage({
               Starts: {starts}
               {cohort.capacity ? ` · ${cohort.capacity} places` : ""}
             </p>
-          </PurchasePanel>
+          </ViewerPurchasePanel>
         }
       >
         <ProductFacts
@@ -119,7 +112,12 @@ export default async function CohortPage({
         ) : null}
       </ProductLayout>
 
-      {!owned ? <MobileBuyBar price={shown} priceNote="one payment" href={buyHref} label="Join cohort" /> : null}
-    </>
+      <ViewerMobileBuyBar price={shown} priceNote="one payment" href={buyHref} label="Join cohort" />
+    </OwnershipProvider>
   );
+}
+
+/** Built on its first visit, then served from cache (note 10 §47.1). */
+export function generateStaticParams() {
+  return [];
 }

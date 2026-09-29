@@ -1,6 +1,7 @@
 import "server-only";
 
 import { coverPath, type ProductPrice } from "@/lib/content/coaching";
+import { createPublicClient } from "@/lib/supabase/public";
 import { createClient } from "@/lib/supabase/server";
 
 export type EventImage = { path: string; caption: string | null };
@@ -60,7 +61,7 @@ function toEvent({ resources, products, ...row }: Row): PublicEvent {
 
 /** Published events — note 03 §8.1, note 08 §35. */
 export async function listEvents(): Promise<PublicEvent[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("events")
     .select(FIELDS)

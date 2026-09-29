@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils/cn";
  * Mobile and tablet navigation — note 04 §26, §27, note 10 §31, §35.
  *
  * A full-screen takeover on the ink field (note 10 §42.2): numbered sections
- * set large in the display face, rising in one after another, with Sign in
+ * in the display face, rising in one after another, their links set as links
+ * (indented on a guide line, with an arrow), with Sign in
  * (or the account) and the cart at the foot. A full-height sheet rather than a
  * list pushed under the header. The previous
  * version expanded every submenu at once, which on a phone put around thirty
@@ -158,12 +159,12 @@ export function MobileNav({
                     href={item.href}
                     onClick={onClose}
                     aria-current={isCurrentPage(pathname, item.href) ? "page" : undefined}
-                    className="group flex min-h-16 items-baseline gap-4 py-3 outline-offset-2 focus-visible:outline-2 focus-visible:outline-white"
+                    className="group flex min-h-14 items-baseline gap-4 py-3 outline-offset-2 focus-visible:outline-2 focus-visible:outline-white"
                   >
                     <SectionNumber n={i + 1} />
                     <span
                       className={cn(
-                        "font-display text-[2rem] leading-none font-semibold tracking-tight transition-colors sm:text-4xl",
+                        "font-display text-xl leading-tight font-semibold tracking-tight transition-colors sm:text-2xl",
                         isActive(pathname, item.href) ? "text-foreground" : "text-foreground/85 group-hover:text-foreground",
                       )}
                     >
@@ -232,6 +233,7 @@ function MobileSection({
   const sectionActive =
     isActive(pathname, item.href) ||
     (item.children ?? []).some((child) => !child.external && isActive(pathname, child.href));
+  const panelId = `mobile-nav-${item.href.replace(/[^a-z0-9]+/gi, "-")}`;
 
   return (
     <>
@@ -239,12 +241,13 @@ function MobileSection({
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
-        className="group flex min-h-16 w-full items-baseline gap-4 py-3 text-left outline-offset-2 focus-visible:outline-2 focus-visible:outline-white"
+        aria-controls={panelId}
+        className="group flex min-h-14 w-full items-baseline gap-4 py-3 text-left outline-offset-2 focus-visible:outline-2 focus-visible:outline-white"
       >
         <SectionNumber n={number} />
         <span
           className={cn(
-            "font-display text-[2rem] leading-none font-semibold tracking-tight transition-colors sm:text-4xl",
+            "font-display text-xl leading-tight font-semibold tracking-tight transition-colors sm:text-2xl",
             sectionActive || expanded ? "text-foreground" : "text-foreground/85 group-hover:text-foreground",
           )}
         >
@@ -263,37 +266,42 @@ function MobileSection({
         </span>
       </button>
 
-      {expanded ? (
-        <div className="pb-6 pl-11 motion-safe:animate-[nav-in_200ms_ease-out]">
-          {item.description ? (
-            <p className="mb-3 max-w-md text-sm leading-relaxed text-muted-foreground">{item.description}</p>
-          ) : null}
-          <ul className="grid gap-x-6 sm:grid-cols-2">
-            {(item.children ?? []).map((child) => {
-              const childActive = !child.external && isActive(pathname, child.href);
+      <div id={panelId} data-open={expanded} className="dropdown-panel dropdown-inline origin-top pb-5 pl-11">
+        {item.description ? (
+          <p className="mb-2 max-w-md text-xs leading-relaxed text-muted-foreground">{item.description}</p>
+        ) : null}
+        <ul className="grid border-l border-border sm:grid-cols-2">
+          {(item.children ?? []).map((child) => {
+            const childActive = !child.external && isActive(pathname, child.href);
 
-              return (
-                <li key={child.href}>
-                  <Link
-                    href={child.href}
-                    {...(child.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                    onClick={onNavigate}
-                    aria-current={isCurrentPage(pathname, child.href) ? "page" : undefined}
-                    className={cn(
-                      "flex min-h-11 items-center gap-2 text-base transition-colors",
-                      childActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {childActive ? <span aria-hidden="true" className="h-px w-3 bg-primary" /> : null}
-                    <span>{child.label}</span>
-                    {child.external ? <ExternalMark className="inline-block h-3 w-3 opacity-70" /> : null}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
+            return (
+              <li key={child.href}>
+                <Link
+                  href={child.href}
+                  {...(child.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  onClick={onNavigate}
+                  aria-current={isCurrentPage(pathname, child.href) ? "page" : undefined}
+                  className={cn(
+                    "-ml-px flex min-h-11 items-center gap-3 border-l-2 pr-2 pl-4 text-[0.9375rem] font-medium transition-colors",
+                    childActive
+                      ? "border-accent text-accent"
+                      : "border-transparent text-foreground/90 hover:border-foreground/40 hover:text-foreground",
+                  )}
+                >
+                  <span className="flex-1">{child.label}</span>
+                  {child.external ? (
+                    <ExternalMark className="h-3 w-3 shrink-0 opacity-70" />
+                  ) : (
+                    <svg aria-hidden="true" viewBox="0 0 12 12" className="h-3 w-3 shrink-0 opacity-60">
+                      <path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </>
   );
 }
