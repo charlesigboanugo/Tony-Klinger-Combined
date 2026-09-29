@@ -77,6 +77,7 @@ export default async function TestimonialsPage() {
               alt={designPhotos.testimonials.alt}
               fill
               priority
+              fetchPriority="high"
               quality={90}
               sizes="(min-width: 640px) 48rem, 100vw"
               className="object-cover"

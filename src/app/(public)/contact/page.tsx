@@ -59,6 +59,7 @@ export default function ContactPage() {
               alt={designPhotos.contact.alt}
               fill
               priority
+              fetchPriority="high"
               quality={90}
               sizes="(min-width: 1024px) 62vw, 100vw"
               className={cn("object-cover", designPhotos.contact.focus)}

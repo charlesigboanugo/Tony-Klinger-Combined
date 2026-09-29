@@ -356,6 +356,7 @@ export default async function AboutPage() {
               alt={designPhotos.aboutHero.alt}
               fill
               priority
+              fetchPriority="high"
               quality={90}
               sizes="(min-width: 1024px) 60vw, 100vw"
               className={cn("object-cover", designPhotos.aboutHero.focus)}

@@ -105,6 +105,7 @@ export default async function WelcomePage({
                 alt={portrait.alt}
                 fill
                 priority
+                fetchPriority="high"
                 quality={90}
                 sizes="112px"
                 className={`object-cover ${portrait.focus}`}

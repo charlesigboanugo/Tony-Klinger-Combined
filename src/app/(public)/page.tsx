@@ -299,6 +299,7 @@ export default async function HomePage() {
               alt={designPhotos.homeHero.alt}
               fill
               priority
+              fetchPriority="high"
               quality={90}
               sizes="(min-width: 1024px) 60vw, 100vw"
               className="object-cover object-[50%_12%]"

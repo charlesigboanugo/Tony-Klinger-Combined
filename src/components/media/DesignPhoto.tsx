@@ -56,6 +56,7 @@ export function DesignPhoto({
       alt={image.alt}
       fill
       priority={priority}
+      fetchPriority={priority ? "high" : undefined}
       quality={90}
       sizes={sizes}
       className={cn("object-cover", image.focus)}
@@ -120,6 +121,7 @@ export function PhotoBanner({
           alt={image.alt}
           fill
           priority={priority}
+          fetchPriority={priority ? "high" : undefined}
           quality={90}
           sizes="100vw"
           className={cn("object-cover object-[50%_22%]", image.focus)}

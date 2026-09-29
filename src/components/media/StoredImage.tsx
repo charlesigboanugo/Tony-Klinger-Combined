@@ -73,6 +73,7 @@ export function StoredImage(props: Sized | Filled) {
         // 100vw and downloads a full-width image for a 300px card.
         sizes={sizes ?? "(max-width: 768px) 100vw, 33vw"}
         priority={priority}
+        fetchPriority={priority ? "high" : undefined}
         loading={priority ? undefined : loading}
         quality={quality}
         className={cn(fit === "contain" ? "object-contain" : "object-cover", className)}
@@ -88,6 +89,7 @@ export function StoredImage(props: Sized | Filled) {
       height={props.height}
       sizes={sizes}
       priority={priority}
+      fetchPriority={priority ? "high" : undefined}
       loading={priority ? undefined : loading}
       quality={quality}
       className={className}

@@ -175,6 +175,7 @@ function BlogHero() {
                   alt={photo.alt}
                   fill
                   priority
+                  fetchPriority="high"
                   quality={90}
                   sizes="(min-width: 640px) 16rem, 14rem"
                   className={cn("object-cover", photo.focus)}

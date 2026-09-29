@@ -161,6 +161,7 @@ function Hero({ shelves }: { shelves: GiveGetGoShelf[] }) {
             alt={photo.alt}
             fill
             priority
+            fetchPriority="high"
             quality={90}
             sizes="(min-width: 1024px) 88vw, 100vw"
             className="object-cover object-[70%_top]"

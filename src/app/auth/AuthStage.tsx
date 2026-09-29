@@ -44,6 +44,7 @@ export function AuthStage() {
             alt={photo.alt}
             fill
             priority
+            fetchPriority="high"
             quality={88}
             sizes="(min-width: 1024px) 50vw, 100vw"
             className={cn("object-cover", photo.focus)}

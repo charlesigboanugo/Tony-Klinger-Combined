@@ -176,6 +176,7 @@ export default async function CoachingPage() {
             alt={designPhotos.coachingHero.alt}
             fill
             priority
+            fetchPriority="high"
             quality={90}
             sizes="100vw"
             className={cn("object-cover", designPhotos.coachingHero.focus)}

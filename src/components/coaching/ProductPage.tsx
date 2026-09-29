@@ -86,6 +86,7 @@ export function ProductHero({
             alt=""
             fill
             priority
+            fetchPriority="high"
             quality={90}
             sizes="100vw"
             className={cn("object-cover", cover.focus)}
