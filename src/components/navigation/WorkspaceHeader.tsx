@@ -45,7 +45,7 @@ export function WorkspaceHeader({
   return (
     <>
       <div aria-hidden="true" className={cn("h-0.75 w-full", strip)} />
-      <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/97 lg:bg-background/90 lg:backdrop-blur-md">
         <Container>
           <div className="flex h-16 items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3 sm:gap-4">

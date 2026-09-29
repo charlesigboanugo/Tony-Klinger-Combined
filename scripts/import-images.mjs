@@ -69,6 +69,18 @@ for (const [dir] of SITES) {
   } catch {}
 }
 
+const originHash = new Map();   // "<site>/<folder>/<name>" -> sha256 of the AVIF it was converted from
+for (const [dir] of SITES) {
+  try {
+    const map = JSON.parse(fs.readFileSync(`current-website/${dir}/site-files/_origin-hashes.json`, "utf8"));
+    for (const [key, hash] of Object.entries(map)) originHash.set(`${dir}/${key}`, hash);
+  } catch {}
+}
+try {
+  const map = JSON.parse(fs.readFileSync("supabase/content/images/_origin-hashes.json", "utf8"));
+  for (const [name, hash] of Object.entries(map)) originHash.set(`content/images/${name}`, hash);
+} catch {}
+
 // Link team photos by filename.
 //
 // `seed.sql` creates the team before this script runs, so at seed time the
@@ -138,7 +150,7 @@ const COVERS = {
   "just-a-boy": "JustABoy_pic.PNG",                      // the film's artwork, title top left
   // Not on the old sites: a CC BY-SA photograph of the INS Dakar, the submarine
   // the film is about (supabase/content/images/CREDITS.md). Credited on the page.
-  "full-circle": "ins-dakar-1968.avif",
+  "full-circle": "ins-dakar-1968.webp",
   // A trilogy of scripts with no artwork of its own. The owner chose the stock
   // image /the-havana-chronicles used for 4 Kicks (Unsplash licence: free
   // commercial use) to stand for the whole.
@@ -165,52 +177,52 @@ const COVERS = {
   "bbc-radio-birmingham-danny-kelly": "Kirk_douglas_photo_signed.jpg",
   // The rest had no usable image on the old site; each is the show's or the
   // platform's own artwork (supabase/content/images/CREDITS.md).
-  "the-tony-klinger-podcast": "the-tony-klinger-podcast-cover.avif",
-  "follow-your-dream-podcast": "follow-your-dream-podcast-cover.avif",
-  "waffleon-podcast": "waffle-on-podcast-cover.avif",
-  "the-audio-ade-memoire-podcast": "audio-ade-memoire-podcast-cover.avif",
-  "this-is-happening-podcast": "this-is-happening-podcast-cover.avif",
-  "starlight-broadcasting": "starlight-broadcasting-cover.avif",
-  "the-douglas-coleman-show": "douglas-coleman-show-cover.avif",
-  "hope-fm": "hope-fm-cover.avif",
-  "soul-radio-usa-spotlight-on": "soul-radio-usa-cover.avif",
-  "talkradio-james-whale": "james-whale-show-talkradio-cover.avif",
-  "worlds-most-amazing-people": "wmap-radio-cover.avif",
+  "the-tony-klinger-podcast": "the-tony-klinger-podcast-cover.webp",
+  "follow-your-dream-podcast": "follow-your-dream-podcast-cover.webp",
+  "waffleon-podcast": "waffle-on-podcast-cover.webp",
+  "the-audio-ade-memoire-podcast": "audio-ade-memoire-podcast-cover.webp",
+  "this-is-happening-podcast": "this-is-happening-podcast-cover.webp",
+  "starlight-broadcasting": "starlight-broadcasting-cover.webp",
+  "the-douglas-coleman-show": "douglas-coleman-show-cover.webp",
+  "hope-fm": "hope-fm-cover.webp",
+  "soul-radio-usa-spotlight-on": "soul-radio-usa-cover.webp",
+  "talkradio-james-whale": "james-whale-show-talkradio-cover.webp",
+  "worlds-most-amazing-people": "wmap-radio-cover.webp",
   // Audio: the audiobook's own square cover, not the book jacket again — it is
   // a different edition, and the jacket already covers the book's own card.
-  "the-butterfly-boy-audiobook": "the-butterfly-boy-audiobook-cover.avif",
+  "the-butterfly-boy-audiobook": "the-butterfly-boy-audiobook-cover.webp",
   // Watch, and the video interviews from Tony's YouTube channel: each video's
   // own thumbnail (supabase/content/08_watch_and_video_interviews.sql).
-  "lights-chutzpah-action": "lights-chutzpah-action-cover.avif",
-  "sisters-trailer": "sisters-trailer-cover.avif",
-  "tony-klinger-speaks": "tony-klinger-speaks-cover.avif",
-  "bbc-radio-london-robert-elms": "bbc-radio-london-robert-elms-cover.avif",
-  "bbc-radio-northampton-bernie-keith": "bbc-radio-northampton-bernie-keith-2026-cover.avif",
-  "bbc-radio-newcastle-kelly-scott": "bbc-radio-newcastle-kelly-scott-cover.avif",
-  "bernie-keith-show-get-carter": "bbc-radio-northampton-bernie-keith-get-carter-cover.avif",
-  "bbc-radio-northampton-akylah-rodriguez": "bbc-radio-northampton-akylah-rodriguez-cover.avif",
-  "screen-northants-tv-interview": "screen-northants-tv-interview-cover.avif",
+  "lights-chutzpah-action": "lights-chutzpah-action-cover.webp",
+  "sisters-trailer": "sisters-trailer-cover.webp",
+  "tony-klinger-speaks": "tony-klinger-speaks-cover.webp",
+  "bbc-radio-london-robert-elms": "bbc-radio-london-robert-elms-cover.webp",
+  "bbc-radio-northampton-bernie-keith": "bbc-radio-northampton-bernie-keith-2026-cover.webp",
+  "bbc-radio-newcastle-kelly-scott": "bbc-radio-newcastle-kelly-scott-cover.webp",
+  "bernie-keith-show-get-carter": "bbc-radio-northampton-bernie-keith-get-carter-cover.webp",
+  "bbc-radio-northampton-akylah-rodriguez": "bbc-radio-northampton-akylah-rodriguez-cover.webp",
+  "screen-northants-tv-interview": "screen-northants-tv-interview-cover.webp",
   // The rest of /watch (supabase/content/09_watch_uploads_pending.sql): each
   // video's own cover from the old site's Wix video channel. Most of these
   // entries are drafts until their uploads have links; the cover is ready.
-  "dc-video-promo": "dc-video-promo-cover.avif",
-  "tony-klinger-public-speaking": "tony-klinger-public-speaking-cover.avif",
-  "the-man-who-got-carter-teaser": "the-man-who-got-carter-teaser-cover.avif",
-  "navegator-promo": "navegator-promo-cover.avif",
-  "festival-game-introduction": "festival-game-introduction-cover.avif",
-  "butterfly-boy-introduction": "butterfly-boy-introduction-cover.avif",
-  "give-get-go-video": "give-get-go-video-cover.avif",
-  "ggg-one": "ggg-one-cover.avif",
-  "ggg-two": "ggg-two-cover.avif",
-  "ggg-three": "ggg-three-cover.avif",
-  "romford-film-festival-qa": "romford-film-festival-interview-cover.avif",
+  "dc-video-promo": "dc-video-promo-cover.webp",
+  "tony-klinger-public-speaking": "tony-klinger-public-speaking-cover.webp",
+  "the-man-who-got-carter-teaser": "the-man-who-got-carter-teaser-cover.webp",
+  "navegator-promo": "navegator-promo-cover.webp",
+  "festival-game-introduction": "festival-game-introduction-cover.webp",
+  "butterfly-boy-introduction": "butterfly-boy-introduction-cover.webp",
+  "give-get-go-video": "give-get-go-video-cover.webp",
+  "ggg-one": "ggg-one-cover.webp",
+  "ggg-two": "ggg-two-cover.webp",
+  "ggg-three": "ggg-three-cover.webp",
+  "romford-film-festival-qa": "romford-film-festival-interview-cover.webp",
   // Interviews identified from the capture's untitled recordings (10_*.sql).
   // The premiere Q&A: the photo the old site's news archive placed beside
   // that recording — the Q&A itself, on stage at the Premiere Cinema. The
   // George Wilder Jr. Show uses the show's own artwork from its BlogTalkRadio
   // page — gone from the live web, recovered from the Internet Archive.
-  "the-man-who-got-carter-premiere-qa": "man-who-got-carter-premiere-qa-cover.avif",
-  "the-george-wilder-jr-show": "george-wilder-jr-show-cover.avif",
+  "the-man-who-got-carter-premiere-qa": "man-who-got-carter-premiere-qa-cover.webp",
+  "the-george-wilder-jr-show": "george-wilder-jr-show-cover.webp",
   "solo2darwin": "Screenshot-2024-09-05-220917.png",
   "dirty-sexy-and-totally-iconic": "MV5BYjJmZDdjNmMtOGY5MS00ODM5LThhZDItMmRlMmE1YWJhMWEyXkEyXkFqcGdeQXVyMzY3OTgyODA_._V1_.jpg",
 };
@@ -228,7 +240,7 @@ const GALLERY = {
   // first published as Twilight of the Gods (owner, 2026-09-25). That file is
   // TwlightBook_pic.PNG with its white margins trimmed (supabase/content/images):
   // a portrait jacket on a wide white ground, which untrimmed read as landscape.
-  "who-knows-making-of-a-rock-movie": ["1.png", "3.png", "twilight-of-the-gods-cover.avif"],
+  "who-knows-making-of-a-rock-movie": ["1.png", "3.png", "twilight-of-the-gods-cover.webp"],
   "the-butterfly-boy": ["coverthumb.webp"],               // alternate jacket
   // Films, from the 2026-09-23 sweep of every page on tonydklinger.com.
   // The illustration on the film's own page. Its file there is a byte-identical
@@ -238,7 +250,7 @@ const GALLERY = {
   "the-man-who-got-carter": ["OPT 2.png", "Chichester_fest.jpg"],  // Give-Get-Go poster; Chichester 2019 festival poster
   // Not from the old sites: openly licensed photographs of the INS Dakar, the
   // film's subject (supabase/content/images/CREDITS.md). Credited on the page.
-  "full-circle": ["ins-dakar-last-photograph-1968.avif", "ins-dakar-emblem.avif"],
+  "full-circle": ["ins-dakar-last-photograph-1968.webp", "ins-dakar-emblem.webp"],
   "sisters": ["IMG-20211020-WA0000.jpg"], // Houses of Parliament screening
   "solo2darwin": ["RouteMap.JPG", "Logo1.JPG", "amanda.JPG", "trio2.JPG", "trio.JPG"], // route, squadron badge, Amanda and the team at Duxford
   // STOCK PHOTOGRAPHS, knowingly: /the-havana-chronicles illustrates each of
@@ -259,44 +271,44 @@ const GALLERY = {
 // and the series, cohorts and retreat had none. These are CC0 photographs from
 // StockSnap, found through Openverse (supabase/content/images/CREDITS.md).
 const COURSE_COVERS = {
-  "level-one": "coaching-level-one-cover.avif",
-  "level-two": "coaching-level-two-cover.avif",
-  "level-three": "coaching-level-three-cover.avif",
+  "level-one": "coaching-level-one-cover.webp",
+  "level-two": "coaching-level-two-cover.webp",
+  "level-three": "coaching-level-three-cover.webp",
 };
-const ADVANCED_COACHING_COVER = "coaching-private-cover.avif";
+const ADVANCED_COACHING_COVER = "coaching-private-cover.webp";
 // Keyed by table, then slug. Set only where no cover is chosen yet, like the
 // course covers, so a cover picked in Admin survives a re-run.
 const PRODUCT_COVERS = {
   group_coaching_series: {
-    "filmmaking": "coaching-filmmaking-cover.avif",
-    "writing": "coaching-writing-cover.avif",
-    "producing": "coaching-producing-cover.avif",
-    "for-all-filmmakers": "coaching-for-all-filmmakers-cover.avif",
+    "filmmaking": "coaching-filmmaking-cover.webp",
+    "writing": "coaching-writing-cover.webp",
+    "producing": "coaching-producing-cover.webp",
+    "for-all-filmmakers": "coaching-for-all-filmmakers-cover.webp",
   },
   cohorts: {
-    "cohort-silver": "coaching-cohort-silver-cover.avif",
-    "cohort-gold": "coaching-cohort-gold-cover.avif",
-    "cohort-platinum": "coaching-cohort-platinum-cover.avif",
+    "cohort-silver": "coaching-cohort-silver-cover.webp",
+    "cohort-gold": "coaching-cohort-gold-cover.webp",
+    "cohort-platinum": "coaching-cohort-platinum-cover.webp",
   },
   retreats: {
-    "virtual-retreat": "coaching-virtual-retreat-cover.avif",
+    "virtual-retreat": "coaching-virtual-retreat-cover.webp",
   },
 };
 
 // Filmed testimonials (supabase/content/11_testimonial_videos.sql): each
 // video's own cover frame from the coaching site's Wix video gallery.
 const TESTIMONIAL_VIDEO_COVERS = {
-  "sen-monro-short": "testimonial-sen-monro-short-cover.avif",
-  "sharon-touviano-short": "testimonial-sharon-touviano-short-cover.avif",
-  "phil-miller-short": "testimonial-phil-miller-short-cover.avif",
-  "paul-greenwood": "testimonial-paul-greenwood-cover.avif",
-  "compilation": "testimonial-compilation-cover.avif",
-  "sharon": "testimonial-sharon-cover.avif",
-  "sen": "testimonial-sen-cover.avif",
-  "amanda": "testimonial-amanda-cover.avif",
-  "francesca": "testimonial-francesca-cover.avif",
-  "josh": "testimonial-josh-cover.avif",
-  "phil": "testimonial-phil-cover.avif",
+  "sen-monro-short": "testimonial-sen-monro-short-cover.webp",
+  "sharon-touviano-short": "testimonial-sharon-touviano-short-cover.webp",
+  "phil-miller-short": "testimonial-phil-miller-short-cover.webp",
+  "paul-greenwood": "testimonial-paul-greenwood-cover.webp",
+  "compilation": "testimonial-compilation-cover.webp",
+  "sharon": "testimonial-sharon-cover.webp",
+  "sen": "testimonial-sen-cover.webp",
+  "amanda": "testimonial-amanda-cover.webp",
+  "francesca": "testimonial-francesca-cover.webp",
+  "josh": "testimonial-josh-cover.webp",
+  "phil": "testimonial-phil-cover.webp",
 };
 
 
@@ -350,31 +362,31 @@ const SOURCE_CREDIT_OVERRIDES = {
   "tmwgc title.jpg": null, // a title graphic, not a photograph
 };
 const CONTENT_CREDITS = {
-  "ins-dakar-1968.avif": "Photo: Bamahane photographer (Israel Defense Forces), via Wikimedia Commons, CC BY-SA 3.0",
-  "ins-dakar-last-photograph-1968.avif": "Photo: Clandestine Immigration and Naval Museum, via Wikimedia Commons, CC0",
-  "ins-dakar-emblem.avif": "Emblem: Israel Defense Forces, via Wikimedia Commons, CC BY-SA 3.0",
+  "ins-dakar-1968.webp": "Photo: Bamahane photographer (Israel Defense Forces), via Wikimedia Commons, CC BY-SA 3.0",
+  "ins-dakar-last-photograph-1968.webp": "Photo: Clandestine Immigration and Naval Museum, via Wikimedia Commons, CC0",
+  "ins-dakar-emblem.webp": "Emblem: Israel Defense Forces, via Wikimedia Commons, CC BY-SA 3.0",
   // The old site's own jacket image, trimmed of its margins. A jacket, not a
   // Clifford photograph, so no credit.
-  "twilight-of-the-gods-cover.avif": null,
+  "twilight-of-the-gods-cover.webp": null,
   // Show artwork for podcasts and interviews: not openly licensed — each is
   // the show's own promotional image, used to identify it, credited to it.
-  "the-tony-klinger-podcast-cover.avif": null,
-  "follow-your-dream-podcast-cover.avif": "Artwork: Follow Your Dream Podcast",
-  "waffle-on-podcast-cover.avif": "Artwork: Waffle On Podcast",
-  "audio-ade-memoire-podcast-cover.avif": "Artwork: The audio Ade-Memoire",
-  "this-is-happening-podcast-cover.avif": "Artwork: This Is Happening! podcast",
-  "starlight-broadcasting-cover.avif": "Image: Starlight Broadcasting",
-  "douglas-coleman-show-cover.avif": "Artwork: The Douglas Coleman Show",
-  "hope-fm-cover.avif": "Logo: Hope FM",
-  "soul-radio-usa-cover.avif": "Logo: Soul Radio USA",
-  "james-whale-show-talkradio-cover.avif": "Artwork: The James Whale Show, talkRADIO",
-  "wmap-radio-cover.avif": "Artwork: KC Armstrong's WMAP Radio",
-  "the-butterfly-boy-audiobook-cover.avif": "Cover: Oak Tree Press / Andrews UK",
+  "the-tony-klinger-podcast-cover.webp": null,
+  "follow-your-dream-podcast-cover.webp": "Artwork: Follow Your Dream Podcast",
+  "waffle-on-podcast-cover.webp": "Artwork: Waffle On Podcast",
+  "audio-ade-memoire-podcast-cover.webp": "Artwork: The audio Ade-Memoire",
+  "this-is-happening-podcast-cover.webp": "Artwork: This Is Happening! podcast",
+  "starlight-broadcasting-cover.webp": "Image: Starlight Broadcasting",
+  "douglas-coleman-show-cover.webp": "Artwork: The Douglas Coleman Show",
+  "hope-fm-cover.webp": "Logo: Hope FM",
+  "soul-radio-usa-cover.webp": "Logo: Soul Radio USA",
+  "james-whale-show-talkradio-cover.webp": "Artwork: The James Whale Show, talkRADIO",
+  "wmap-radio-cover.webp": "Artwork: KC Armstrong's WMAP Radio",
+  "the-butterfly-boy-audiobook-cover.webp": "Cover: Oak Tree Press / Andrews UK",
   // Thumbnails from Tony's own channel carry no credit; the Sisters trailer's
   // comes from the film's own channel and is credited to it.
-  "george-wilder-jr-show-cover.avif": "Artwork: The George Wilder Jr. Show",
-  "sisters-trailer-cover.avif": "Image: Sisters trailer, Peace Beats with Dan Blackwell",
-  "dc-video-promo-cover.avif": "Image: David Courtney Music",
+  "george-wilder-jr-show-cover.webp": "Artwork: The George Wilder Jr. Show",
+  "sisters-trailer-cover.webp": "Image: Sisters trailer, Peace Beats with Dan Blackwell",
+  "dc-video-promo-cover.webp": "Image: David Courtney Music",
 };
 
 const SOURCES = [
@@ -400,19 +412,33 @@ for (const { dir, label, folder, base } of SOURCES) {
     if (stat.size > MAX) { tooBig++; console.log(`  TOO BIG (${(stat.size/1048576).toFixed(1)}MB) ${name}`); continue; }
 
     const bytes = fs.readFileSync(full);
-    const hash = crypto.createHash("sha256").update(bytes).digest("hex");
+    // The archive was converted from AVIF to WebP (2026-09-30); a converted
+    // file keeps the hash of its AVIF original, recorded in _origin-hashes.json,
+    // so its storage path — and dedupe — match what is already stored.
+    const hash =
+      originHash.get(`${dir}/${folder}/${name}`) ?? crypto.createHash("sha256").update(bytes).digest("hex");
     if (seen.has(hash)) { skipped++; continue; }
 
     // Flat: a hash-prefixed filename is unique on its own (the sources contain
     // same-named files), so no per-site folders. Which page an image appeared on
     // is recorded in resources.title, not in the path.
-    const safe = name.replace(/[^A-Za-z0-9._-]/g, "-");
+    /*
+      AVIF IS STORED AS WEBP. Next's image optimizer never resizes an AVIF
+      source (it is in its bypass list, next/dist/server/image-optimizer.js),
+      and neither does Vercel's: every AVIF went to phones at full size — a
+      2,200px, 250 KB file for a 112px thumbnail. WebP at quality 90 is resized
+      per request and re-encoded as AVIF/WebP for the browser (note 10 §47.3).
+      The hash stays the ORIGINAL file's, so re-runs still skip duplicates.
+    */
+    const toWebp = ext === ".avif";
+    const safe = name.replace(/[^A-Za-z0-9._-]/g, "-").replace(/\.avif$/i, toWebp ? ".webp" : ".avif");
     const objectPath = `${hash.slice(0, 8)}-${safe}`;
+    const body = toWebp ? await sharp(bytes).webp({ quality: 90 }).toBuffer() : bytes;
 
     const res = await fetch(`${URL_BASE}/storage/v1/object/site-media/${encodeURI(objectPath)}`, {
       method: "POST",
-      headers: { authorization: `Bearer ${KEY}`, "content-type": type, "x-upsert": "true" },
-      body: bytes,
+      headers: { authorization: `Bearer ${KEY}`, "content-type": toWebp ? "image/webp" : type, "x-upsert": "true" },
+      body,
     });
 
     if (!res.ok) {
@@ -481,7 +507,9 @@ if (rows.length > 0) {
 // resolved to an unrelated image. More than one hit is reported, not guessed.
 const findResource = async (file) => {
   // A file keyed by its original name may now be stored under its converted one.
-  const candidates = [...new Set([...(newNamesOf.get(sanitise(file)) ?? []), sanitise(file)])];
+  const names = [...(newNamesOf.get(sanitise(file)) ?? []), sanitise(file)];
+  // An .avif source is stored as .webp (see the upload above).
+  const candidates = [...new Set(names.flatMap((n) => [n.replace(/\.avif$/i, ".webp"), n]))];
   for (const candidate of candidates) {
     const res = await fetch(
       `${URL_BASE}/rest/v1/resources?select=id,storage_path&storage_path=like.*/________-${encodeURIComponent(candidate)}&limit=2`,

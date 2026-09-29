@@ -58,9 +58,11 @@ export function WorkCard({
     <article className="group relative flex h-full flex-col">
       <div className="relative isolate">
         {link && item.storage_path ? (
+          /* Hover-only, so rendered only where hover exists: on a phone it was
+             an extra image per card, downloaded and drawn, never seen. */
           <div
             aria-hidden="true"
-            className="absolute inset-3 -z-10 opacity-0 transition-opacity duration-(--dur-slow) ease-expo group-hover:opacity-80 motion-reduce:transition-none"
+            className="absolute inset-3 -z-10 hidden opacity-0 transition-opacity duration-(--dur-slow) ease-expo pointer-fine:block group-hover:opacity-80 motion-reduce:transition-none"
           >
             <StoredImage path={item.storage_path} alt="" fill sizes="64px" className="scale-125 blur-2xl" />
           </div>

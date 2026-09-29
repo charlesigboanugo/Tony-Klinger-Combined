@@ -71,7 +71,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         which read as a placeholder. The account menu (with Sign out) replaces
         a bare email and button.
       */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/97 lg:bg-background/90 lg:backdrop-blur-md">
         <div className="flex h-16 items-center">
           <div className="flex h-full min-w-0 items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:w-76 lg:shrink-0 lg:gap-3.5 lg:px-5 lg:border-r lg:border-border">
             <Wordmark compact monogramOnPhone />

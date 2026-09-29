@@ -104,7 +104,7 @@ export function PublicHeader() {
     <>
       <header
         className={cn(
-          "sticky top-0 z-50 border-b bg-background/90 backdrop-blur-md transition-[border-color,box-shadow] duration-(--dur-base) ease-expo",
+          "sticky top-0 z-50 border-b bg-background/97 lg:bg-background/90 lg:backdrop-blur-md transition-[border-color,box-shadow] duration-(--dur-base) ease-expo",
           scrolled || open ? "border-border shadow-card" : "border-transparent",
         )}
       >

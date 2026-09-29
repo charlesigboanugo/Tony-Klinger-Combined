@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 /**
  * Public environment. Safe to import from Client Components.
  *
@@ -8,27 +6,44 @@ import { z } from "zod";
  *
  * `process.env.NEXT_PUBLIC_*` must be referenced by its full literal name so
  * the bundler can inline it — destructuring `process.env` does not work.
+ *
+ * Checked by hand rather than with Zod: every stored image imports this, so a
+ * Zod schema here put the whole library into every page's JavaScript (note 10
+ * §47.3). The rules are the ones the schema had: two URLs and a key required,
+ * the Stripe key optional but not empty. It still fails loudly at start-up.
  */
 
-const schema = z.object({
-  NEXT_PUBLIC_SITE_URL: z.url(),
-  NEXT_PUBLIC_SUPABASE_URL: z.url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1).optional(),
-});
-
-const parsed = schema.safeParse({
+const raw = {
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-});
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+};
 
-if (!parsed.success) {
-  throw new Error(
-    `Invalid public environment:\n${z.prettifyError(parsed.error)}`,
-  );
+const isUrl = (value: string | undefined) => {
+  if (!value) return false;
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const problems = [
+  !isUrl(raw.NEXT_PUBLIC_SITE_URL) && "NEXT_PUBLIC_SITE_URL must be a URL",
+  !isUrl(raw.NEXT_PUBLIC_SUPABASE_URL) && "NEXT_PUBLIC_SUPABASE_URL must be a URL",
+  !raw.NEXT_PUBLIC_SUPABASE_ANON_KEY && "NEXT_PUBLIC_SUPABASE_ANON_KEY is required",
+  raw.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY === "" && "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY must not be empty",
+].filter(Boolean);
+
+if (problems.length > 0) {
+  throw new Error(`Invalid public environment:\n${problems.map((p) => `  ✖ ${p}`).join("\n")}`);
 }
 
-export const publicEnv = parsed.data;
+export const publicEnv = raw as {
+  NEXT_PUBLIC_SITE_URL: string;
+  NEXT_PUBLIC_SUPABASE_URL: string;
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: string;
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?: string;
+};

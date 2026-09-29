@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./z";
 
 /** Shared auth field rules. Server-side validation is authoritative (note 10 §25). */
 

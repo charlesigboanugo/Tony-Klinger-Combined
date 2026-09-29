@@ -270,7 +270,7 @@ export function MobileBuyBar({
   return (
     <>
       <div aria-hidden="true" className="h-20 lg:hidden" />
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/98 px-4 py-3 lg:hidden">
         <div className="mx-auto flex max-w-xl items-center justify-between gap-4">
           {price ? (
             <p className="flex items-baseline gap-1.5">

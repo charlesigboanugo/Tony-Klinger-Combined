@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 /**
  * A thin bar across the top while an in-app navigation is loading (note 10 §47.2).
@@ -9,18 +9,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * Client-side navigation never turns the browser's own spinner, so a click on
  * a page that is not ready yet looked like a pause. This restores the cue.
  *
- *   - starts on a click on an internal link, but only SHOWS after 100 ms, so an
- *     instant (prefetched) navigation never flashes it
- *   - creeps towards 85% while waiting, then completes and fades when the URL
- *     changes; a 12 s cap clears it if a navigation never lands
- *   - transform and opacity only, so it costs nothing to animate
+ * DRIVEN DIRECTLY, NOT THROUGH REACT STATE. The next page is rendered in a
+ * React transition, and on a phone a state update made during it was only
+ * committed together with the new page — the bar appeared after the pause it
+ * was meant to cover. So the click handler sets `data-state` on the element
+ * itself, and CSS does the rest (`.nav-progress` in globals.css): hidden for
+ * the first 100 ms so an instant navigation never flashes it, then creeping
+ * towards 85%, and filling and fading once the URL changes. A 12 s cap clears
+ * it if a navigation never lands. Transform and opacity only.
  *
  * Mounted once in the root layout, so it covers every area.
  */
-const SHOW_AFTER_MS = 100;
+const SHOW_AFTER_MS = 100; // keep in step with the animation delay in globals.css
 const GIVE_UP_MS = 12_000;
-
-type Phase = "idle" | "waiting" | "loading" | "done";
 
 function internalTarget(event: MouseEvent): string | null {
   if (event.defaultPrevented || event.button !== 0) return null;
@@ -36,68 +37,65 @@ function internalTarget(event: MouseEvent): string | null {
 
 export function NavigationProgress() {
   const pathname = usePathname();
-  const [phase, setPhase] = useState<Phase>("idle");
+  const bar = useRef<HTMLDivElement>(null);
   const target = useRef<string | null>(null);
   const timers = useRef<number[]>([]);
+  const frame = useRef(0);
+  const started = useRef(0);
 
-  const clearTimers = useCallback(() => {
+  const clear = useCallback(() => {
     timers.current.forEach((t) => window.clearTimeout(t));
     timers.current = [];
+    cancelAnimationFrame(frame.current);
   }, []);
 
   const finish = useCallback(() => {
-    if (!target.current) return;
+    const el = bar.current;
+    if (!target.current || !el) return;
     target.current = null;
-    clearTimers();
-    setPhase((p) => (p === "loading" ? "done" : "idle"));
-    timers.current.push(window.setTimeout(() => setPhase("idle"), 450));
-  }, [clearTimers]);
+    clear();
+    // Arrived before the bar ever showed: stay invisible rather than flash it.
+    if (performance.now() - started.current < SHOW_AFTER_MS) {
+      el.dataset.state = "idle";
+      return;
+    }
+    el.dataset.state = "done";
+    timers.current.push(window.setTimeout(() => (el.dataset.state = "idle"), 400));
+  }, [clear]);
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
       const next = internalTarget(event);
-      if (!next) return;
-      clearTimers();
+      const el = bar.current;
+      if (!next || !el) return;
+      clear();
       target.current = next;
-      setPhase("waiting");
-      timers.current.push(
-        window.setTimeout(() => target.current && setPhase("loading"), SHOW_AFTER_MS),
-        window.setTimeout(finish, GIVE_UP_MS),
-      );
+      // Restart the animation from the start even if a bar is still showing.
+      el.dataset.state = "idle";
+      void el.offsetWidth;
+      el.dataset.state = "loading";
+      started.current = performance.now();
+      timers.current.push(window.setTimeout(finish, GIVE_UP_MS));
+      // A query-only navigation (a filter) does not change the pathname, so
+      // the URL itself is watched too.
+      const watch = () => {
+        if (target.current && location.pathname + location.search === target.current) finish();
+        else if (target.current) frame.current = requestAnimationFrame(watch);
+      };
+      frame.current = requestAnimationFrame(watch);
     };
     // Capture phase: runs before next/link handles (and prevents) the click.
     document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
-  }, [clearTimers, finish]);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      clear();
+    };
+  }, [clear, finish]);
 
-  // The new page has arrived. A query-only navigation (a filter) does not
-  // change the pathname, so the URL is also checked on each frame while waiting.
+  // The new page has arrived.
   useEffect(() => {
     finish();
   }, [pathname, finish]);
 
-  useEffect(() => {
-    if (phase !== "waiting" && phase !== "loading") return;
-    let frame = 0;
-    const check = () => {
-      if (target.current && location.pathname + location.search === target.current) finish();
-      else frame = requestAnimationFrame(check);
-    };
-    frame = requestAnimationFrame(check);
-    return () => cancelAnimationFrame(frame);
-  }, [phase, finish]);
-
-  if (phase === "idle" || phase === "waiting") return null;
-
-  return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-100 h-0.75">
-      <div
-        className={
-          phase === "done"
-            ? "h-full origin-left bg-accent opacity-0 transition-[transform,opacity] duration-300 ease-out"
-            : "h-full origin-left animate-[nav-progress_8s_cubic-bezier(0.1,0.8,0.2,1)_forwards] bg-accent shadow-[0_0_8px_var(--accent)]"
-        }
-      />
-    </div>
-  );
+  return <div ref={bar} aria-hidden="true" data-state="idle" className="nav-progress" />;
 }

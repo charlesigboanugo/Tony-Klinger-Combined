@@ -563,10 +563,50 @@
    its own — completion is shown only when the page has actually arrived. */
 @keyframes nav-progress {
   from {
+    opacity: 1;
     transform: scaleX(0.08);
   }
   to {
+    opacity: 1;
     transform: scaleX(0.85);
+  }
+}
+
+/* Driven by `data-state`, set directly by the click handler (see
+   NavigationProgress.tsx). Invisible for the first 100 ms of loading — the
+   animation's delay, with no backwards fill — so an instant navigation never
+   flashes it. Compositor-only, so it moves even while the page is rendering. */
+.nav-progress {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 100;
+  height: 3px;
+  pointer-events: none;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  transform-origin: left;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.nav-progress[data-state="loading"] {
+  animation: nav-progress 8s cubic-bezier(0.1, 0.8, 0.2, 1) 100ms forwards;
+}
+
+/* Only entered when the bar had become visible: fill, then fade. */
+.nav-progress[data-state="done"] {
+  animation: nav-progress-done 350ms ease-out forwards;
+}
+
+@keyframes nav-progress-done {
+  from {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  to {
+    opacity: 0;
+    transform: scaleX(1);
   }
 }
 

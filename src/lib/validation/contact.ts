@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./z";
 
 /**
  * Contact form — note 03 §8.

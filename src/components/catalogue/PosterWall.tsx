@@ -29,17 +29,23 @@ const ROW_SECONDS = [90, 120, 105, 130];
  * it too needs no script. Under reduced motion the rows never move and the
  * control is not shown.
  */
+/*
+  Posters per row. One run of 12 is ~2,400px at desktop size (wider than the
+  tilted wall on a 1920px screen) and ~1,500px on a phone. Every row used to
+  carry the WHOLE catalogue, twice: ~1,200 images and 4.4 MB for a decorative
+  background, which made /catalogue the slowest page on a phone by far.
+*/
+const PER_ROW = 12;
+
 export function PosterWall({ posters, children }: { posters: Poster[]; children: ReactNode }) {
   // Four rows, so a tall phone screen is covered top to bottom (on wide
-  // screens the fourth runs past the edge and is clipped). Each starts at a
-  // different point in the set, so no column repeats one poster down the wall.
-  const rows = [0, 1, 2, 3].map((r) => {
-    const shift = Math.floor((posters.length / 4) * r);
-    const row = [...posters.slice(shift), ...posters.slice(0, shift)];
-    // Enough posters that one run is wider than the widest screen.
-    while (row.length > 0 && row.length < 12) row.push(...row);
-    return row;
-  });
+  // screens the fourth runs past the edge and is clipped). Each row takes a
+  // different run of the set, so no poster repeats down the wall.
+  const rows = [0, 1, 2, 3].map((r) =>
+    posters.length === 0
+      ? []
+      : Array.from({ length: PER_ROW }, (_, i) => posters[(r * PER_ROW + i) % posters.length]),
+  );
 
   return (
     <section className="group/wall grain relative isolate overflow-hidden bg-block-noir text-block-foreground">

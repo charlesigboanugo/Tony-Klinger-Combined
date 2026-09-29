@@ -1,9 +1,6 @@
-import { z } from "zod";
+import { z } from "./z";
 
-/** The exact wording a subscriber agrees to. Stored with the consent record —
- *  consent to wording we cannot reproduce is not evidence of anything. */
-export const NEWSLETTER_CONSENT_TEXT =
-  "Yes, email me occasional news about Tony Klinger's coaching, courses, books and films. I can unsubscribe at any time.";
+export { NEWSLETTER_CONSENT_TEXT, type NewsletterFormState } from "./newsletter-copy";
 
 export const newsletterSchema = z.object({
   email: z
@@ -19,8 +16,3 @@ export const newsletterSchema = z.object({
   website: z.string().max(0, "Submission rejected.").optional(),
 });
 
-export type NewsletterFormState = {
-  error?: string;
-  success?: string;
-  fieldErrors?: Record<string, string[]>;
-};

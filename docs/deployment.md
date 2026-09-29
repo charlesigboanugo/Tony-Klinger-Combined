@@ -15,6 +15,12 @@ true before and after a deploy.
 | Video | Livid (domain-restricted embeds) |
 | Scheduler | Vercel Cron → `/api/cron/[job]` |
 
+**Function region: London (`lhr1`), set in `vercel.json`.** It must stay in the same region
+as the Supabase project (`eu-west-2`, London). Vercel's default is Washington (`iad1`),
+which made every per-request page cross the Atlantic for each database call. `vercel.json`
+currently holds only the region; the cron schedules are in `vercel.json.test` (which also
+carries the region) until crons are switched on — when renaming it, keep `regions`.
+
 ## Environment variables
 
 Every one of these must exist on the Vercel project before the first deploy.
@@ -150,6 +156,19 @@ never live without its protection. In development a missing secret passes, so
 the form stays testable.
 
 ## Images
+
+**Stored images are WebP, not AVIF** (note 10 §47.3): Next's and Vercel's optimizers never
+resize an AVIF source, so AVIF went to phones at full size. `pnpm images:import` converts
+AVIF to WebP on upload. The local old-site archive (`current-website/`, not in git) was
+itself converted to WebP on 2026-09-30, as were the committed `supabase/content/images`; each
+converted file's original AVIF hash is kept in an `_origin-hashes.json` beside it
+(`site-files/` in the archive, the images folder in the repo), which the import uses so
+storage paths stay the same.
+To convert images already in a project's storage:
+
+```
+node scripts/convert-stored-avif.mjs --env <env file>
+```
 
 `supabase db reset` wipes `storage.objects` AND the `resources` table, so images
 cannot live in `seed.sql` — a seed cannot upload files. Restore them with:

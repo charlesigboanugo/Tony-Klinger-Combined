@@ -1741,6 +1741,49 @@ never flashes it, creeping towards 85% and completing and fading when the URL ch
 (pathname, or the query for filter links); a 12 s cap clears it if a navigation never lands.
 Transform and opacity only, hand-built, no library (the §37.1 motion rule).
 
+**It is driven by `data-state` on the element, set directly in the click handler — not by
+React state.** The next page renders in a React transition, and on a phone a state update
+made during it was committed only together with the new page, so the first version showed
+the bar *after* the pause it was meant to cover. The `.nav-progress` CSS (globals.css) owns
+the 100 ms reveal (an animation delay) and the fill-and-fade, so the bar moves even while the
+main thread is busy rendering. With the CPU slowed 4× at phone size, the bar now appears
+140–270 ms after a tap, while the new page lands at 220–750 ms (`/catalogue` is the heaviest).
+
+### 47.3 Mobile performance rules
+
+*Recorded 2026-09-30 after a phone audit (390px, DPR 3, CPU slowed 4×, production build).
+Scrolling was already ~60 fps everywhere; the cost was images, JavaScript and server region.*
+
+1. **Stored images are WebP, never AVIF.** Next's optimizer — and Vercel's — never resizes
+   an AVIF *source* (`image/avif` is in `BYPASS_TYPES`, `next/dist/server/image-optimizer.js`),
+   so 429 of 465 stored images and all 34 design photos reached phones at full size: a
+   2,200px, 250 KB file for a 112px thumbnail. Sources are now WebP (quality 90, full size);
+   the optimizer resizes per request and serves AVIF/WebP to the browser (250 KB → 4 KB at
+   384px). `import-images.mjs` converts AVIF to WebP on upload; `convert-stored-avif.mjs`
+   converted existing storage in place (same `resources` rows, old AVIF files kept).
+   Design photos in `public/images/` are `.webp`.
+2. **Decorative walls take a bounded set.** `PosterWall` rendered the whole catalogue in
+   each of four rows, twice (~1,200 images, 4.4 MB). It now takes 12 per row.
+   `/catalogue`: DOM 1,543 → 654 nodes, images 4.4 MB → 0.6 MB, LCP 1.6 s → 0.8 s.
+3. **No `backdrop-filter` on sticky or fixed bars below `lg`.** Re-blurring the page behind a
+   sticky header on every scrolled frame is among the most expensive things a phone GPU
+   does; the bars are near-opaque anyway. Public, workspace and admin headers blur from
+   `lg` only; the product page's mobile buy bar is solid.
+4. **Hover-only visuals render only where hover exists** (`pointer-fine:`). The catalogue
+   card's hover glow was an extra image per card on phones, never seen.
+5. **Keep Zod off public pages.** Validation schemas import `z` from
+   `lib/validation/z.ts` (which sets `jitless` so the CSP never sees Zod's `eval` probe);
+   what a form component needs at runtime (copy, types) lives in a Zod-free module
+   (`newsletter-copy.ts`); `lib/env/public.ts` validates by hand, because every stored
+   image imports it. Shared JavaScript per public page: 288 KB → 224 KB compressed.
+6. **Functions run in London (`lhr1`), next to Supabase (`eu-west-2`)** — `vercel.json`
+   `regions`. They had defaulted to Washington (`iad1`), so every per-request page, the
+   header's `/api/session` and the ownership check crossed the Atlantic for each query
+   (1.1–1.4 s to first byte measured).
+
+Result at 4× CPU slowdown: tap-to-page 165–570 ms for most menu pages, ~900 ms for
+`/catalogue` (≈40–140 ms and ≈230 ms on a real mid-range phone), scrolling ~60 fps.
+
 Verified 2026-09-29 on a production build at phone size: all menu pages prefetched while
 idle; a menu tap to /catalogue/books took 102 ms with no bar flash; on a throttled network
 the bar showed and cleared on arrival; a same-page link showed none; no errors on public,

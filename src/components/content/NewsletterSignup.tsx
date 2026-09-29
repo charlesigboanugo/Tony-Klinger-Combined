@@ -7,7 +7,7 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import {
   NEWSLETTER_CONSENT_TEXT,
   type NewsletterFormState,
-} from "@/lib/validation/newsletter";
+} from "@/lib/validation/newsletter-copy";
 
 /**
  * Newsletter opt-in — note 04 §8, note 10 §23.
