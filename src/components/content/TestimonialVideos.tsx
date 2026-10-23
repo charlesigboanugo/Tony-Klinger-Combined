@@ -88,7 +88,7 @@ export function TestimonialVideoCard({
         {v.title ? (
           <p className={cn("text-lg leading-snug text-pretty", plainCaption ? "font-medium" : "font-display")}>
             {v.attributed_to ? (
-              <span aria-hidden="true" className="mr-0.5 text-primary">&ldquo;</span>
+              <span aria-hidden="true" className="mr-0.5">&ldquo;</span>
             ) : null}
             {v.title}
           </p>

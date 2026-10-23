@@ -6,7 +6,9 @@ import { ScreeningHero } from "@/components/catalogue/ScreeningHero";
 import { Container } from "@/components/layout/Container";
 import { AudioPlayer } from "@/components/media/AudioPlayer";
 import { StoredImage } from "@/components/media/StoredImage";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { ButtonLink } from "@/components/ui/Button";
+import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import {
   COVER_FOCUS_CLASS,
   categoryLabel,
@@ -19,6 +21,8 @@ import {
   workHref,
   type CatalogueItem,
 } from "@/lib/content/catalogue";
+import { pageMetadata } from "@/lib/seo/metadata";
+import { catalogueWorkData } from "@/lib/seo/structured-data";
 import { publicStorageUrl } from "@/lib/storage/public-url";
 import { cn } from "@/lib/utils/cn";
 
@@ -28,7 +32,12 @@ export async function generateMetadata({
   const { category, slug } = await params;
   const item = await getCatalogueItem(category, slug);
   return item
-    ? { title: item.title, description: item.description ?? undefined }
+    ? pageMetadata({
+        title: item.title,
+        description: item.description,
+        path: `/catalogue/${category}/${item.slug}`,
+        image: { storagePath: item.storage_path, alt: item.title },
+      })
     : { title: "Not found" };
 }
 
@@ -91,6 +100,14 @@ export default async function CatalogueItemPage({
   return (
     <>
       {/* ------------------------------------------------ title card */}
+      <JsonLd data={catalogueWorkData(item)} />
+      <BreadcrumbJsonLd
+        trail={[
+          { name: "Catalogue", path: "/catalogue" },
+          { name: categoryLabel(category), path: `/catalogue/${category}` },
+          { name: item.title, path: `/catalogue/${category}/${item.slug}` },
+        ]}
+      />
       <ScreeningHero
         eyebrow={
           <nav aria-label="Breadcrumb">

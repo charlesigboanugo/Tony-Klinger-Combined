@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { safeRedirect } from "@/lib/auth/safe-redirect";
 import { publicEnv } from "@/lib/env/public";
 import { visitorHeaders } from "@/lib/supabase/forwarded";
 import { requestOrigin } from "@/lib/urls";
@@ -73,7 +74,7 @@ const NONCE_PREFIXES = [
   "/academy",
   "/admin",
   "/auth",
-  "/bookings",
+  "/book",
   "/cart",
   "/checkout",
   "/welcome",
@@ -183,7 +184,7 @@ function contentSecurityPolicy(nonce: string | null): string {
  */
 
 /** Route prefixes that require a session. Authorization happens server-side. */
-const REQUIRES_SESSION = ["/account", "/bookings", "/admin", "/welcome"] as const;
+const REQUIRES_SESSION = ["/account", "/book", "/admin", "/welcome"] as const;
 
 function requiresSession(pathname: string): boolean {
   if (REQUIRES_SESSION.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
@@ -194,6 +195,24 @@ function requiresSession(pathname: string): boolean {
   // (note 03 §18, note 05 §16). Everything beneath it requires a session.
   return pathname.startsWith("/academy/");
 }
+
+/**
+ * Auth pages that only make sense signed OUT (owner, 2026-10-13).
+ *
+ * Somebody already signed in has nothing to do on any of them, so they are
+ * sent on to where they were going instead of being shown a sign-in form.
+ *
+ * Deliberately absent, because each one NEEDS a session:
+ *   /auth/2fa             the second-factor step of signing in
+ *   /auth/reset-password  where a recovery link or an invitation lands
+ *   /auth/callback        exchanges a code and may replace the session
+ */
+const SIGNED_OUT_ONLY = new Set([
+  "/auth/sign-in",
+  "/auth/sign-up",
+  "/auth/forgot-password",
+  "/auth/verify",
+]);
 
 /**
  * Build the post-sign-in return target.
@@ -298,6 +317,24 @@ export async function proxy(request: NextRequest) {
 
   if (!user && requiresSession(request.nextUrl.pathname)) {
     const redirectResponse = NextResponse.redirect(signInUrl(request));
+    redirectResponse.headers.set("Content-Security-Policy", csp);
+    return redirectResponse;
+  }
+
+  if (user && request.method === "GET" && SIGNED_OUT_ONLY.has(pathname)) {
+    // `next` is validated exactly as it would be after signing in (note 05
+    // §36), and can never point back into this set, so this cannot loop.
+    const target = safeRedirect(searchParams.get("next"));
+    const redirectResponse = NextResponse.redirect(
+      new URL(target, requestOrigin(request.headers)),
+    );
+    // Carry over a session refreshed by getUser() above, or the rotated
+    // refresh token is lost and the user is signed out.
+    for (const cookie of response.cookies.getAll()) redirectResponse.cookies.set(cookie);
+    for (const key of ["cache-control", "expires", "pragma"]) {
+      const value = response.headers.get(key);
+      if (value) redirectResponse.headers.set(key, value);
+    }
     redirectResponse.headers.set("Content-Security-Policy", csp);
     return redirectResponse;
   }

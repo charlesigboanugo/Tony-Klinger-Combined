@@ -47,7 +47,9 @@ export async function readCart(): Promise<CartLine[]> {
 
   try {
     const parsed = cartSchema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : [];
+    // One of each (owner, 2026-10-08). A cart written before that rule may
+    // carry a larger quantity; it is read as one.
+    return parsed.success ? parsed.data.map((l) => ({ ...l, qty: 1 })) : [];
   } catch {
     return [];
   }
@@ -72,38 +74,19 @@ export async function writeCart(lines: CartLine[]): Promise<void> {
 }
 
 /**
- * Add or increment a line.
+ * Add a line.
  *
- * A line is identified by slug AND billing period: the same membership bought
- * monthly and bought for a year are different purchases, so adding one must not
- * silently increment the other. Re-adding with a new period UPDATES the
- * existing line rather than stacking a second copy of the same product, which
- * is what a customer changing their mind expects.
+ * ONE OF EACH AT A TIME (owner, 2026-10-08): an item already in the cart is
+ * not added again and its quantity never rises above one. Buying the same
+ * thing again later, as another order, is unaffected. Re-adding a membership with a
+ * different billing period switches the period on the line that is there,
+ * which is what a customer changing their mind expects.
  */
-export function addLine(
-  lines: CartLine[],
-  slug: string,
-  qty = 1,
-  billing?: BillingPeriod,
-): CartLine[] {
-  const existing = lines.find((l) => l.slug === slug);
-  if (existing) {
-    return lines.map((l) =>
-      l.slug === slug
-        ? {
-            ...l,
-            // Same period: increase quantity. Different period: switch it,
-            // keeping the quantity already chosen.
-            qty:
-              l.billing === billing
-                ? Math.min(l.qty + qty, MAX_QUANTITY)
-                : l.qty,
-            billing: billing ?? l.billing,
-          }
-        : l,
-    );
+export function addLine(lines: CartLine[], slug: string, billing?: BillingPeriod): CartLine[] {
+  if (lines.some((l) => l.slug === slug)) {
+    return lines.map((l) => (l.slug === slug ? { ...l, qty: 1, billing: billing ?? l.billing } : l));
   }
-  return [...lines, { slug, qty: Math.min(qty, MAX_QUANTITY), billing }];
+  return [...lines, { slug, qty: 1, billing }];
 }
 
 /** Change the billing period of a line already in the cart. */
@@ -113,6 +96,27 @@ export function setLineBilling(
   billing: BillingPeriod,
 ): CartLine[] {
   return lines.map((l) => (l.slug === slug ? { ...l, billing } : l));
+}
+
+/**
+ * Swap one line for another option of the same offer — one session for a pack
+ * of eight, Level 1 for Level 2 — keeping its place and quantity.
+ *
+ * Whether `to` really is an alternative of `from` is decided by the caller
+ * (`switchCartOptionAction` checks the products' option group): this only
+ * rewrites the cart. If `to` is already a line, `from` is dropped rather than
+ * left beside it.
+ */
+export function switchLine(lines: CartLine[], from: string, to: string): CartLine[] {
+  if (from === to) return lines;
+  const source = lines.find((l) => l.slug === from);
+  if (!source) return lines;
+
+  // Already a line: the one being switched away from simply goes.
+  if (lines.some((l) => l.slug === to)) {
+    return lines.filter((l) => l.slug !== from);
+  }
+  return lines.map((l) => (l.slug === from ? { slug: to, qty: 1 } : l));
 }
 
 /**

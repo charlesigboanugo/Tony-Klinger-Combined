@@ -40,9 +40,11 @@ export function NavDropdown({
   const menuId = useId();
   const containerRef = useRef<HTMLLIElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  // How the trigger was last pressed: see its onClick.
+  const pressedWith = useRef<string | null>(null);
 
   // A section is current when any of its pages is, so "Coaching" stays
-  // highlighted while reading /coaching/memberships.
+  // highlighted while reading /coaching/passes.
   const sectionActive =
     isActive(pathname, item.href) ||
     (item.children ?? []).some(
@@ -75,8 +77,15 @@ export function NavDropdown({
     <li
       ref={containerRef}
       className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      // Pointer events, mouse only: a tap on a touch screen also fires the
+      // emulated mouseenter, which opened the menu just before the tap's click
+      // toggled it shut again.
+      onPointerEnter={(event) => {
+        if (event.pointerType === "mouse") setOpen(true);
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType === "mouse") setOpen(false);
+      }}
     >
       <button
         ref={triggerRef}
@@ -84,7 +93,17 @@ export function NavDropdown({
         aria-expanded={open}
         aria-controls={menuId}
         aria-current={sectionActive ? "true" : undefined}
-        onClick={() => setOpen((v) => !v)}
+        onPointerDown={(event) => {
+          pressedWith.current = event.pointerType;
+        }}
+        onClick={() => {
+          // A mouse has already opened the menu by hovering, so its click must
+          // not toggle it shut again; moving away closes it. Touch and the
+          // keyboard (a click with no pointer) toggle as usual.
+          const mouse = pressedWith.current === "mouse";
+          pressedWith.current = null;
+          setOpen((v) => (mouse ? true : !v));
+        }}
         className={cn(
           "flex items-center gap-1.5 rounded-sm px-2 py-3 transition-colors xl:px-3",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
@@ -187,7 +206,10 @@ export function NavDropdown({
                 const childActive = !child.external && isActive(pathname, child.href);
 
                 return (
-                  <li key={child.href}>
+                  <li
+                    key={child.href}
+                    className={cn(child.lead && "col-span-full mb-2 border-b border-border pb-2")}
+                  >
                     <Link
                       href={child.href}
                       {...(child.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
@@ -196,7 +218,8 @@ export function NavDropdown({
                       className={cn(
                         "group/item flex items-center gap-2 rounded-sm py-2 text-sm transition-colors",
                         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-                        childActive ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                        child.lead && "font-medium",
+                        childActive || child.lead ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                       )}
                     >
                       <span

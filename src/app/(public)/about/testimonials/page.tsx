@@ -10,16 +10,18 @@ import { ButtonArrow, ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { listTestimonialVideos } from "@/lib/content/testimonial-videos";
 import { listTestimonials } from "@/lib/content/testimonials";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { designPhotos } from "@/lib/site/design-photos";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 
 import { FilteredWall, TestimonialWall } from "./TestimonialWall";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Testimonials",
   description:
     "What people who have worked with Tony Klinger say about the coaching, the courses and the talks.",
-};
+  path: "/about/testimonials",
+});
 
 /**
  * Testimonials — note 03 §5.

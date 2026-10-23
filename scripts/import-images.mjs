@@ -273,7 +273,6 @@ const GALLERY = {
 const COURSE_COVERS = {
   "level-one": "coaching-level-one-cover.webp",
   "level-two": "coaching-level-two-cover.webp",
-  "level-three": "coaching-level-three-cover.webp",
 };
 const ADVANCED_COACHING_COVER = "coaching-private-cover.webp";
 // Keyed by table, then slug. Set only where no cover is chosen yet, like the

@@ -72,3 +72,34 @@ export function AccountSection({
     </section>
   );
 }
+
+/**
+ * One named group inside a section: the sessions of one series, the bookings
+ * of one kind.
+ *
+ * A list that runs several series together makes the reader sort it in their
+ * head (owner, 2026-10-09). The heading is an h3, a clear level below the
+ * section's h2, with a quiet count beside it.
+ */
+export function AccountGroup({
+  title,
+  count,
+  children,
+  className,
+}: {
+  title: string;
+  /** How many are in the group, said beside the title. */
+  count?: number;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <h3 className="mb-3 flex items-baseline gap-2 border-b border-border pb-2 font-sans text-base font-semibold">
+        {title}
+        {count !== undefined ? <span className="text-sm font-normal text-muted-foreground">{count}</span> : null}
+      </h3>
+      {children}
+    </div>
+  );
+}

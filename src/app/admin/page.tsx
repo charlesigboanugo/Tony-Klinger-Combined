@@ -96,6 +96,13 @@ export default async function AdminDashboardPage() {
       hint: "From the contact form, unread",
       href: "/admin/enquiries?status=new",
     },
+    stats.newApplications > 0 && {
+      label: "Retreat applications",
+      icon: "mail" as IconName,
+      value: String(stats.newApplications),
+      hint: "Applied, not yet answered",
+      href: "/admin/retreat-applications?is_status=submitted",
+    },
     stats.pendingOrders > 0 && {
       label: "Orders pending",
       icon: "bag" as IconName,

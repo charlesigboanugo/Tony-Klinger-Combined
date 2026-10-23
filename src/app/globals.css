@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* The narrowest phones (under 300px): workspace and admin headers shrink
+   their icons, logo and labels so everything still fits (owner, 2026-10-15). */
+@custom-variant tiny (@media (width < 18.75rem));
+
 /*
  * Tony Klinger design tokens — note 10.
  *
@@ -402,6 +406,42 @@
     cursor: pointer;
   }
 
+  /*
+   * Drop-down selects (owner, 2026-10-13): the browser's own arrow and flat
+   * box gave no sign of being a control. One look everywhere — our own
+   * chevron, and a border that firms up under the pointer, as a button's does.
+   */
+  select {
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23808080' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.25rem;
+    transition: border-color var(--dur-fast) ease-out;
+  }
+  select:not(:disabled):hover {
+    border-color: color-mix(in oklab, var(--foreground) 60%, transparent);
+  }
+
+  /*
+   * Search boxes (owner, 2026-10-13): the browser's own clear "x" was tiny and
+   * kept the text cursor. One look everywhere — our own cross, larger, with a
+   * pointer, firming up under it. Firefox draws no clear button at all.
+   */
+  input[type="search"]::-webkit-search-cancel-button {
+    appearance: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    background-color: var(--muted-foreground);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m5 5 10 10M15 5 5 15'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+  input[type="search"]::-webkit-search-cancel-button:hover {
+    background-color: var(--foreground);
+  }
+
   /* Focus must remain visible in both themes (note 10 §36). */
   :focus-visible {
     outline: 2px solid var(--ring);
@@ -530,6 +570,40 @@
     }
   }
 
+  /* Off-canvas variant: a sheet that slides down from the top edge (the
+     lesson's course contents). Same timing and easing; the slide replaces the
+     scale, and is a transform, so it stays on the compositor. */
+  .dropdown-panel.dropdown-from-top {
+    transform: translateY(-100%);
+  }
+  .dropdown-panel.dropdown-from-top[data-open="true"] {
+    transform: translateY(0);
+  }
+
+  /* The same sheet from the left edge (the workspace menus below lg). */
+  .dropdown-panel.dropdown-from-left {
+    transform: translateX(-100%);
+  }
+  .dropdown-panel.dropdown-from-left[data-open="true"] {
+    transform: translateX(0);
+  }
+
+  /* The dimmed page behind an off-canvas sheet: fades with it. */
+  .dropdown-scrim {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity var(--dur-menu-out) var(--ease-in-out-menu),
+      visibility 0s var(--dur-menu-out);
+  }
+  .dropdown-scrim[data-open="true"] {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity var(--dur-menu-in) var(--ease-in-out-menu),
+      visibility 0s;
+  }
+
   /* Reveal-on-scroll initial state. The IntersectionObserver in
      <Reveal> flips data-revealed, so content is visible even if JS never
      runs — the hidden state is applied only when JS has marked the element. */
@@ -640,6 +714,17 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* The spare-key chip's dot: a soft blink, opacity only. */
+@keyframes key-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
   }
 }
 

@@ -4,15 +4,25 @@ import Link from "next/link";
 import {
   clearCartAction,
   removeFromCartAction,
-  updateQuantityAction,
+  setCartBillingAction,
+  switchCartOptionAction,
 } from "@/app/(public)/cart/actions";
+import { GiftLink } from "@/components/coaching/GiftLink";
+import { OptionSwitch } from "@/components/coaching/OptionSwitch";
 import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { VisitorSync } from "@/components/navigation/VisitorSync";
+import { BackLink } from "@/components/ui/BackLink";
 import { ButtonLink } from "@/components/ui/Button";
 import { readCart } from "@/lib/commerce/cart";
+import { giftBlock } from "@/lib/commerce/gift";
+import { optionsForProducts } from "@/lib/commerce/options";
 import { cartTotal, priceCart } from "@/lib/commerce/orders";
 import { formatPrice } from "@/lib/commerce/pricing";
+import { applyPassUpgrades } from "@/lib/commerce/pass-upgrade";
+import { saleCheck } from "@/lib/commerce/sale-check";
+import type { saleBlock } from "@/lib/commerce/sale-status";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Cart", robots: { index: false } };
 
@@ -25,15 +35,33 @@ export const metadata: Metadata = { title: "Cart", robots: { index: false } };
  */
 export default async function CartPage() {
   const stored = await readCart();
-  const lines = await priceCart(
+  const priced = await priceCart(
     stored.map((l) => ({
       productSlug: l.slug,
       quantity: l.qty,
       billing: l.billing,
     })),
   );
+  const supabase = await createClient();
+  // A higher pass for somebody holding a lower one is an upgrade, at the
+  // difference in price (migration 0027), here as at checkout.
+  const lines = await applyPassUpgrades(supabase, priced);
   const total = cartTotal(lines);
   const currency = lines[0]?.currency;
+
+  // The other ways each line is sold (one session or eight, a retreat's
+  // levels), so it can be changed here rather than removed and found again.
+  const alternatives = await optionsForProducts(lines.map((l) => l.slug));
+
+  // Lines that cannot be sold to this person now (already theirs, sessions
+  // still to use, no date), so the cart says which before checkout refuses.
+  const blocked = new Map<string, NonNullable<ReturnType<typeof saleBlock>>>();
+  await Promise.all(
+    lines.map(async (line) => {
+      const block = await saleCheck(supabase, line);
+      if (block) blocked.set(line.slug, block);
+    }),
+  );
 
   // Stripe cannot put a subscription and a one-off in one session, so the cart
   // says so HERE rather than letting the customer discover it at the payment
@@ -79,8 +107,8 @@ export default async function CartPage() {
                           <p className="mt-1 text-sm text-muted-foreground">
                             {recurring
                               ? `${formatPrice(line.unitAmount, line.currency)} every ${line.interval ?? "month"}, cancel any time`
-                              : line.quantity > 1
-                                ? `${formatPrice(line.unitAmount, line.currency)} each, one payment`
+                              : line.productType === "membership"
+                                ? "One payment for twelve months. It does not renew"
                                 : "One payment"}
                           </p>
                         </div>
@@ -93,17 +121,51 @@ export default async function CartPage() {
                         </p>
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between gap-4">
-                        {recurring ? (
-                          <span />
-                        ) : (
-                          <QuantityStepper
-                            slug={line.slug}
-                            quantity={line.quantity}
-                            name={line.name}
-                          />
-                        )}
+                      {blocked.has(line.slug) ? (
+                        <p role="alert" className="mt-4 rounded-(--radius) border border-warning bg-warning/10 p-3 text-sm">
+                          {blocked.get(line.slug)!.message} Remove it to check out the rest.
+                        </p>
+                      ) : null}
 
+                      {(alternatives.get(line.slug)?.length ?? 0) > 1 ? (
+                        <OptionSwitch
+                          label={`Choose an option for ${line.name}`}
+                          size="sm"
+                          className="mt-4"
+                          formAction={switchCartOptionAction}
+                          hidden={{ slug: line.slug }}
+                          options={alternatives.get(line.slug)!.map((o) => ({
+                            value: o.slug,
+                            label: o.label,
+                            note: formatPrice(o.amount, o.currency),
+                            active: o.slug === line.slug,
+                          }))}
+                        />
+                      ) : null}
+
+                      {line.billing && line.otherPeriod ? (
+                        <OptionSwitch
+                          label={`How to pay for ${line.name}`}
+                          size="sm"
+                          className="mt-4"
+                          formAction={setCartBillingAction}
+                          fieldName="billing"
+                          hidden={{ slug: line.slug }}
+                          options={(["monthly", "yearly"] as const).map((period) => {
+                            const amount = period === line.billing ? line.unitAmount : line.otherPeriod!.amount;
+                            return {
+                              value: period,
+                              label: period === "monthly" ? "Monthly" : "Yearly",
+                              note: `${formatPrice(amount, line.currency)}${period === "monthly" ? " a month" : " a year"}`,
+                              active: period === line.billing,
+                            };
+                          })}
+                        />
+                      ) : null}
+
+                      {/* One of each (owner, 2026-10-08): no quantity control.
+                          An item is in the cart or it is not. */}
+                      <div className="mt-4 flex justify-end">
                         <form action={removeFromCartAction}>
                           <input type="hidden" name="slug" value={line.slug} />
                           <button
@@ -120,12 +182,9 @@ export default async function CartPage() {
               </ul>
 
               <div className="mt-5 flex items-center justify-between gap-4 px-1">
-                <Link
-                  href="/coaching"
-                  className="text-sm font-medium underline-offset-4 hover:text-accent hover:underline"
-                >
-                  &larr; Continue shopping
-                </Link>
+                <BackLink href="/coaching" inline>
+                  Continue shopping
+                </BackLink>
                 <form action={clearCartAction}>
                   <button
                     type="submit"
@@ -178,7 +237,7 @@ export default async function CartPage() {
                   role="alert"
                   className="mt-5 rounded-(--radius) border border-warning bg-warning/10 p-3 text-sm"
                 >
-                  A membership is a subscription, so it has to be paid for on
+                  A renewing subscription has to be paid for on
                   its own. Please check it out separately from the one-off
                   items.
                 </p>
@@ -187,6 +246,7 @@ export default async function CartPage() {
               <ButtonLink href="/checkout" size="lg" className="mt-6 w-full">
                 Checkout
               </ButtonLink>
+              {giftBlock(lines) ? null : <GiftLink href="/checkout?gift=1" />}
 
               <p className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <LockIcon />
@@ -212,76 +272,27 @@ export default async function CartPage() {
 }
 
 const TYPE_LABELS: Record<string, string> = {
-  membership: "Membership",
+  membership: "Coaching Pass",
   course: "Course",
   bundle: "Bundle",
   cohort: "Cohort",
   group_coaching: "Group coaching",
   private_coaching: "Private coaching",
+  retreat: "Retreat",
+  event: "Event ticket",
 };
 
 function typeLabel(type: string) {
   return TYPE_LABELS[type] ?? type.replaceAll("_", " ");
 }
 
-/**
- * − qty + in one form: each button submits its own `qty`, so a change is one
- * click with no separate "Update" step and no client JavaScript. Going below 1
- * removes the line, as `updateQuantityAction` already does for 0.
- */
-function QuantityStepper({
-  slug,
-  quantity,
-  name,
-}: {
-  slug: string;
-  quantity: number;
-  name: string;
-}) {
-  const step =
-    "flex size-9 items-center justify-center text-lg text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent";
-  return (
-    <form
-      action={updateQuantityAction}
-      className="inline-flex items-center overflow-hidden rounded-full border border-input-border"
-    >
-      <input type="hidden" name="slug" value={slug} />
-      <button
-        type="submit"
-        name="qty"
-        value={quantity - 1}
-        className={step}
-        aria-label={quantity === 1 ? `Remove ${name}` : `One fewer ${name}`}
-      >
-        &minus;
-      </button>
-      <span
-        className="w-8 text-center text-sm font-semibold tabular-nums"
-        aria-label="Quantity"
-      >
-        {quantity}
-      </span>
-      <button
-        type="submit"
-        name="qty"
-        value={quantity + 1}
-        disabled={quantity >= 10}
-        className={step}
-        aria-label={`One more ${name}`}
-      >
-        +
-      </button>
-    </form>
-  );
-}
-
 /** The empty cart points straight at the three ways in, not one vague link. */
 function EmptyCart() {
   const routes = [
     {
-      label: "Memberships",
-      note: "Monthly or yearly, four tiers",
-      href: "/coaching/memberships",
+      label: "Coaching Passes",
+      note: "Silver, Gold or Platinum, for twelve months",
+      href: "/coaching/passes",
     },
     {
       label: "Courses",

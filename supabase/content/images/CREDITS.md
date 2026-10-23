@@ -81,6 +81,5 @@ attribution required; recorded anyway), found through Openverse. StockSnap serve
 | `coaching-cohort-platinum-cover.webp` | cohort platinum | "Team Meeting" by Startup Stock Photos, StockSnap, CC0 — https://stocksnap.io/photo/team-meeting-69TMH4ITIE |
 | `coaching-level-one-cover.webp` | The Basics of Movie Production | "Camera Vintage" by Ethan Robertson, StockSnap, CC0 — https://stocksnap.io/photo/camera-vintage-EKLKJP8RVN (replaced the videographer photo, 2026-09-26: owner asked for more beautiful course images) |
 | `coaching-level-two-cover.webp` | How to Get Your Movie Made | "Sony film camera, location unknown", rawpixel, CC0 (public domain) — https://www.rawpixel.com/image/6112388/sony-film-camera-location-unknown-date-unknown, 1024 px (replaced the meeting photo, 2026-09-26) |
-| `coaching-level-three-cover.webp` | level three | "Vintage Film" by Jay Mantri, StockSnap, CC0 — https://stocksnap.io/photo/vintage-film-F07E9C9CA2 |
 | `coaching-private-cover.webp` | private | "Business Meeting" by Christina Morillo, StockSnap, CC0 — https://stocksnap.io/photo/business-meeting-SKBXLJOILI |
 | `coaching-virtual-retreat-cover.webp` | virtual retreat | "Laptop Apple" by WDnet Studio, StockSnap, CC0 — https://stocksnap.io/photo/laptop-apple-8FCUYBIMVF |

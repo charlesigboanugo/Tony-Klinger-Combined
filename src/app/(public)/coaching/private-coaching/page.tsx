@@ -7,11 +7,14 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { listCoachingServices } from "@/lib/content/coaching";
+import { pageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Private Coaching",
-  description: "One-to-one coaching with Tony Klinger.",
-};
+  description:
+    "One-to-one coaching with Tony Klinger.",
+  path: "/coaching/private-coaching",
+});
 
 export default async function PrivateCoachingPage() {
   const services = await listCoachingServices();
@@ -22,7 +25,7 @@ export default async function PrivateCoachingPage() {
         <PageHeader
           eyebrow="Coaching"
           title="Private Coaching"
-          description="One to one, scheduled around you. Buy a session, then book the time that suits you."
+          description="An hour with Tony on your own project or career, at a time that suits you. Book a single session, or a pack to use when you need them."
         />
 
         {services.length === 0 ? (
@@ -39,8 +42,9 @@ export default async function PrivateCoachingPage() {
                   title={service.name}
                   description={service.description}
                   eyebrow="One to one"
-                  cta="View and book"
+                  cta="View and buy"
                   meta={`${service.duration_minutes} minutes`}
+                  priceNote="a session"
                   prices={service.prices}
                   storagePath={service.storagePath}
                   seed={service.slug}
@@ -53,8 +57,8 @@ export default async function PrivateCoachingPage() {
         )}
 
         <p className="mt-8 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Membership covers private coaching only where that benefit is stated
-          explicitly. Where it is not, private sessions are bought separately.
+          Private coaching is separate from the Coaching Pass: it is booked session
+          by session, or bought as a pack.
         </p>
       </Container>
     </Section>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BackLink } from "@/components/ui/BackLink";
 
 /**
  * Shell for every authentication page — note 04 §17, note 10 §25.
@@ -96,18 +97,9 @@ export function AuthCard({
 
       {escape ? (
         <p className="mt-6 text-center">
-          <Link
-            href="/"
-            className="group inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-accent"
-          >
-            <span
-              aria-hidden="true"
-              className="transition-transform duration-(--dur-base) ease-expo group-hover:-translate-x-1 motion-reduce:transform-none"
-            >
-              &larr;
-            </span>
+          <BackLink href="/" inline>
             Back to tonyklinger.com
-          </Link>
+          </BackLink>
         </p>
       ) : null}
     </div>

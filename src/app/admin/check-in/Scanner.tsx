@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
+import { FILLED_STATES, OUTLINE_STATES } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 
 import { scanTicketAction, type ScanResult } from "./actions";
@@ -206,11 +207,11 @@ export function Scanner({ eventId }: { eventId: string | null }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-xl font-semibold">Scan tickets</h2>
         {scanning ? (
-          <button type="button" onClick={stop} className="h-10 rounded-full border border-border px-4 text-sm font-semibold">
+          <button type="button" onClick={stop} className={`h-10 rounded-full border border-border px-4 text-sm font-semibold transition-[filter,transform,box-shadow,background-color,border-color,color] duration-200 ease-out active:scale-96 ${OUTLINE_STATES}`}>
             Stop camera
           </button>
         ) : (
-          <button type="button" onClick={start} className="h-10 rounded-full bg-button px-5 text-sm font-semibold text-button-foreground">
+          <button type="button" onClick={start} className={`h-10 rounded-full bg-button px-5 text-sm font-semibold text-button-foreground transition-[filter,transform,box-shadow,background-color,border-color,color] duration-200 ease-out active:scale-96 ${FILLED_STATES}`}>
             Start scanning
           </button>
         )}
@@ -252,7 +253,7 @@ export function Scanner({ eventId }: { eventId: string | null }) {
         <button
           type="submit"
           disabled={pending}
-          className="h-12 rounded-full bg-button px-6 font-semibold text-button-foreground disabled:opacity-60"
+          className={`h-12 rounded-full bg-button px-6 font-semibold text-button-foreground transition-[filter,transform,box-shadow,background-color,border-color,color] duration-200 ease-out active:scale-96 disabled:opacity-60 ${FILLED_STATES}`}
         >
           {pending ? "Checking…" : "Check in"}
         </button>

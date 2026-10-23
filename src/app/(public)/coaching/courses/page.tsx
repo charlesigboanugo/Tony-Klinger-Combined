@@ -7,12 +7,14 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { listCourses } from "@/lib/content/coaching";
+import { pageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Courses",
   description:
     "Self-paced filmmaking courses from Tony Klinger, delivered in the Academy.",
-};
+  path: "/coaching/courses",
+});
 
 export default async function CoursesPage() {
   const courses = await listCourses();

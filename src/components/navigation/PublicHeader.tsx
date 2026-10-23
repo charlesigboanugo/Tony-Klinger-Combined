@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Container } from "@/components/layout/Container";
 import { MobileNav } from "@/components/navigation/MobileNav";
 import { NavDropdown } from "@/components/navigation/NavDropdown";
 import { navLinkType, navLinkUnderline } from "@/components/navigation/navStyles";
-import { useVisitor } from "@/components/navigation/useVisitor";
+import { isSigningOutHere, useVisitor } from "@/components/navigation/useVisitor";
 import { UserMenu } from "@/components/navigation/UserMenu";
 import { Wordmark } from "@/components/navigation/Wordmark";
 import { ButtonLink } from "@/components/ui/Button";
@@ -41,6 +41,23 @@ export function PublicHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const visitor = useVisitor(pathname);
+
+  /*
+    Signed in or out in another tab (note 05 §37.3). The masthead corrects
+    itself from `useVisitor`; this re-renders the page beneath it, for the few
+    public pages that read the visitor on the server (the cart, an event's
+    ticket). Only on a change from one known answer to another, never on the
+    first answer after load, and not for this tab's own sign-out, which is
+    already replacing the page.
+  */
+  const email = visitor ? visitor.email : undefined;
+  const lastEmail = useRef(email);
+  useEffect(() => {
+    if (email === undefined) return;
+    const changed = lastEmail.current !== undefined && lastEmail.current !== email;
+    if (changed && !isSigningOutHere()) router.refresh();
+    lastEmail.current = email;
+  }, [email, router]);
 
   /*
     Prefetch every page in the menu once the browser is idle (note 10 §47.2).
@@ -178,7 +195,7 @@ export function PublicHeader() {
                 <span aria-hidden="true" className="hidden h-9 w-21 sm:block" />
               ) : userEmail ? (
                 <div className="hidden sm:block">
-                  <UserMenu email={userEmail} />
+                  <UserMenu email={userEmail} admin={visitor?.admin ?? false} />
                 </div>
               ) : (
                 <span className="hidden sm:block">
@@ -228,6 +245,7 @@ export function PublicHeader() {
         open={open}
         onClose={() => setOpen(false)}
         userEmail={userEmail}
+        admin={visitor?.admin ?? false}
         cartCount={cartCount}
         pathname={pathname}
       />

@@ -37,6 +37,7 @@ export function WorkCard({
   sizes = "(min-width: 1280px) 22vw, (min-width: 768px) 30vw, 45vw",
   tone = "page",
   form = "poster",
+  heading: Heading = "h3",
 }: {
   item: CatalogueItem;
   /** True for the first row only — everything below the fold stays lazy. */
@@ -46,8 +47,10 @@ export function WorkCard({
   tone?: "page" | "ink";
   /** "still" for a landscape cover laid across two columns — see above. */
   form?: "poster" | "still";
+  /** "h2" when the wall sits straight under the page's h1, with no section heading. */
+  heading?: "h2" | "h3";
 }) {
-  if (form === "still" && item.storage_path) return <StillCard item={item} priority={priority} />;
+  if (form === "still" && item.storage_path) return <StillCard item={item} priority={priority} heading={Heading} />;
   const link = workHref(item);
   const muted = tone === "ink" ? "text-secondary-foreground/65" : "text-muted-foreground";
   // Show artwork (see `showsWhole`) sits whole in the frame; books and films
@@ -141,7 +144,7 @@ export function WorkCard({
 
       <div className="mt-4 flex flex-1 flex-col">
         {awaitingLink(item) ? <ComingSoon className="mb-2 self-start" /> : null}
-        <h3 className="font-display text-lg leading-snug font-semibold text-balance">
+        <Heading className="font-display text-lg leading-snug font-semibold text-balance tracking-normal">
           {link ? (
             <Link
               href={link.href}
@@ -156,7 +159,7 @@ export function WorkCard({
             item.title
           )}
           {link?.external ? <ExternalMark className="ml-1.5 inline-block h-3 w-3 align-baseline opacity-70" /> : null}
-        </h3>
+        </Heading>
         {item.description ? (
           <p className={cn("mt-1.5 line-clamp-2 text-sm leading-relaxed", muted)}>{item.description}</p>
         ) : null}
@@ -170,7 +173,15 @@ export function WorkCard({
  * it. On a phone the tile has a whole row to itself, so it keeps a wide 8:5
  * frame; from md up it shares a row with posters and stretches to their height.
  */
-function StillCard({ item, priority }: { item: CatalogueItem; priority: boolean }) {
+function StillCard({
+  item,
+  priority,
+  heading: Heading,
+}: {
+  item: CatalogueItem;
+  priority: boolean;
+  heading: "h2" | "h3";
+}) {
   const link = workHref(item);
 
   return (
@@ -196,7 +207,7 @@ function StillCard({ item, priority }: { item: CatalogueItem; priority: boolean 
 
       <div className="p-5 sm:p-7">
         {awaitingLink(item) ? <ComingSoon tone="dark" className="mb-3" /> : null}
-        <h3 className="font-display text-2xl leading-tight font-semibold text-balance text-white sm:text-3xl">
+        <Heading className="font-display text-2xl leading-tight font-semibold text-balance text-white sm:text-3xl tracking-normal">
           {link ? (
             <Link
               href={link.href}
@@ -209,7 +220,7 @@ function StillCard({ item, priority }: { item: CatalogueItem; priority: boolean 
             item.title
           )}
           {link?.external ? <ExternalMark className="ml-2 inline-block h-3.5 w-3.5 align-baseline opacity-80" /> : null}
-        </h3>
+        </Heading>
         {item.description ? (
           <p className="mt-2 line-clamp-2 max-w-xl text-sm leading-relaxed text-white/80">{item.description}</p>
         ) : null}
@@ -228,7 +239,9 @@ export function ComingSoon({ tone = "light", className }: { tone?: "light" | "da
     <span
       className={cn(
         "inline-flex rounded-full border px-3 py-1 text-[0.625rem] font-semibold tracking-[0.16em] uppercase",
-        tone === "dark" ? "border-white/40 bg-black/60 text-white backdrop-blur-sm" : "border-border text-muted-foreground",
+        // The light tone takes the colour of the text around it, so it reads
+        // on a page and on a noir section alike (muted grey failed on noir).
+        tone === "dark" ? "border-white/40 bg-black/60 text-white backdrop-blur-sm" : "border-current/35 text-current",
         className,
       )}
     >

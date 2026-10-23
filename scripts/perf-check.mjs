@@ -29,7 +29,7 @@ const ROUTES = [
   "/catalogue",
   "/catalogue/books",
   "/coaching",
-  "/coaching/memberships",
+  "/coaching/passes",
   "/about",
   "/contact",
 ];

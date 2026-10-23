@@ -41,7 +41,7 @@ export function PublicFooter() {
                 popup (NewsletterPopup), which kept the footer short. */}
             <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-border pt-6">
               <p className="text-sm text-muted-foreground">Letters from Tony, a few times a year.</p>
-              <NewsletterButton className="text-sm font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-[6px] transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring" />
+              <NewsletterButton className="text-sm font-semibold text-foreground underline decoration-primary decoration-2 underline-offset-[6px] transition-colors hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring" />
             </div>
           </div>
 

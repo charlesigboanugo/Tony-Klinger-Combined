@@ -179,7 +179,7 @@ export async function myPaymentHistory(): Promise<HistoryEntry[]> {
 
   const fromInvoices: HistoryEntry[] = ((invoices ?? []) as unknown as InvoiceRow[]).map((i) => {
     const tier = i.membership_tier ?? i.subscriptions?.membership_tier;
-    const label = tier ? `${tier[0].toUpperCase()}${tier.slice(1)} membership` : "Membership";
+    const label = tier ? `${tier[0].toUpperCase()}${tier.slice(1)} Pass` : "Coaching Pass";
     return {
       id: `invoice:${i.id}`,
       date: i.paid_at ?? i.created_at,

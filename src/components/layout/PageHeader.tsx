@@ -35,6 +35,7 @@ export function PageHeader({
   description,
   actions,
   align = "start",
+  titleClassName,
   photo,
   className,
   nested = false,
@@ -44,6 +45,8 @@ export function PageHeader({
   description?: string;
   actions?: ReactNode;
   align?: "start" | "center";
+  /** For the heading alone: a narrower measure where a title reads better on two lines. */
+  titleClassName?: string;
   photo?: DesignImage;
   className?: string;
   /** Set by the photo split for its inner title block, which it has
@@ -113,7 +116,7 @@ export function PageHeader({
         <Reveal
           as="h1"
           delay={eyebrow ? 60 : 0}
-          className="font-display"
+          className={cn("font-display", titleClassName)}
         >
           {title}
         </Reveal>

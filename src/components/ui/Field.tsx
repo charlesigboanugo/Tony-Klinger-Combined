@@ -53,25 +53,56 @@ export function Input({
   errors?: string[];
   hint?: string;
 }) {
+  // An explicit id wins, so two forms on one page (the sign-in tabs) can share
+  // a field name; the label and messages follow whichever id is used.
+  const id = props.id ?? name;
   const describedBy =
-    [errors?.length ? `${name}-error` : null, hint ? `${name}-hint` : null]
+    [errors?.length ? `${id}-error` : null, hint ? `${id}-hint` : null]
       .filter(Boolean)
       .join(" ") || undefined;
 
   return (
     <input
       {...props}
-      id={name}
+      id={id}
       name={name}
       aria-invalid={errors?.length ? true : undefined}
       aria-describedby={describedBy}
       className={cn(
         "h-11 w-full rounded-(--radius) border bg-background px-3 text-base",
         "placeholder:text-muted-foreground",
-        errors?.length ? "border-error" : "border-input-border",
+        errors?.length ? "border-error" : "border-input-border aria-invalid:border-error",
         className,
       )}
     />
+  );
+}
+
+/**
+ * A select that matches `Input`: same height, border and focus. The chevron
+ * and the hover border come from the global `select` rule in `globals.css`,
+ * so this adds no arrow of its own.
+ */
+export function Select({
+  name,
+  hint,
+  className,
+  children,
+  ...props
+}: ComponentProps<"select"> & { name: string; hint?: string }) {
+  return (
+    <select
+      {...props}
+      id={props.id ?? name}
+      name={name}
+      aria-describedby={hint ? `${name}-hint` : props["aria-describedby"]}
+      className={cn(
+        "h-11 w-full rounded-(--radius) border border-input-border bg-background pl-3 text-base disabled:opacity-60",
+        className,
+      )}
+    >
+      {children}
+    </select>
   );
 }
 

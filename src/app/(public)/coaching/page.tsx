@@ -8,6 +8,7 @@ import { Band } from "@/components/layout/Band";
 import { Container } from "@/components/layout/Container";
 import { Reveal } from "@/components/motion/Reveal";
 import { ButtonArrow, ButtonLink } from "@/components/ui/Button";
+import { leadPrice } from "@/lib/commerce/billing";
 import { formatPrice } from "@/lib/commerce/pricing";
 import {
   listCoachingServices,
@@ -18,15 +19,17 @@ import {
 } from "@/lib/content/coaching";
 import { listTestimonialVideos } from "@/lib/content/testimonial-videos";
 import { listTestimonials } from "@/lib/content/testimonials";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { designPhotos } from "@/lib/site/design-photos";
 import { cn } from "@/lib/utils/cn";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Coaching",
   description:
-    "Membership, courses, group coaching, cohorts, private coaching and retreats with Tony Klinger — and how buying, access and booking fit together.",
-};
+    "Coaching Passes, courses, group coaching, cohorts, private coaching and retreats with Tony Klinger — and how buying, access and booking fit together.",
+  path: "/coaching",
+});
 
 function lowest(prices: ProductPrice[], kind: "recurring" | "one_time") {
   const matching = prices.filter((p) =>
@@ -46,8 +49,8 @@ type Offer = { title: string; href: string; from: string | null };
  * than a numbered list: the order is carried by the line joining them.
  */
 const STEPS = [
-  ["Choose", "A course, a series, a cohort, a retreat or a membership tier."],
-  ["Pay", "Once, or by subscription. No account needed to check out — make one after."],
+  ["Choose", "A course, a series, a cohort, a retreat or a Coaching Pass."],
+  ["Pay", "Once. No account needed to check out — make one after."],
   ["Access", "What you bought is attached to your account the moment payment clears."],
   ["Book", "Where something is scheduled, pick your slot with what you already hold."],
   ["Attend", "Sessions, workshops and lessons all happen in the Academy."],
@@ -82,6 +85,12 @@ export default async function CoachingPage() {
   const price = (p: ProductPrice | null, suffix = "") =>
     p ? `From ${formatPrice(p.amount, p.currency)}${suffix}` : null;
 
+  // Membership is one payment for a year (owner, 2026-10-09); read from the
+  // prices on sale, so the words follow if that changes.
+  const tierLeads = tiers.map((t) => leadPrice(t.prices)).filter((l) => l !== null);
+  const membershipFrom =
+    tierLeads.length > 0 ? tierLeads.reduce((a, b) => (b.price.amount < a.price.amount ? b : a)) : null;
+
 
   /*
     THE SIX OFFERS, GROUPED BY HOW YOU WANT TO WORK. A visitor rarely arrives
@@ -102,9 +111,9 @@ export default async function CoachingPage() {
       photo: { ...designPhotos.courses, focus: "object-[50%_45%]" },
       offers: [
         {
-          title: "Membership",
-          href: "/coaching/memberships",
-          from: price(lowest(tiers.flatMap((t) => t.prices), "recurring"), " a month"),
+          title: "Coaching Pass",
+          href: "/coaching/passes",
+          from: membershipFrom ? price(membershipFrom.price, ` ${membershipFrom.note}`) : null,
         },
         // The lead course by name (owner, 2026-09-26), then the rest. `courses`
         // is in curated order, so the first one is the one to lead with.
@@ -318,7 +327,7 @@ export default async function CoachingPage() {
 
           <Reveal className="mx-auto mt-12 max-w-3xl text-center">
             <p className="text-xl leading-snug font-medium text-balance sm:text-2xl">
-              If your membership already covers what you are booking, you are
+              If your Coaching Pass already covers what you are booking, you are
               never asked to pay for it again.
             </p>
           </Reveal>
@@ -326,8 +335,8 @@ export default async function CoachingPage() {
       </Band>
 
       {/*
-        MEMBERSHIP — four tiers, four equal cards with room inside: the name,
-        what it adds, and the monthly price set large at the foot. On the page
+        MEMBERSHIP — one equal card per tier with room inside: the name, what
+        it includes, and the price set large at the foot. On the page
         ground between the two noir bands (owner, 2026-09-26: not the paper
         tone).
       */}
@@ -335,34 +344,36 @@ export default async function CoachingPage() {
         <section aria-labelledby="membership-title" className="py-20 sm:py-24">
           <Container>
             <Reveal className="mx-auto max-w-2xl text-center">
-              <Eyebrow align="center">Membership</Eyebrow>
+              <Eyebrow align="center">Coaching Pass</Eyebrow>
               <h2 id="membership-title" className="mt-5 text-balance">
-                Steps, not alternatives.
+                Coaching that keeps coming.
               </h2>
               <p className="mt-6 text-lg leading-relaxed text-muted-foreground text-pretty">
-                Each tier includes everything in the one before it. Start where
-                you are and move up when you want more.
+                Live Group Coaching, a video library that keeps growing and, from
+                Gold, a monthly Q&amp;A with Tony. Start where you are and move up
+                when you want more.
               </p>
             </Reveal>
 
-            <ul className="mt-12 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            <ul
+              className={cn(
+                "mt-12 grid gap-6",
+                tiers.length === 4 ? "sm:grid-cols-2 xl:grid-cols-4" : tiers.length === 2 ? "sm:grid-cols-2" : "md:grid-cols-3",
+              )}
+            >
               {tiers.map((tier, i) => {
-                const from = lowest(tier.prices, "recurring");
-                const short = (name: string) => name.replace(/ Membership$/, "");
+                const lead = leadPrice(tier.prices);
+                const from = lead?.price ?? null;
+                const short = (name: string) => name.replace(/ (Membership|Pass)$/, "");
                 return (
                   <Reveal as="li" key={tier.id} delay={i * 70}>
                     <Link
-                      href={`/coaching/memberships/${tier.slug}`}
+                      href={`/coaching/passes/${tier.slug}`}
                       className="group flex h-full flex-col rounded-(--radius-lg) border border-border bg-surface p-7 shadow-card transition-[transform,box-shadow] duration-(--dur-base) ease-expo hover:-translate-y-1 hover:shadow-lift focus-visible:outline-offset-4 motion-reduce:transform-none"
                     >
                       <span className="font-display text-3xl font-semibold transition-colors duration-(--dur-fast) group-hover:text-accent">
                         {short(tier.name)}
                       </span>
-                      {i > 0 ? (
-                        <span className="mt-3 text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
-                          Everything in {short(tiers[i - 1].name)}, plus
-                        </span>
-                      ) : null}
                       <span className="mt-4 block flex-1 leading-relaxed text-muted-foreground text-pretty">
                         {tier.description}
                       </span>
@@ -372,7 +383,7 @@ export default async function CoachingPage() {
                             <span className="font-display text-4xl font-semibold tabular-nums">
                               {formatPrice(from.amount, from.currency)}
                             </span>
-                            <span className="ml-1 text-sm text-muted-foreground">a month</span>
+                            <span className="ml-1 text-sm text-muted-foreground">{lead?.note}</span>
                           </span>
                         ) : (
                           <span className="text-sm font-medium">Join {short(tier.name)}</span>
@@ -391,7 +402,7 @@ export default async function CoachingPage() {
             </ul>
 
             <div className="mt-10 flex justify-center">
-              <ButtonLink href="/coaching/memberships" size="lg" variant="outline">
+              <ButtonLink href="/coaching/passes" size="lg" variant="outline">
                 Compare every tier
                 <ButtonArrow />
               </ButtonLink>

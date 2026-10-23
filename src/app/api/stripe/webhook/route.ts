@@ -1,8 +1,9 @@
 import type Stripe from "stripe";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { issueClaimToken } from "@/lib/commerce/claim";
-import { recordCustomer, recordMember, removeMember } from "@/lib/email/audience";
+import { notifyPaidOrder } from "@/lib/commerce/notify";
+import { cancelUnfinishedOrder } from "@/lib/commerce/orders";
+import { recordMember, removeMember } from "@/lib/email/audience";
 import { queueEmail } from "@/lib/email/send";
 import { requireServerEnv } from "@/lib/env/server";
 import { stripe } from "@/lib/stripe/client";
@@ -113,56 +114,27 @@ async function handleEvent(event: Stripe.Event, admin: AdminClient) {
 
       await recordReceipt(session, orderId, admin);
 
-      // A guest order is paid but has no owner yet, so it has no entitlements
-      // either. Issue the single-use claim token that links it to an account
-      // (note 05 §29.3). The order stays valid indefinitely in the meantime —
-      // it is never treated as an abandoned cart (note 09 §45).
-      const result = data as { claimed?: boolean } | null;
-      const email = session.customer_details?.email ?? session.customer_email;
-
-      if (result && result.claimed === false) {
-        const claim = await issueClaimToken(orderId);
-        if (claim && email) {
-          // The claim link IS the credential, so it goes only to the address
-          // that paid (note 05 §29.3). Queued rather than sent inline: a
-          // provider outage must not fail the webhook and trigger a Stripe
-          // retry of an order already fulfilled (note 09 §42).
-          await queueEmail({
-            idempotencyKey: `claim:${orderId}`,
-            template: "guest_claim",
-            to: email,
-            payload: { claimUrl: claim.url, expiresAt: claim.expiresAt },
-          });
-        }
-      } else if (email) {
-        // Soft opt-in: details obtained in the course of a sale. The opt-out
-        // shown at checkout and in every message is what makes this lawful, and
-        // addToList skips anyone who has since unsubscribed.
-        await recordCustomer(email);
-
-        await queueEmail({
-          idempotencyKey: `receipt:${orderId}`,
-          template: "order_receipt",
-          to: email,
-          payload: {
-            total: session.amount_total ?? 0,
-            currency: (session.currency ?? "gbp").toUpperCase(),
-          },
-        });
-      }
+      // A guest order (or a gift) is paid but has no owner yet, so it has no
+      // entitlements either: it gets the single-use claim link (note 05
+      // §29.3), and stays valid indefinitely meanwhile (note 09 §45). Whoever
+      // paid gets the receipt. Shared with reconciliation (lib/commerce/notify).
+      await notifyPaidOrder(orderId, session, (data as { claimed?: boolean } | null)?.claimed);
       return;
     }
 
     case "checkout.session.expired": {
-      // An unpaid private coaching checkout gives its held time back now
-      // rather than when the hold lapses (migration 0020). Nothing else is
-      // held against a checkout, so for every other order this is a no-op.
+      // The payment page closed unpaid (24 hours after it opened): the order
+      // is finished with, so it is marked "Not completed" rather than left
+      // pending for ever (owner, 2026-10-23). Any private coaching hold is
+      // given back too, a step left from before pay-first booking (migration
+      // 0020) and a no-op today.
       const session = event.data.object as Stripe.Checkout.Session;
       const orderId = session.metadata?.order_id;
-      if (!orderId) return;
+      if (!orderId || session.payment_status === "paid") return;
 
       const { error } = await admin.rpc("release_private_coaching_hold", { p_order_id: orderId });
       if (error) throw new Error(`release_private_coaching_hold failed: ${error.message}`);
+      await cancelUnfinishedOrder(orderId);
       return;
     }
 
@@ -174,17 +146,17 @@ async function handleEvent(event: Stripe.Event, admin: AdminClient) {
       if (!userId) return;
 
       // Written only when Stripe carries a tier we recognise. An unrecognised
-      // string would fail the enum cast, return non-2xx, and put Stripe into a
-      // retry loop over a subscription that could never be stored — so it is
-      // dropped rather than trusted (note 09 §14).
-      const tier = MEMBERSHIP_TIERS.find(
-        (t) => t === subscription.metadata?.membership_tier,
-      );
+      // string would fail the reference to the pass tier, return non-2xx, and
+      // put Stripe into a retry loop over a subscription that could never be
+      // stored — so it is dropped rather than trusted (note 09 §14).
+      const tier = await knownTier(subscription.metadata?.membership_tier, admin);
 
       // In API version 2026-08-26.dahlia the billing period lives on the
       // subscription ITEM, not on the subscription. Reading it from the
       // subscription returns undefined and silently stores a null period.
       const item = subscription.items?.data?.[0];
+      const recurring = item?.price?.recurring?.interval;
+      const interval = recurring === "month" || recurring === "year" ? recurring : null;
       const toIso = (seconds: number | null | undefined) =>
         seconds ? new Date(seconds * 1000).toISOString() : null;
 
@@ -208,6 +180,9 @@ async function handleEvent(event: Stripe.Event, admin: AdminClient) {
             // Omitted rather than nulled on an update, so a tier already
             // recorded is not wiped by an event that omits the metadata.
             ...(tier ? { membership_tier: tier } : {}),
+            // Monthly or yearly, from Stripe's own price: what a tier
+            // includes can depend on it (the retreat is for yearly members).
+            ...(interval ? { billing_interval: interval } : {}),
           },
           { onConflict: "provider,provider_subscription_id" },
         )
@@ -215,6 +190,26 @@ async function handleEvent(event: Stripe.Event, admin: AdminClient) {
         .single();
 
       if (error) throw new Error(`subscription upsert failed: ${error.message}`);
+
+      /*
+        THE SUBSCRIPTION BECOMES ACCESS HERE (migration 0012, note 09 §16.1).
+
+        Until this call existed a paid membership was a row in `subscriptions`
+        and nothing else — no entitlement, so nothing a member could open or
+        book. `apply_subscription_membership` writes the membership entitlement
+        (to the end of the paid period, plus the grace a failed renewal is
+        retried in) or ends it, and everything the tier includes is derived
+        from that row in the database.
+
+        Thrown on failure, so Stripe retries: a member charged and given
+        nothing is the one outcome this handler must not swallow.
+      */
+      if (row) {
+        const { error: accessError } = await admin.rpc("apply_subscription_membership", {
+          p_subscription_id: row.id,
+        });
+        if (accessError) throw new Error(`apply_subscription_membership failed: ${accessError.message}`);
+      }
 
       // Invoices that arrived before this subscription row existed.
       if (row) {
@@ -361,7 +356,7 @@ async function recordInvoice(invoice: Stripe.Invoice, admin: AdminClient) {
       provider: "stripe",
       provider_invoice_id: invoice.id,
       provider_subscription_id: providerSubscriptionId,
-      membership_tier: MEMBERSHIP_TIERS.find((t) => t === metadata.membership_tier) ?? null,
+      membership_tier: await knownTier(metadata.membership_tier, admin),
       number: invoice.number,
       status: invoice.status ?? "draft",
       amount_due: invoice.amount_due,
@@ -379,11 +374,17 @@ async function recordInvoice(invoice: Stripe.Invoice, admin: AdminClient) {
 }
 
 /**
- * Membership tiers, as stored. Kept as a literal list rather than derived from
- * the generated types so an unrecognised value from Stripe is filtered out here
- * instead of failing an enum cast inside the database.
+ * The pass tier code Stripe sent, if a pass tier with that code exists.
+ *
+ * Tiers are codes staff can add to (migration 0029), so the valid set is read
+ * from the database rather than kept as a list here. An unrecognised value is
+ * dropped instead of failing the database's reference to the tier.
  */
-const MEMBERSHIP_TIERS = ["silver", "gold", "platinum", "ultimate"] as const;
+async function knownTier(code: unknown, admin: AdminClient): Promise<string | null> {
+  if (typeof code !== "string" || !code) return null;
+  const { data } = await admin.from("membership_tiers").select("tier").eq("tier", code).maybeSingle();
+  return data?.tier ?? null;
+}
 
 /**
  * Subscription states that mean the person actually has the membership.

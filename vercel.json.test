@@ -21,6 +21,10 @@
       "schedule": "30 3 * * *"
     },
     {
+      "path": "/api/cron/cleanup-uploads",
+      "schedule": "45 3 * * *"
+    },
+    {
       "path": "/api/cron/sync-audiences",
       "schedule": "45 4 * * *"
     },
@@ -31,6 +35,14 @@
     {
       "path": "/api/cron/event-reminders",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/session-reminders",
+      "schedule": "5,20,35,50 * * * *"
+    },
+    {
+      "path": "/api/cron/pass-reminders",
+      "schedule": "0 9 * * *"
     }
   ]
 }

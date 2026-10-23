@@ -88,37 +88,98 @@ export type EnrolledCohort = {
   name: string;
   slug: string;
   description: string | null;
-  cohortLevel: "silver" | "gold" | "platinum";
+  /** The level code ("silver", or one staff added). */
+  cohortLevel: string;
+  /**
+   * The start of the intake they are on. With standing access (no intake of
+   * their own) it is the cohort's intake under way, or else the next one —
+   * the one whose workshops their cohort page lists. Null only where the
+   * cohort has no intake still to finish.
+   */
   startsAt: string | null;
+  /** That intake's end. */
+  endsAt: string | null;
+  /** It has begun and not yet ended. Read from the clock here, not in render. */
+  inProgress: boolean;
+  /** Their intake's name: "Spring 2027". */
+  intakeLabel: string | null;
   storagePath: string | null;
 };
 
 /**
- * Cohorts this customer holds a place in.
+ * Cohorts this customer is in — migration 0017.
  *
- * Same two-query shape as `myCourses()`, for the same reason: `resource_id` is
- * polymorphic and has no foreign key an embed could follow.
+ * Being IN a cohort is being on one of its intakes (`cohort_enrolments`), or,
+ * for a few, holding standing access to it (granted by staff, or bought before
+ * intakes). A place paid for and not yet put on an intake is not listed here:
+ * `myIntakeChoices` is where that is finished.
  */
 export async function myCohorts(): Promise<EnrolledCohort[]> {
   const userId = (await getAuthContext())?.userId;
   if (!userId) return [];
   const supabase = await createClient();
 
-  const { data: grants } = await supabase
-    .from("entitlements")
-    .select("resource_id")
-    .eq("user_id", userId)
-    .eq("resource_type", "cohort")
-    .eq("status", "active");
+  const [{ data: enrolments }, { data: grants }] = await Promise.all([
+    supabase
+      .from("cohort_enrolments")
+      .select("cohort_intakes(cohort_id,label,starts_at,ends_at)")
+      .eq("user_id", userId),
+    supabase
+      .from("entitlements")
+      .select("resource_id")
+      .eq("user_id", userId)
+      .eq("resource_type", "cohort")
+      .eq("status", "active")
+      .is("quantity", null),
+  ]);
 
-  const ids = ((grants ?? []) as Array<{ resource_id: string | null }>)
-    .map((r) => r.resource_id)
-    .filter((id): id is string => id !== null);
+  // The latest intake of each cohort is the one that matters to show.
+  const intakeByCohort = new Map<string, { label: string; starts_at: string; ends_at: string }>();
+  for (const row of (enrolments ?? []) as unknown as Array<{
+    cohort_intakes: { cohort_id: string; label: string; starts_at: string; ends_at: string } | null;
+  }>) {
+    const intake = row.cohort_intakes;
+    if (!intake) continue;
+    const seen = intakeByCohort.get(intake.cohort_id);
+    if (!seen || intake.starts_at > seen.starts_at) intakeByCohort.set(intake.cohort_id, intake);
+  }
+
+  const ids = [
+    ...new Set([
+      ...intakeByCohort.keys(),
+      ...((grants ?? []) as Array<{ resource_id: string | null }>)
+        .map((r) => r.resource_id)
+        .filter((id): id is string => id !== null),
+    ]),
+  ];
   if (ids.length === 0) return [];
+
+  /*
+    STANDING ACCESS HAS NO INTAKE OF ITS OWN, but the cohort's page lists the
+    workshops of the intake that is running. The card said "Dates to be
+    announced" over a page full of dates (owner, 2026-10-09). So where there
+    is no enrolment, the card takes the cohort's intake under way, or else the
+    next to start.
+  */
+  const now = Date.now();
+  const standing = ids.filter((id) => !intakeByCohort.has(id));
+  if (standing.length > 0) {
+    const { data: open } = await supabase
+      .from("cohort_intakes")
+      .select("cohort_id,label,starts_at,ends_at")
+      .in("cohort_id", standing)
+      .eq("status", "published")
+      .gt("ends_at", new Date(now).toISOString())
+      .order("starts_at");
+    for (const intake of (open ?? []) as Array<{ cohort_id: string; label: string; starts_at: string; ends_at: string }>) {
+      // Soonest first, so the first seen for a cohort is the one running or next.
+      if (!intakeByCohort.has(intake.cohort_id)) intakeByCohort.set(intake.cohort_id, intake);
+    }
+  }
 
   const { data: cohorts } = await supabase
     .from("cohorts")
-    .select("id,name,slug,description,cohort_level,starts_at,resources!cover_resource_id(storage_path)")
+    .select("id,name,slug,description,cohort_level,resources!cover_resource_id(storage_path)")
     .in("id", ids);
 
   return ((cohorts ?? []) as unknown as Array<{
@@ -126,8 +187,7 @@ export async function myCohorts(): Promise<EnrolledCohort[]> {
     name: string;
     slug: string;
     description: string | null;
-    cohort_level: "silver" | "gold" | "platinum";
-    starts_at: string | null;
+    cohort_level: string;
     resources: { storage_path: string } | null;
   }>).map((c) => ({
     id: c.id,
@@ -135,7 +195,13 @@ export async function myCohorts(): Promise<EnrolledCohort[]> {
     slug: c.slug,
     description: c.description,
     cohortLevel: c.cohort_level,
-    startsAt: c.starts_at,
+    startsAt: intakeByCohort.get(c.id)?.starts_at ?? null,
+    endsAt: intakeByCohort.get(c.id)?.ends_at ?? null,
+    inProgress: (() => {
+      const intake = intakeByCohort.get(c.id);
+      return Boolean(intake && +new Date(intake.starts_at) <= now && +new Date(intake.ends_at) > now);
+    })(),
+    intakeLabel: intakeByCohort.get(c.id)?.label ?? null,
     storagePath: c.resources?.storage_path ?? null,
   }));
 }
@@ -181,6 +247,14 @@ export type CourseWithContent = {
 };
 
 /**
+ * Course order: by position, and where two share one, in the order they were
+ * created (owner, 2026-10-15). Without the second key, tied lessons came back
+ * in whatever order the database returned them, which could change.
+ */
+const byPlace = (a: { position: number; created_at: string }, b: { position: number; created_at: string }) =>
+  a.position - b.position || a.created_at.localeCompare(b.created_at);
+
+/**
  * A course with its structure.
  *
  * Modules and lessons come back only when the caller holds a live entitlement —
@@ -196,7 +270,7 @@ export async function courseWithContent(
   const { data } = await supabase
     .from("courses")
     .select(
-      "id,title,slug,description,resources!cover_resource_id(storage_path),course_modules(id,title,description,position,lessons(id,title,slug,position,video_provider,video_id,video_duration_seconds))",
+      "id,title,slug,description,resources!cover_resource_id(storage_path),course_modules(id,title,description,position,created_at,lessons(id,title,slug,position,created_at,video_provider,video_id,video_duration_seconds))",
     )
     .eq("slug", slug)
     .eq("status", "published")
@@ -215,11 +289,13 @@ export async function courseWithContent(
       title: string;
       description: string | null;
       position: number;
+      created_at: string;
       lessons: Array<{
         id: string;
         title: string;
         slug: string;
         position: number;
+        created_at: string;
         video_provider: string | null;
         video_id: string | null;
         video_duration_seconds: number | null;
@@ -235,7 +311,7 @@ export async function courseWithContent(
     storagePath: course.resources?.storage_path ?? null,
     modules: (course.course_modules ?? [])
       .slice()
-      .sort((a, b) => a.position - b.position)
+      .sort(byPlace)
       .map((m) => ({
         id: m.id,
         title: m.title,
@@ -243,7 +319,7 @@ export async function courseWithContent(
         position: m.position,
         lessons: (m.lessons ?? [])
           .slice()
-          .sort((a, b) => a.position - b.position)
+          .sort(byPlace)
           // The listing says a lesson HAS video. It never carries the id or a
           // URL: a course outline is rendered for people who may not be
           // entitled to every lesson on it, and there is no reason for the
@@ -274,7 +350,7 @@ export async function lessonBySlug(courseSlug: string, lessonSlug: string) {
   const { data } = await supabase
     .from("lessons")
     .select(
-      "id,title,slug,content,video_provider,video_id,video_hash,video_duration_seconds",
+      "id,title,slug,description,content,video_provider,video_id,video_hash,video_duration_seconds",
     )
     .eq("id", flat[index].id)
     .maybeSingle();
@@ -285,6 +361,7 @@ export async function lessonBySlug(courseSlug: string, lessonSlug: string) {
     id: string;
     title: string;
     slug: string;
+    description: string | null;
     content: string | null;
     video_provider: string | null;
     video_id: string | null;
@@ -306,6 +383,7 @@ export async function lessonBySlug(courseSlug: string, lessonSlug: string) {
       id: row.id,
       title: row.title,
       slug: row.slug,
+      description: row.description,
       content: row.content,
       videoUrl: video ? embedUrl(video) : null,
       videoDurationSeconds: row.video_duration_seconds,
@@ -318,66 +396,62 @@ export async function lessonBySlug(courseSlug: string, lessonSlug: string) {
   };
 }
 
-/** Upcoming sessions the customer may attend, from their entitled series. */
-export async function upcomingSessions(limit = 5) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("group_coaching_sessions")
-    .select("id,title,starts_at,ends_at,series_id,group_coaching_series(name,slug)")
-    .gte("starts_at", new Date().toISOString())
-    .order("starts_at", { ascending: true })
-    .limit(limit);
-
-  return (data ?? []) as unknown as Array<{
-    id: string;
-    title: string;
-    starts_at: string;
-    ends_at: string;
-    group_coaching_series: { name: string; slug: string } | null;
-  }>;
-}
-
-/** Consumable session credits, if the customer holds any. */
-export async function sessionCredits(): Promise<{ remaining: number } | null> {
+/**
+ * Group Coaching sessions the customer has paid for and not yet used.
+ *
+ * Sessions are FOR A SERIES (migration 0014): `bySeries` says how many of
+ * which, soonest to lapse first, so a page can say "8 Writing sessions" rather
+ * than a bare count that hides where they may be spent. `series` is null for
+ * sessions good for any series (granted by staff, or bought before that rule).
+ * Lapsed ones are left out even where the nightly job has not yet marked them.
+ */
+export async function sessionCredits(): Promise<{
+  remaining: number;
+  bySeries: Array<{ series: string | null; remaining: number; expiresAt: string | null }>;
+} | null> {
   const userId = (await getAuthContext())?.userId;
   if (!userId) return null;
   const supabase = await createClient();
   const { data } = await supabase
     .from("entitlements")
-    .select("quantity,quantity_used")
+    .select("resource_id,quantity,quantity_used,expires_at")
     .eq("user_id", userId)
     .eq("resource_type", "group_coaching_session")
     .eq("status", "active")
     .not("quantity", "is", null);
 
-  const rows = (data ?? []) as Array<{ quantity: number; quantity_used: number }>;
+  const now = Date.now();
+  const rows = ((data ?? []) as Array<{
+    resource_id: string | null;
+    quantity: number;
+    quantity_used: number;
+    expires_at: string | null;
+  }>).filter((r) => !r.expires_at || +new Date(r.expires_at) > now);
   if (rows.length === 0) return null;
 
-  return {
-    remaining: rows.reduce((sum, r) => sum + (r.quantity - (r.quantity_used ?? 0)), 0),
-  };
-}
+  const ids = [...new Set(rows.map((r) => r.resource_id).filter((id): id is string => id !== null))];
+  const { data: series } = ids.length
+    ? await supabase.from("group_coaching_series").select("id,name").in("id", ids)
+    : { data: [] };
+  const nameOf = new Map((series ?? []).map((row) => [row.id, row.name]));
 
-export async function myMembership() {
-  const userId = (await getAuthContext())?.userId;
-  if (!userId) return null;
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("subscriptions")
-    .select("status,membership_tier,current_period_end")
-    .eq("user_id", userId)
-    .in("status", ["active", "trialing", "past_due"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const grouped = new Map<string, { series: string | null; remaining: number; expiresAt: string | null }>();
+  for (const r of rows) {
+    const left = r.quantity - (r.quantity_used ?? 0);
+    if (left <= 0) continue;
+    const key = r.resource_id ?? "any";
+    const entry = grouped.get(key) ?? {
+      series: r.resource_id ? (nameOf.get(r.resource_id) ?? "Group Coaching") : null,
+      remaining: 0,
+      expiresAt: null,
+    };
+    entry.remaining += left;
+    if (r.expires_at && (!entry.expiresAt || r.expires_at < entry.expiresAt)) entry.expiresAt = r.expires_at;
+    grouped.set(key, entry);
+  }
 
-  return (
-    (data as {
-      status: string;
-      membership_tier: string | null;
-      current_period_end: string | null;
-    } | null) ?? null
-  );
+  const bySeries = [...grouped.values()].sort((a, b) => (a.expiresAt ?? "9").localeCompare(b.expiresAt ?? "9"));
+  return { remaining: bySeries.reduce((sum, e) => sum + e.remaining, 0), bySeries };
 }
 
 /**
@@ -449,7 +523,7 @@ export async function progressAcrossCourses(): Promise<
   // this is already the enrolled set (migration 0002_security_and_reference_data).
   const { data } = await supabase
     .from("courses")
-    .select("id,title,slug,course_modules(id,lessons(id,title,slug,position))")
+    .select("id,title,slug,course_modules(id,position,created_at,lessons(id,title,slug,position,created_at))")
     .eq("status", "published");
 
   type Row = {
@@ -458,7 +532,9 @@ export async function progressAcrossCourses(): Promise<
     slug: string;
     course_modules: Array<{
       id: string;
-      lessons: Array<{ id: string; title: string; slug: string; position: number }>;
+      position: number;
+      created_at: string;
+      lessons: Array<{ id: string; title: string; slug: string; position: number; created_at: string }>;
     }>;
   };
 
@@ -472,10 +548,12 @@ export async function progressAcrossCourses(): Promise<
   const completed = await completedLessonIds(everyLesson.map((l) => l.id));
 
   return courses.map((course) => {
+    // Module by module, then lesson by lesson: a lesson's position counts
+    // within its module, so sorting the whole course by it alone mixed them.
     const flat = (course.course_modules ?? [])
-      .flatMap((m) => m.lessons ?? [])
       .slice()
-      .sort((a, b) => a.position - b.position);
+      .sort(byPlace)
+      .flatMap((m) => (m.lessons ?? []).slice().sort(byPlace));
     const next = flat.find((l) => !completed.has(l.id));
 
     return {

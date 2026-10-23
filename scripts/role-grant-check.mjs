@@ -112,6 +112,8 @@ const here = () => page.url().replace(BASE, "") || "/";
 
 async function signIn(email) {
   await page.goto(`${BASE}/auth/sign-in`, { waitUntil: "domcontentloaded" });
+  // Sign-in opens on the email-link tab (owner, 2026-10-13); passwords are the other tab.
+  await page.getByRole("tab", { name: "Password" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', PASS);
   await Promise.all([
@@ -145,7 +147,12 @@ step(`owner holds ${keys} keys`);
 await page.goto(`${BASE}/account`, { waitUntil: "domcontentloaded" });
 await Promise.all([
   page.waitForURL((u) => !u.pathname.startsWith("/account"), { timeout: 20000 }),
-  page.getByRole("button", { name: /^Sign out$/i }).first().click(),
+  // Sign out lives in the Account menu (owner, 2026-10-15).
+  page
+    .locator("button[aria-haspopup=menu]")
+    .first()
+    .click()
+    .then(() => page.getByRole("menuitem", { name: /^Sign out$/i }).click()),
 ]);
 await signIn(OWNER);
 
@@ -156,12 +163,14 @@ step(`owner reached ${here()}`);
 
 if (!here().startsWith("/admin/users/")) await fail(`blocked at ${here()}`);
 
-await page.selectOption("select#role", ROLE);
+// The role form is a list edited then saved (owner, 2026-10-14).
+await page.selectOption('select[name="add-role"]', ROLE);
+await page.getByRole("button", { name: /^Add role$/i }).click();
 await page.fill('input[name="reason"]', "Harness: verifying the audited role path");
-await page.getByRole("button", { name: /Apply change/i }).click();
+await page.getByRole("button", { name: /^Save roles$/i }).click();
 await page.waitForTimeout(4000);
 
-const message = await page.locator("form.max-w-lg").innerText();
+const message = await page.locator("main").innerText();
 step(`form says: ${message.split("\n").find((l) => /audit|error|Granted|No such/i.test(l)) ?? "(no message)"}`);
 
 // The only proof that matters: the database.
@@ -180,10 +189,12 @@ step(`granted: audit says ${audit[0].action} by the owner — "${audit[0].reason
 // revoke direction is exercised rather than assumed to be symmetrical.
 await page.reload({ waitUntil: "domcontentloaded" });
 await page.waitForLoadState("networkidle").catch(() => {});
-await page.selectOption("select#role", ROLE);
-await page.check('input[name="grant"][value="revoke"]');
+await page
+  .locator("li", { hasText: new RegExp(ROLE.replace(/_/g, " "), "i") })
+  .getByRole("button", { name: /^Remove$/i })
+  .click();
 await page.fill('input[name="reason"]', "Harness: restoring the seed");
-await page.getByRole("button", { name: /Apply change/i }).click();
+await page.getByRole("button", { name: /^Save roles$/i }).click();
 await page.waitForTimeout(4000);
 
 const stillHeld = await rest(

@@ -83,6 +83,8 @@ const here = () => page.url().replace(BASE, "") || "/";
 
 async function signIn(email) {
   await page.goto(`${BASE}/auth/sign-in`, { waitUntil: "domcontentloaded" });
+  // Sign-in opens on the email-link tab (owner, 2026-10-13); passwords are the other tab.
+  await page.getByRole("tab", { name: "Password" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', PASS);
   await Promise.all([
@@ -117,7 +119,7 @@ await page.fill('input[name="reason"]', "Harness: verifying the invitation path"
 await page.getByRole("button", { name: /Send invitation/i }).click();
 await page.waitForTimeout(5000);
 
-const formText = (await page.locator("form.max-w-lg").innerText()).replace(/\s+/g, " ");
+const formText = (await page.locator("main").innerText()).replace(/\s+/g, " ");
 step(`form says: ${formText.slice(0, 160)}`);
 
 // 1. The account exists.
@@ -182,6 +184,8 @@ await invitee.close();
 const returning = await browser.newContext();
 const returningPage = await returning.newPage();
 await returningPage.goto(`${BASE}/auth/sign-in`, { waitUntil: "domcontentloaded" });
+// Sign-in opens on the email-link tab (owner, 2026-10-13); passwords are the other tab.
+await returningPage.getByRole("tab", { name: "Password" }).click();
 await returningPage.fill('input[type="email"]', INVITEE);
 await returningPage.fill('input[type="password"]', chosen);
 await Promise.all([

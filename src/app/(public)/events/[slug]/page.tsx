@@ -12,7 +12,9 @@ import {
 } from "@/components/coaching/ProductPage";
 import { StoredImage } from "@/components/media/StoredImage";
 import { Reveal } from "@/components/motion/Reveal";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { ButtonArrow, ButtonLink } from "@/components/ui/Button";
+import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { formatPrice } from "@/lib/commerce/pricing";
 import {
   FORMAT_LABEL,
@@ -25,6 +27,8 @@ import {
   type EventDetail,
   type EventViewer,
 } from "@/lib/content/events";
+import { pageMetadata } from "@/lib/seo/metadata";
+import { eventData } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils/cn";
 
 import { leaveWaitlistAction } from "./actions";
@@ -36,7 +40,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const event = await getEvent(slug);
   return event
-    ? { title: event.name, description: event.description ?? undefined }
+    ? pageMetadata({
+        title: event.name,
+        description: event.description,
+        path: `/events/${event.slug}`,
+        image: { storagePath: event.storagePath, alt: event.name },
+      })
     : { title: "Not found" };
 }
 
@@ -89,9 +98,18 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
 
   const link = "font-medium text-foreground underline underline-offset-4 hover:text-accent";
 
+  const eventLd = eventData(event);
   return (
     <>
+      {eventLd ? <JsonLd data={eventLd} /> : null}
+      <BreadcrumbJsonLd
+        trail={[
+          { name: "Events", path: "/events" },
+          { name: event.name, path: `/events/${event.slug}` },
+        ]}
+      />
       <ProductHero
+        fullScreen
         backHref="/events"
         backLabel="All events"
         eyebrow={past ? "Past event" : event.starts_at ? eventDay(event.starts_at) : "Date to be announced"}

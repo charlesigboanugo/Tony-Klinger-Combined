@@ -35,7 +35,7 @@ const VIEWPORT = mobile ? { width: 390, height: 844 } : { width: 1440, height: 1
 
 const PUBLIC_ROUTES = [
   "/", "/about", "/about/team", "/blog", "/catalogue", "/catalogue/books",
-  "/coaching", "/coaching/memberships", "/coaching/memberships/gold",
+  "/coaching", "/coaching/passes", "/coaching/passes/gold",
   "/coaching/courses", "/coaching/cohorts", "/coaching/group-coaching",
   "/coaching/private-coaching", "/coaching/retreats", "/give-get-go",
   "/events", "/contact", "/cart", "/checkout", "/privacy",
@@ -55,7 +55,7 @@ const CUSTOMER_ROUTES = [
   "/academy", "/academy/courses", "/academy/courses/level-one",
   "/academy/courses/level-one/lessons/education-training",
   "/academy/cohorts", "/academy/coaching",
-  "/checkout/success", "/bookings", "/welcome",
+  "/checkout/success", "/book", "/welcome",
 ];
 
 // Signed in as the owner, second factor presented.
@@ -66,9 +66,9 @@ const STAFF_ROUTES = [
   "/admin/team", "/admin/media", "/admin/emails", "/admin/settings",
   "/admin/lessons/new", "/admin/bookings", "/admin/products/new",
   "/admin/blog/new", "/admin/team/new", "/admin/testimonials",
-  "/admin/group-coaching", "/admin/cohorts", "/admin/masterclasses",
+  "/admin/group-coaching", "/admin/cohorts",
   "/admin/retreats", "/admin/events", "/admin/private-coaching",
-  "/admin/memberships", "/admin/audit",
+  "/admin/passes", "/admin/audit",
 ];
 
 /**
@@ -199,6 +199,8 @@ async function sessionFor(kind) {
 
   const email = kind === "staff" ? "owner@test.local" : "gold@test.local";
   await page.goto(`${BASE}/auth/sign-in`, { waitUntil: "domcontentloaded" });
+  // Sign-in opens on the email-link tab (owner, 2026-10-13); passwords are the other tab.
+  await page.getByRole("tab", { name: "Password" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', PASS);
   await Promise.all([

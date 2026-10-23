@@ -1,6 +1,6 @@
 import "server-only";
 
-import { pickPrice, type BillingPeriod } from "@/lib/commerce/billing";
+import { hasBothPeriods, pickPrice, type BillingPeriod } from "@/lib/commerce/billing";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,6 +17,12 @@ export type CartLine = {
   quantity: number;
   /** The period the customer chose. See the note on price selection below. */
   billing?: BillingPeriod;
+  /**
+   * The Group Coaching session a single session is being bought for (migration
+   * 0022). Named by the browser, so it is only ever an id to be checked: the
+   * database decides whether that session can be sold (`session_sale_status`).
+   */
+  sessionId?: string;
 };
 
 export type PricedLine = {
@@ -35,6 +41,26 @@ export type PricedLine = {
   unitAmount: number;
   quantity: number;
   currency: string;
+  /** The period this line was priced for, where the product is sold both ways. */
+  billing: BillingPeriod | null;
+  /** The other period's price, so the cart and checkout can offer the switch. */
+  otherPeriod: { period: BillingPeriod; amount: number } | null;
+  /**
+   * One Group Coaching session of a series: it is bought for a date, so it
+   * cannot be sold without one (and cannot sit in the cart).
+   */
+  needsDate: boolean;
+  /** The series a Group Coaching product is for. */
+  seriesId: string | null;
+  /** The session chosen for a `needsDate` line, as the browser named it. */
+  sessionId: string | null;
+  /**
+   * The pass this line upgrades (migration 0027), set by `applyPassUpgrades`
+   * and never by the browser: the entitlement's id. The line is then priced at
+   * the difference, and `fullAmount` is the pass's own price.
+   */
+  upgradeFrom?: string | null;
+  fullAmount?: number;
 };
 
 /** Resolve slugs to real products and their active prices. */
@@ -47,7 +73,7 @@ export async function priceCart(lines: CartLine[]): Promise<PricedLine[]> {
   const { data } = await supabase
     .from("products")
     .select(
-      "id,name,slug,status,product_type,prices(id,amount,currency,active,stripe_price_id,billing_type,interval)",
+      "id,name,slug,status,product_type,series_id,credits,prices(id,amount,currency,active,stripe_price_id,billing_type,interval)",
     )
     .in("slug", slugs)
     .eq("status", "active");
@@ -57,6 +83,8 @@ export async function priceCart(lines: CartLine[]): Promise<PricedLine[]> {
     name: string;
     slug: string;
     product_type: string;
+    series_id: string | null;
+    credits: number | null;
     prices: Array<{
       id: string;
       amount: number;
@@ -93,8 +121,13 @@ export async function priceCart(lines: CartLine[]): Promise<PricedLine[]> {
       amount.
     */
     const active = (product.prices ?? []).filter((p) => p.active);
-    const price = pickPrice(active, line.billing ?? "monthly");
+    const period: BillingPeriod = line.billing ?? "monthly";
+    const price = pickPrice(active, period);
     if (!price) continue;
+
+    const bothWays = hasBothPeriods(active);
+    const otherPeriodName: BillingPeriod = period === "monthly" ? "yearly" : "monthly";
+    const other = bothWays ? pickPrice(active, otherPeriodName) : null;
 
     priced.push({
       productId: product.id,
@@ -106,8 +139,16 @@ export async function priceCart(lines: CartLine[]): Promise<PricedLine[]> {
       name: product.name,
       productType: product.product_type,
       unitAmount: price.amount,
-      quantity: Math.max(1, Math.min(line.quantity, 10)),
+      // ONE OF EACH (owner, 2026-10-08): every item is bought singly. Whatever
+      // quantity a cookie or a form carries, the order is priced for one, so
+      // nothing upstream of here can make it more.
+      quantity: 1,
       currency: price.currency,
+      billing: bothWays ? period : null,
+      otherPeriod: other ? { period: otherPeriodName, amount: other.amount } : null,
+      needsDate: product.product_type === "group_coaching" && Boolean(product.series_id) && (product.credits ?? 1) <= 1,
+      seriesId: product.series_id,
+      sessionId: line.sessionId ?? null,
     });
   }
 
@@ -134,8 +175,10 @@ export async function createPendingOrder(params: {
   lines: PricedLine[];
   /** 'subscription' orders are receipted by their Stripe invoice (migration 0021). */
   checkoutMode?: "payment" | "subscription";
+  /** Bought for someone else; `guestEmail` is theirs (migration 0016). */
+  isGift?: boolean;
 }): Promise<{ orderId: string; total: number } | null> {
-  const { userId, guestEmail, lines, checkoutMode = "payment" } = params;
+  const { userId, guestEmail, lines, checkoutMode = "payment", isGift = false } = params;
   if (lines.length === 0) return null;
 
   const admin = createAdminClient();
@@ -153,6 +196,7 @@ export async function createPendingOrder(params: {
       discount_total: 0,
       total,
       checkout_mode: checkoutMode,
+      is_gift: isGift,
     })
     .select("id")
     .single();
@@ -170,10 +214,38 @@ export async function createPendingOrder(params: {
       unit_amount: line.unitAmount,
       quantity: line.quantity,
       total_amount: line.unitAmount * line.quantity,
+      // The date a single session was bought for; fulfilment takes that seat.
+      ...(line.needsDate && line.sessionId ? { metadata: { session_id: line.sessionId } } : {}),
+      // The pass an upgrade changes the tier of; fulfilment adds no new year.
+      ...(line.upgradeFrom ? { metadata: { upgrade_from: line.upgradeFrom } } : {}),
     })),
   );
 
   if (itemsError) return null;
 
   return { orderId: order.id, total };
+}
+
+/**
+ * Close an order whose checkout was never finished — note 09 §45 (owner,
+ * 2026-10-23).
+ *
+ * Marked `cancelled` (shown to the customer as "Not completed") once Stripe's
+ * payment page has expired unpaid, or no longer exists. Left `pending`, such
+ * orders piled up for ever and crowded the reconciliation job, which reads the
+ * oldest hundred pending orders, away from the paid ones it exists to rescue.
+ *
+ * Only a still-pending order is touched, so a payment that lands first always
+ * wins. Nothing else changes: the cart is kept, and buying again makes a new
+ * order.
+ */
+export async function cancelUnfinishedOrder(orderId: string): Promise<boolean> {
+  const { data, error } = await createAdminClient()
+    .from("orders")
+    .update({ status: "cancelled" })
+    .eq("id", orderId)
+    .eq("status", "pending")
+    .select("id");
+  if (error) throw new Error(`cancel unfinished order: ${error.message}`);
+  return (data ?? []).length > 0;
 }

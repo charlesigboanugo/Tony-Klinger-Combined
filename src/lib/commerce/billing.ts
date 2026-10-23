@@ -77,3 +77,23 @@ export function yearlySaving(prices: SelectablePrice[]): number | null {
 export function hasBothPeriods(prices: SelectablePrice[]): boolean {
   return Boolean(monthlyOf(prices) && yearlyOf(prices));
 }
+
+/**
+ * The one figure a listing leads with, and the words that go beside it.
+ *
+ * Membership is sold as one payment for twelve months (owner, 2026-10-09), so
+ * today this is that payment, "for a year". It still reads the prices on sale
+ * rather than assuming: a monthly price switched back on in admin leads again,
+ * and says "a month".
+ */
+export function leadPrice<T extends SelectablePrice>(prices: T[]): { price: T; note: string } | null {
+  const price = pickPrice(prices, "monthly");
+  if (!price) return null;
+  return { price, note: periodNote(price) };
+}
+
+/** "a month", "a year" (it renews), or "for a year" (one payment, it does not). */
+export function periodNote(price: SelectablePrice): string {
+  if (price.billing_type !== "recurring") return "for a year";
+  return price.interval === "year" ? "a year" : "a month";
+}

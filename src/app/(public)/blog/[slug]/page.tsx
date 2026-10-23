@@ -7,6 +7,7 @@ import { Container } from "@/components/layout/Container";
 import { GeneratedCover } from "@/components/media/GeneratedCover";
 import { Reveal } from "@/components/motion/Reveal";
 import { ButtonLink } from "@/components/ui/Button";
+import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import {
   getAdjacentPosts,
   getPost,
@@ -15,6 +16,7 @@ import {
   SITE_AUTHOR,
   type BlogPostLink,
 } from "@/lib/content/blog";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { absoluteUrl } from "@/lib/urls";
 import { cn } from "@/lib/utils/cn";
 
@@ -26,18 +28,16 @@ export async function generateMetadata({
   if (!post) return { title: "Not found" };
   const author = postAuthor(post.content);
 
-  return {
+  const base = pageMetadata({
     title: post.title,
-    description: post.excerpt ?? undefined,
-    alternates: { canonical: `/blog/${post.slug}` },
+    description: post.excerpt,
+    path: `/blog/${post.slug}`,
+    type: "article",
+  });
+  return {
+    ...base,
     authors: [author === SITE_AUTHOR ? { name: author, url: absoluteUrl("/about") } : { name: author }],
-    openGraph: {
-      type: "article",
-      title: post.title,
-      description: post.excerpt ?? undefined,
-      url: absoluteUrl(`/blog/${post.slug}`),
-      authors: [author],
-    },
+    openGraph: { ...base.openGraph, type: "article", authors: [author] },
   };
 }
 
@@ -89,6 +89,12 @@ export default async function BlogPostPage({ params }: PageProps<"/blog/[slug]">
 
   return (
     <>
+      <BreadcrumbJsonLd
+        trail={[
+          { name: "Blog", path: "/blog" },
+          { name: post.title, path: `/blog/${post.slug}` },
+        ]}
+      />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
 
       {/* Reading progress — `.reading-progress` in globals.css. Above the

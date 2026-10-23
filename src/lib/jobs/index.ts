@@ -1,9 +1,11 @@
 import "server-only";
 
-import { issueClaimToken } from "@/lib/commerce/claim";
-import { recordCustomer, syncAudiences } from "@/lib/email/audience";
+import { notifyPaidOrder } from "@/lib/commerce/notify";
+import { cancelUnfinishedOrder } from "@/lib/commerce/orders";
+import { syncAudiences } from "@/lib/email/audience";
 import { dispatchPendingEmails, queueEmail } from "@/lib/email/send";
 import { stripe } from "@/lib/stripe/client";
+import { cleanupAbandonedUploads } from "@/lib/storage/remove";
 import { syncCatalogueToStripe } from "@/lib/stripe/sync";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -52,6 +54,8 @@ export async function reconcileStripeOrders() {
     fulfilled: 0,
     notified: 0,
     stillUnpaid: 0,
+    /** Payment page expired unpaid, or gone from Stripe: marked "Not completed". */
+    closed: 0,
     errors: [] as string[],
   };
 
@@ -68,7 +72,19 @@ export async function reconcileStripeOrders() {
     summary.checked += 1;
 
     try {
-      const session = await stripe().checkout.sessions.retrieve(order.external_reference);
+      const session = await stripe()
+        .checkout.sessions.retrieve(order.external_reference)
+        .catch((caught: unknown) => {
+          // A session Stripe no longer has (a test-mode reset, a deleted
+          // account) can never be paid. Anything else is a real failure.
+          if ((caught as { code?: string }).code === "resource_missing") return null;
+          throw caught;
+        });
+
+      if (!session) {
+        if (await cancelUnfinishedOrder(order.id)) summary.closed += 1;
+        continue;
+      }
 
       if (session.payment_status === "paid") {
         const { data: fulfilment, error: fulfilError } = await admin.rpc("fulfil_order", {
@@ -93,48 +109,14 @@ export async function reconcileStripeOrders() {
         // first wins, and a webhook arriving late finds the key already used
         // and queues nothing. Changing a key here would start sending two of
         // every receipt.
-        const result = fulfilment as { claimed?: boolean } | null;
-        const email = session.customer_details?.email ?? session.customer_email;
-
-        if (result && result.claimed === false) {
-          const claim = await issueClaimToken(order.id);
-          if (claim && email) {
-            if (
-              await queueEmail({
-                idempotencyKey: `claim:${order.id}`,
-                template: "guest_claim",
-                to: email,
-                payload: { claimUrl: claim.url, expiresAt: claim.expiresAt },
-              })
-            ) {
-              notified += 1;
-            }
-          }
-        } else if (email) {
-          // Soft opt-in, exactly as on the webhook path: the details were
-          // obtained in the course of a sale, and addToList still skips anyone
-          // who has unsubscribed.
-          await recordCustomer(email);
-
-          // False means the key was already used — the webhook got there first.
-          // Counting that as a notification would overstate what this run did.
-          if (
-            await queueEmail({
-              idempotencyKey: `receipt:${order.id}`,
-              template: "order_receipt",
-              to: email,
-              payload: {
-                total: session.amount_total ?? 0,
-                currency: (session.currency ?? "gbp").toUpperCase(),
-              },
-            })
-          ) {
-            notified += 1;
-          }
-        }
+        notified += await notifyPaidOrder(order.id, session, (fulfilment as { claimed?: boolean } | null)?.claimed);
+      } else if (session.status === "expired") {
+        // The payment page closed unpaid. The webhook does this as it happens;
+        // this catches one it missed, so no unfinished order stays pending and
+        // keeps its place in this job's hundred (owner, 2026-10-23).
+        if (await cancelUnfinishedOrder(order.id)) summary.closed += 1;
       } else {
-        // Left pending on purpose. An unpaid order is not a problem to fix; it
-        // is a customer who did not finish (note 09 §45).
+        // Still open: the customer has up to 24 hours to finish (note 09 §45).
         summary.stillUnpaid += 1;
       }
     } catch (caught) {
@@ -143,6 +125,21 @@ export async function reconcileStripeOrders() {
       );
     }
   }
+
+  /*
+    AN ORDER WHOSE PAYMENT PAGE WAS NEVER MADE (Stripe unreachable at that
+    moment; checkout told them to try again). It has no session to ask about,
+    so the loop above never sees it. A day on, it is closed as well.
+  */
+  const { data: orphaned, error: orphanError } = await admin
+    .from("orders")
+    .update({ status: "cancelled" })
+    .eq("status", "pending")
+    .is("external_reference", null)
+    .lt("created_at", new Date(Date.now() - 24 * 3_600_000).toISOString())
+    .select("id");
+  if (orphanError) summary.errors.push(`orders without a session: ${orphanError.message}`);
+  summary.closed += (orphaned ?? []).length;
 
   summary.notified = notified;
   return summary;
@@ -201,14 +198,87 @@ export async function sendEventReminders() {
   return summary;
 }
 
+/**
+ * Coaching session reminders — migration 0017.
+ *
+ * Group Coaching, private sessions, cohort workshops, the members' Q&A and
+ * retreats, on the same two moments as events: a reminder in the day before,
+ * and the joining link again in the hour before the start (only when the
+ * session has one). Who gets each is the database's (`session_reminders_due`),
+ * matching who can open the session in the Academy. Keyed per kind, session
+ * and person, so nothing is sent twice.
+ */
+export async function sendSessionReminders() {
+  const admin = createAdminClient();
+  const summary = { dayBefore: 0, starting: 0 };
+
+  for (const when of ["day_before", "starting"] as const) {
+    const { data, error } = await admin.rpc("session_reminders_due", { p_kind: when });
+    if (error) throw new Error(`session_reminders_due(${when}): ${error.message}`);
+
+    for (const row of data ?? []) {
+      const queued = await queueEmail({
+        idempotencyKey: `session-${when}:${row.kind}:${row.item_id}:${row.user_id}`,
+        template: when === "day_before" ? "session_reminder" : "session_starting",
+        to: row.email,
+        payload: {
+          kind: row.kind,
+          title: row.title,
+          groupName: row.group_name,
+          groupSlug: row.group_slug,
+          startsAt: row.starts_at,
+          joinUrl: row.join_url,
+          notes: row.notes,
+        },
+      });
+      if (queued) summary[when === "day_before" ? "dayBefore" : "starting"] += 1;
+    }
+  }
+
+  return summary;
+}
+
+/**
+ * "Your pass ends soon" — migration 0017.
+ *
+ * A Coaching Pass is one payment for twelve months and does not renew, so the
+ * holder is told twice: about a month before (when buying the next year opens)
+ * and in the last week. A holder who has already bought the next year, or whose
+ * pass is on a renewing subscription, is left out by `passes_ending_due`.
+ */
+export async function sendPassReminders() {
+  const admin = createAdminClient();
+  const summary = { month: 0, week: 0 };
+
+  for (const when of ["month", "week"] as const) {
+    const { data, error } = await admin.rpc("passes_ending_due", { p_kind: when });
+    if (error) throw new Error(`passes_ending_due(${when}): ${error.message}`);
+
+    for (const row of data ?? []) {
+      const queued = await queueEmail({
+        idempotencyKey: `pass-ending-${when}:${row.entitlement_id}:${row.expires_at}`,
+        template: "pass_ending",
+        to: row.email,
+        payload: { tierName: row.tier_name, expiresAt: row.expires_at },
+      });
+      if (queued) summary[when] += 1;
+    }
+  }
+
+  return summary;
+}
+
 export const JOBS = {
   "sync-stripe": syncCatalogueToStripe,
   "send-emails": sendPendingEmails,
   "expire-entitlements": expireEntitlements,
   "cleanup-tokens": cleanupTokens,
+  "cleanup-uploads": cleanupAbandonedUploads,
   "reconcile-stripe": reconcileStripeOrders,
   "sync-audiences": syncMarketingAudiences,
   "event-reminders": sendEventReminders,
+  "session-reminders": sendSessionReminders,
+  "pass-reminders": sendPassReminders,
 } as const;
 
 export type JobName = keyof typeof JOBS;

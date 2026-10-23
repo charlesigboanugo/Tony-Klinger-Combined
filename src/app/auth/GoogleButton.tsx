@@ -17,6 +17,11 @@ import { googleSignInAction } from "@/app/auth/actions";
  * Google's specified surface, border and text colours via the `--google-*`
  * tokens, which carry their own light and dark values.
  *
+ * Under the pointer it answers as the site's other buttons do, in its own
+ * colours: the surface takes a faint tint, the border firms up and a soft halo
+ * appears, so it plainly reads as a button (owner, 2026-10-13) without leaving
+ * Google's look.
+ *
  * The mark itself is inlined SVG rather than an <img>: it must not depend on a
  * network request that could fail and leave an unlabelled button, and it is a
  * few hundred bytes.
@@ -57,7 +62,7 @@ function GoogleSubmit({ label }: { label: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="flex h-13 w-full items-center justify-center gap-3 rounded-full border border-(--google-border) bg-(--google-bg) px-4 text-[0.9375rem] font-medium text-(--google-text) transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-60"
+      className="flex h-13 w-full items-center justify-center gap-3 rounded-full border border-(--google-border) bg-(--google-bg) px-4 text-[0.9375rem] font-medium text-(--google-text) transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out hover:border-(--google-text)/45 hover:bg-[color-mix(in_oklab,var(--google-text)_7%,var(--google-bg))] hover:shadow-[0_0_0_4px_color-mix(in_oklab,var(--google-text)_12%,transparent),0_10px_24px_-10px_color-mix(in_oklab,var(--google-text)_45%,transparent)] active:scale-96 active:shadow-none active:bg-[color-mix(in_oklab,var(--google-text)_14%,var(--google-bg))] disabled:pointer-events-none disabled:opacity-60 motion-reduce:transform-none"
     >
       <GoogleMark />
       <span>{pending ? "Redirecting…" : label}</span>

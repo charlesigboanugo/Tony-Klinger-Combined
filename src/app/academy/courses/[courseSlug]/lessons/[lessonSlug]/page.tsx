@@ -2,15 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { LessonShell } from "@/components/academy/LessonShell";
 import { CompleteLesson } from "@/components/academy/CompleteLesson";
 import { CourseOutline } from "@/components/academy/CourseOutline";
 import { LessonBody } from "@/components/academy/LessonBody";
 import { LessonVideo } from "@/components/academy/LessonVideo";
+import { StaffOnly } from "@/components/academy/StaffView";
 import { ProgressBar } from "@/components/academy/ProgressBar";
+import { BackLink } from "@/components/ui/BackLink";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { completedLessonIds, courseProgress, lessonBySlug } from "@/lib/academy";
 import { formatDuration, readingMinutes } from "@/lib/academy/format";
 import { lessonWordCount } from "@/lib/academy/lesson-markdown";
+import { academyStaffView, viewOnly } from "@/lib/academy/staff";
+import { entitlementFor } from "@/lib/commerce/entitlements";
 import { requireUser } from "@/lib/permissions";
 
 export async function generateMetadata({
@@ -24,10 +29,10 @@ export async function generateMetadata({
 /**
  * A lesson — note 07 §34.
  *
- * Laid out as a study room rather than an article: the course's own map sits
- * beside the lesson from `xl` (above the lesson in a disclosure below it), the
- * course progress stays in view at the top, and the step a learner takes most
- * — finish this, open the next — is one button.
+ * Laid out as a study room rather than an article: a bar at the top keeps the
+ * way back, the course progress and the course's own map in reach at every
+ * size (the map opens from the top), and the step a learner takes most —
+ * finish this, open the next — is one button.
  */
 export default async function LessonPage({
   params,
@@ -41,6 +46,11 @@ export default async function LessonPage({
   if (!found) notFound();
 
   const { course, lesson, moduleTitle, previous, next } = found;
+
+  // Seen through the staff view (note 06 §23.2): the lesson, without marking
+  // it done, since progress is kept only for people who hold the course.
+  const [entitlement, staffView] = await Promise.all([entitlementFor("course", course.id), academyStaffView()]);
+  const staffOnly = viewOnly(staffView, entitlement.state === "active");
 
   const allIds = course.modules.flatMap((m) => m.lessons.map((l) => l.id));
   const completed = await completedLessonIds(allIds);
@@ -56,27 +66,32 @@ export default async function LessonPage({
   ].filter(Boolean);
 
   return (
-    <div className="grid gap-10 xl:grid-cols-[minmax(0,1fr)_17rem] xl:gap-12">
+    // The lesson under a bar that stays at the top: the way back, the
+    // progress, and the course contents, which open from the top (LessonShell).
+    <LessonShell
+      outline={<CourseOutline course={course} completed={completed} currentLessonId={lesson.id} />}
+      back={
+        <BackLink href={`/academy/courses/${course.slug}`} inline>
+          {course.title}
+        </BackLink>
+      }
+      progress={
+        <>
+          <ProgressBar completed={progress.completed} total={progress.total} size="sm" />
+          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+            {progress.completed}/{progress.total}
+          </span>
+        </>
+      }
+    >
       <article className="min-w-0">
-        {/* Where you are in the course, always in view at the top. */}
-        <div className="mb-8 flex flex-wrap items-center gap-x-5 gap-y-3">
-          <Link
-            href={`/academy/courses/${course.slug}`}
-            className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <span aria-hidden="true">&larr;</span>
-            {course.title}
-          </Link>
-          <div className="flex min-w-48 flex-1 items-center gap-3">
-            <ProgressBar completed={progress.completed} total={progress.total} size="sm" />
-            <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-              {progress.completed}/{progress.total}
-            </span>
-          </div>
-        </div>
 
         <Eyebrow>{moduleTitle}</Eyebrow>
         <h1 className="mt-4 font-display text-balance">{lesson.title}</h1>
+        {/* What the lesson covers, in a sentence or two (owner, 2026-10-15). */}
+        {lesson.description ? (
+          <p className="mt-3 max-w-[68ch] text-lg leading-relaxed text-pretty text-muted-foreground">{lesson.description}</p>
+        ) : null}
         {meta.length ? (
           <p className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
             {meta.map((m, i) => (
@@ -93,19 +108,6 @@ export default async function LessonPage({
           </p>
         ) : null}
 
-        {/* Below xl the map collapses above the lesson, closed by default so
-            the lesson itself is what the page opens on. */}
-        <details className="group mt-8 rounded-(--radius-lg) border border-border bg-surface xl:hidden">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
-            Course contents
-            <svg viewBox="0 0 12 12" aria-hidden="true" className="h-3 w-3 text-muted-foreground transition-transform duration-200 group-open:rotate-180">
-              <path d="M2 4.5 6 8.5 10 4.5" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </summary>
-          <div className="max-h-[60svh] overflow-y-auto overscroll-contain border-t border-border p-3">
-            <CourseOutline course={course} completed={completed} currentLessonId={lesson.id} />
-          </div>
-        </details>
 
         {/* The URL reaching this point is itself the access decision — a lesson
             row is only readable with a live entitlement (migration 0002), and
@@ -114,7 +116,9 @@ export default async function LessonPage({
           <LessonVideo url={lesson.videoUrl} title={lesson.title} />
         ) : null}
 
-        <div className="mt-10 max-w-[68ch]">
+        {/* The written lesson, centred under the video; without a video it
+            sits flush left with the heading (owner, 2026-10-15). */}
+        <div className={(lesson.videoUrl ? "mx-auto " : "") + "mt-10 max-w-[68ch]"}>
           {lesson.content ? (
             <LessonBody source={lesson.content} />
           ) : lesson.videoUrl ? null : (
@@ -122,32 +126,41 @@ export default async function LessonPage({
           )}
         </div>
 
-        <div className="mt-12 flex flex-col gap-4 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6">
-          <div>
-            <p className="font-medium">
-              {isComplete
-                ? progress.done
-                  ? "You've finished the course"
-                  : "Lesson complete"
-                : "Finished this lesson?"}
+        {staffOnly ? (
+          <div className="mt-12 flex flex-col gap-2 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <p className="text-sm text-muted-foreground">
+              {next ? `Up next: ${next.title}` : "This is the last lesson in the course."}
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {isComplete
-                ? progress.done
-                  ? "Every lesson is done. You can come back to any of them."
-                  : `${progress.total - progress.completed} to go.`
-                : next
-                  ? `Up next: ${next.title}`
-                  : "This is the last lesson in the course."}
-            </p>
+            <StaffOnly>Progress is kept for customers</StaffOnly>
           </div>
-          <CompleteLesson
-            lessonId={lesson.id}
-            path={path}
-            complete={isComplete}
-            nextHref={next ? lessonHref(next.slug) : undefined}
-          />
-        </div>
+        ) : (
+          <div className="mt-12 flex flex-col gap-4 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div>
+              <p className="font-medium">
+                {isComplete
+                  ? progress.done
+                    ? "You've finished the course"
+                    : "Lesson complete"
+                  : "Finished this lesson?"}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {isComplete
+                  ? progress.done
+                    ? "Every lesson is done. You can come back to any of them."
+                    : `${progress.total - progress.completed} to go.`
+                  : next
+                    ? `Up next: ${next.title}`
+                    : "This is the last lesson in the course."}
+              </p>
+            </div>
+            <CompleteLesson
+              lessonId={lesson.id}
+              path={path}
+              complete={isComplete}
+              nextHref={next ? lessonHref(next.slug) : undefined}
+            />
+          </div>
+        )}
 
         <nav aria-label="Lessons" className="mt-6 grid gap-3 sm:grid-cols-2">
           {previous ? (
@@ -162,14 +175,7 @@ export default async function LessonPage({
           )}
         </nav>
       </article>
-
-      <aside aria-label="Course contents" className="hidden xl:block">
-        <div className="sticky top-24 max-h-[calc(100svh-7rem)] overflow-y-auto overscroll-contain pb-6">
-          <p className="mb-4 px-2 text-sm font-semibold">Course contents</p>
-          <CourseOutline course={course} completed={completed} currentLessonId={lesson.id} />
-        </div>
-      </aside>
-    </div>
+    </LessonShell>
   );
 }
 

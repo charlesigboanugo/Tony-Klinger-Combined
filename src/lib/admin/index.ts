@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { timeAgo } from "@/lib/utils/device";
 
 /**
  * Admin queries — note 06 §14, §16.
@@ -13,49 +14,104 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * database is not the backstop here, so the route must be.
  */
 
+export type AdminUserRow = {
+  user_id: string;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  status: string;
+  created_at: string;
+  email: string | null;
+  /** When the account last signed in (not when it was last active); null if never. */
+  lastSignInAt: string | null;
+  /** The same in words, "2 days ago"; null if never. */
+  lastSignInAgo: string | null;
+  /** Roles held; empty for a customer. */
+  roles: string[];
+  /** Holds a role that makes them staff (migration 0019: not every role does). */
+  staff: boolean;
+};
+
+/** Rows per request, and how many requests at most: 5,000 accounts. */
+const PAGE = 1000;
+const MAX_PAGES = 5;
+
 /**
- * The user list, optionally filtered — note 06 §14.
+ * Every account, with its email, last sign-in and roles — note 06 §14.
  *
- * Searching is over the NAME columns only. An email address lives in
- * `auth.users`, which PostgREST does not expose and which cannot be joined from
- * here, so offering an email search would silently return nothing for the field
- * people would reach for first. The page says which fields it searches rather
- * than leaving that to be discovered.
+ * THE WHOLE DIRECTORY IN THREE REQUESTS, so the Users page can search, narrow
+ * and sort across everybody rather than across whichever hundred it loaded.
+ *
+ * An email and a sign-in time live in `auth.users`, which PostgREST does not
+ * expose and cannot join. The list used to work around that by asking for
+ * each account one at a time (a hundred requests a page) and could search
+ * names only. Supabase's admin API lists accounts a thousand at a time, so one
+ * call brings back every email and sign-in time, read alongside the profiles
+ * and the role assignments.
+ *
+ * `complete` is false if there are more accounts than `PAGE * MAX_PAGES`. At
+ * that size this should become a search in the database; the page says so
+ * rather than quietly searching a part.
  */
-export async function adminUsers(query?: string, limit = 100) {
+export async function adminUserDirectory(): Promise<{ users: AdminUserRow[]; complete: boolean }> {
   const admin = createAdminClient();
 
-  let request = admin
-    .from("profiles")
-    .select("user_id,display_name,first_name,last_name,status,created_at")
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  const term = query?.trim();
-  if (term) {
-    // Commas and parentheses are the separators in PostgREST's `or` grammar, so
-    // a search for "Smith, J" would otherwise be parsed as filters rather than
-    // matched as text.
-    const safe = term.replace(/[(),*]/g, " ").trim();
-    if (safe) {
-      request = request.or(
-        ["display_name", "first_name", "last_name"]
-          .map((column) => `${column}.ilike.*${safe}*`)
-          .join(","),
-      );
+  async function authUsers() {
+    const all: Array<{ id: string; email?: string; last_sign_in_at?: string }> = [];
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const { data } = await admin.auth.admin.listUsers({ page, perPage: PAGE });
+      const batch = data?.users ?? [];
+      all.push(...batch);
+      if (batch.length < PAGE) break;
     }
+    return all;
   }
 
-  const { data } = await request;
+  async function profiles() {
+    const all: Array<Omit<AdminUserRow, "email" | "lastSignInAt" | "lastSignInAgo" | "roles" | "staff">> = [];
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const { data } = await admin
+        .from("profiles")
+        .select("user_id,display_name,first_name,last_name,status,created_at")
+        .order("created_at", { ascending: false })
+        .range(page * PAGE, page * PAGE + PAGE - 1);
+      const batch = data ?? [];
+      all.push(...batch);
+      if (batch.length < PAGE) break;
+    }
+    return all;
+  }
 
-  return (data ?? []) as Array<{
-    user_id: string;
-    display_name: string | null;
-    first_name: string | null;
-    last_name: string | null;
-    status: string;
-    created_at: string;
-  }>;
+  const [accounts, people, { data: roleRows }] = await Promise.all([
+    authUsers(),
+    profiles(),
+    admin.from("user_roles").select("user_id,roles(name,is_staff)"),
+  ]);
+
+  const accountOf = new Map(accounts.map((a) => [a.id, a]));
+  const rolesOf = new Map<string, string[]>();
+  const staff = new Set<string>();
+  for (const row of (roleRows ?? []) as unknown as Array<{ user_id: string; roles: { name: string; is_staff: boolean } | null }>) {
+    if (!row.roles) continue;
+    rolesOf.set(row.user_id, [...(rolesOf.get(row.user_id) ?? []), row.roles.name]);
+    if (row.roles.is_staff) staff.add(row.user_id);
+  }
+
+  const now = Date.now();
+  return {
+    complete: people.length < PAGE * MAX_PAGES,
+    users: people.map((p) => {
+      const account = accountOf.get(p.user_id);
+      return {
+        ...p,
+        email: account?.email ?? null,
+        lastSignInAt: account?.last_sign_in_at ?? null,
+        lastSignInAgo: timeAgo(account?.last_sign_in_at, now, "always"),
+        roles: rolesOf.get(p.user_id) ?? [],
+        staff: staff.has(p.user_id),
+      };
+    }),
+  };
 }
 
 export async function adminUserDetail(userId: string) {
@@ -66,7 +122,7 @@ export async function adminUserDetail(userId: string) {
     admin.from("user_roles").select("role_id,roles(name)").eq("user_id", userId),
     admin
       .from("entitlements")
-      .select("id,resource_type,source_type,status,quantity,quantity_used,expires_at,grant_reason")
+      .select("id,resource_type,resource_id,source_type,source_id,status,quantity,quantity_used,expires_at,grant_reason")
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     admin
@@ -84,7 +140,9 @@ export async function adminUserDetail(userId: string) {
     entitlements: (entitlements.data ?? []) as Array<{
       id: string;
       resource_type: string;
+      resource_id: string | null;
       source_type: string;
+      source_id: string | null;
       status: string;
       quantity: number | null;
       quantity_used: number;
@@ -118,30 +176,6 @@ export async function adminOrders(limit = 100) {
     currency: string;
     created_at: string;
     paid_at: string | null;
-  }>;
-}
-
-export async function adminEntitlements(limit = 100) {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("entitlements")
-    .select(
-      "id,user_id,resource_type,source_type,status,quantity,quantity_used,expires_at,grant_reason,created_at",
-    )
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  return (data ?? []) as Array<{
-    id: string;
-    user_id: string;
-    resource_type: string;
-    source_type: string;
-    status: string;
-    quantity: number | null;
-    quantity_used: number;
-    expires_at: string | null;
-    grant_reason: string | null;
-    created_at: string;
   }>;
 }
 

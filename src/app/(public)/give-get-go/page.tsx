@@ -27,16 +27,17 @@ import {
   listGiveGetGo,
   type GiveGetGoShelf,
 } from "@/lib/content/give-get-go";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { designPhotos } from "@/lib/site/design-photos";
 import { cn } from "@/lib/utils/cn";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Give-Get-Go",
   description:
     "Tony Klinger's broader venture — publishing, films and documentaries — and the related Give-Get-Go Education CIC.",
-  alternates: { canonical: "/give-get-go" },
-};
+  path: "/give-get-go",
+});
 
 const beat = (ms: number) => ({ animationDelay: `${ms}ms` }) as CSSProperties;
 

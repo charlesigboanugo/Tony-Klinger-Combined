@@ -62,3 +62,22 @@ export async function claimOrderAction(
       };
   }
 }
+
+/**
+ * Add every paid purchase made with the signed-in customer's own confirmed
+ * email — owner, 2026-10-15; note 05 §29.3.
+ *
+ * Needs no emailed link: holding the confirmed address is the proof that link
+ * gives. Runs only when the customer asks (the button on Account and Orders),
+ * never on sign-in by itself.
+ */
+export async function claimMyOrdersAction(): Promise<void> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("claim_my_orders");
+  const result = data as { status: string; claimed?: number } | null;
+
+  if (error || result?.status !== "ok" || !result.claimed) {
+    redirect("/account/orders?claimed=0");
+  }
+  redirect("/account/orders?claimed=1");
+}

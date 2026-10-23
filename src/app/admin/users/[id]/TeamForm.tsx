@@ -1,9 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { teamMembershipAction, type AdminState } from "@/app/admin/actions";
-import { Field, FormMessage, Input } from "@/components/ui/Field";
+import { AdminCard, FormFooter, FormGrid, Toggle, Wide } from "@/components/admin/AdminForm";
+import { StatusPill } from "@/components/admin/AdminTable";
+import { Field, FormMessage, Input, Select } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 
 const initialState: AdminState = {};
@@ -29,6 +31,8 @@ export function TeamForm({
   unlinked: Array<{ id: string; name: string; role: string | null }>;
 }) {
   const [state, action] = useActionState(teamMembershipAction, initialState);
+  // The existing entry to link: none until one is picked (owner, 2026-10-23).
+  const [linking, setLinking] = useState("");
 
   const message = (
     <>
@@ -41,107 +45,103 @@ export function TeamForm({
 
   if (entry) {
     return (
-      <div className="max-w-lg space-y-4">
+      <div className="max-w-3xl space-y-4">
         {message}
-        <p className="text-sm">
-          Shown on the team page as{" "}
-          <span className="font-medium">{entry.name}</span>
-          {entry.role ? ` — ${entry.role}` : ""}.{" "}
-          {entry.status === "published" ? (
-            <span className="text-success">Published.</span>
-          ) : (
-            <span className="text-warning">
-              Not published, so it is not visible yet.
-            </span>
-          )}
-        </p>
         <form action={action}>
           <input type="hidden" name="userId" value={userId} />
           <input type="hidden" name="mode" value="remove" />
-          <SubmitButton variant="outline" pendingLabel="Unlinking…">
-            Unlink from the team page
-          </SubmitButton>
+          <AdminCard
+            footer={
+              <FormFooter note="Unlinking disconnects the account and leaves the published biography alone. Edit or remove the entry itself under Team.">
+                <SubmitButton variant="outline" pendingLabel="Unlinking…">
+                  Unlink from the team page
+                </SubmitButton>
+              </FormFooter>
+            }
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Shown on the team page as</p>
+                <p className="mt-0.5 truncate font-medium">
+                  {entry.name}
+                  {entry.role ? <span className="font-normal text-muted-foreground"> · {entry.role}</span> : null}
+                </p>
+              </div>
+              <StatusPill value={entry.status} />
+            </div>
+            {entry.status === "published" ? null : (
+              <p className="mt-3 text-sm text-warning">Not published, so it is not visible on the site yet.</p>
+            )}
+          </AdminCard>
         </form>
-        <p className="text-sm text-muted-foreground">
-          Unlinking disconnects the account and leaves the published biography
-          alone. Edit or remove the entry itself under Team.
-        </p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-lg space-y-8">
+    <div className="max-w-3xl space-y-4">
       {message}
 
-      <form action={action} className="space-y-5">
+      <form action={action}>
         <input type="hidden" name="userId" value={userId} />
         <input type="hidden" name="mode" value="create" />
-
-        <Field label="Name as shown on the site" name="name">
-          <Input name="name" required defaultValue={defaultName} />
-        </Field>
-
-        <Field
-          label="Role"
-          name="role"
-          hint="Shown under the name — e.g. “Course tutor”."
+        <AdminCard
+          title="Add them to the team page"
+          description="Creates a new entry for this person."
+          footer={
+            <FormFooter note="Appearing on the team page grants nothing. Roles are separate, and are set above.">
+              <SubmitButton pendingLabel="Adding…">Add to the team page</SubmitButton>
+            </FormFooter>
+          }
         >
-          <Input name="role" placeholder="Course tutor" />
-        </Field>
-
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            name="publish"
-            defaultChecked
-            className="mt-0.5 size-4 accent-primary"
-          />
-          <span>
-            Show on the public team page straight away. Untick to create it as a
-            draft and add a photo and biography first.
-          </span>
-        </label>
-
-        <SubmitButton pendingLabel="Adding…">Add to the team page</SubmitButton>
+          <FormGrid>
+            <Field label="Name as shown on the site" name="name">
+              <Input name="name" required defaultValue={defaultName} />
+            </Field>
+            <Field label="Role" name="role" hint="Shown under the name, for example “Course tutor”.">
+              <Input name="role" placeholder="Course tutor" />
+            </Field>
+            <Wide>
+              <Toggle
+                name="publish"
+                defaultChecked
+                label="Show on the team page straight away"
+                hint="Turn off to create it as a draft, and add a photo and biography first."
+              />
+            </Wide>
+          </FormGrid>
+        </AdminCard>
       </form>
 
       {unlinked.length > 0 ? (
-        <form action={action} className="space-y-3 border-t border-border pt-6">
+        <form action={action}>
           <input type="hidden" name="userId" value={userId} />
           <input type="hidden" name="mode" value="link" />
-
-          <h3 className="text-sm font-medium">
-            Or connect an entry that already exists
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            These entries have no account attached. Pick one only if you know it
-            is this person — nothing is matched automatically.
-          </p>
-
-          <select
-            name="teamMemberId"
-            required
-            className="h-11 w-full rounded-(--radius) border border-border bg-background px-3 text-base"
+          <AdminCard
+            title="Or connect an entry that already exists"
+            description="These entries have no account attached. Pick one only if you know it is this person; nothing is matched automatically."
+            footer={
+              <FormFooter>
+                <SubmitButton variant="outline" pendingLabel="Linking…" disabled={!linking}>
+                  Link to this account
+                </SubmitButton>
+              </FormFooter>
+            }
           >
-            {unlinked.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.name}
-                {member.role ? ` — ${member.role}` : ""}
-              </option>
-            ))}
-          </select>
-
-          <SubmitButton variant="outline" pendingLabel="Linking…">
-            Link to this account
-          </SubmitButton>
+            <Field label="Team entry" name="teamMemberId">
+              <Select name="teamMemberId" required value={linking} onChange={(e) => setLinking(e.target.value)}>
+                <option value="">Choose an entry…</option>
+                {unlinked.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name}
+                    {member.role ? ` · ${member.role}` : ""}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </AdminCard>
         </form>
       ) : null}
-
-      <p className="text-sm text-muted-foreground">
-        Appearing on the team page grants nothing. Roles are separate, and are
-        set above.
-      </p>
     </div>
   );
 }

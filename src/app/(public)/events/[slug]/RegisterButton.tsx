@@ -4,6 +4,7 @@ import { useActionState } from "react";
 
 import { ButtonLink } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/Field";
+import { ConfirmSubmit } from "@/components/ui/ConfirmSubmit";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 
 import {
@@ -53,9 +54,19 @@ export function RegisterButton({ eventId, slug }: Props) {
       {state.error ? <FormMessage>{state.error}</FormMessage> : null}
       <input type="hidden" name="eventId" value={eventId} />
       <input type="hidden" name="slug" value={slug} />
-      <SubmitButton pendingLabel="Holding your place…" className="w-full">
+      <ConfirmSubmit
+        pendingLabel="Holding your place…"
+        className="w-full"
+        title="Register a free place?"
+        points={[
+          "One place is held in your name, with a ticket in your account.",
+          "It is free. Nothing is charged.",
+        ]}
+        note="Can't come after all? Cancel it under Bookings in your account, and the place goes to the next person waiting."
+        confirmLabel="Yes, register me"
+      >
         Register a free place
-      </SubmitButton>
+      </ConfirmSubmit>
     </form>
   );
 }

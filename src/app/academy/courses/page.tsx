@@ -6,6 +6,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { myCourses, progressAcrossCourses } from "@/lib/academy";
+import { academyStaffView, allCourses } from "@/lib/academy/staff";
 import { requireUser } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Courses", robots: { index: false } };
@@ -22,7 +23,12 @@ export const metadata: Metadata = { title: "Courses", robots: { index: false } }
  */
 export default async function AcademyCoursesPage() {
   await requireUser("/academy/courses");
-  const [courses, progress] = await Promise.all([myCourses(), progressAcrossCourses()]);
+  const staffView = await academyStaffView();
+  // Staff view (note 06 §23.2): every published course.
+  const [courses, progress] = await Promise.all([
+    staffView ? allCourses() : myCourses(),
+    progressAcrossCourses(),
+  ]);
   const progressBySlug = new Map(progress.map((p) => [p.slug, p]));
 
   const rank = (slug: string) => {
@@ -35,18 +41,21 @@ export default async function AcademyCoursesPage() {
 
   return (
     <>
-      <AccountHeader title="Your courses" description="Pick up where you left off, or start something new." />
+      <AccountHeader
+        title={staffView ? "Courses" : "Your courses"}
+        description={staffView ? "Every published course." : "Pick up where you left off, or start something new."}
+      />
       {courses.length === 0 ? (
         <EmptyState icon="play"
           title="No courses yet"
-          description="Courses you buy — or that come with your membership — appear here."
+          description="Courses you buy — or that come with your Coaching Pass — appear here."
           action={<ButtonLink href="/coaching/courses">Browse courses</ButtonLink>}
         />
       ) : (
         <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {ordered.map((course, index) => (
             <Reveal as="li" key={course.id} delay={index * 60}>
-              <CourseCard course={course} progress={progressBySlug.get(course.slug) ?? null} />
+              <CourseCard course={course} progress={staffView ? null : (progressBySlug.get(course.slug) ?? null)} />
             </Reveal>
           ))}
         </ul>

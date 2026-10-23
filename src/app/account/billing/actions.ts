@@ -143,7 +143,7 @@ export async function cancelMembershipAction(formData: FormData): Promise<void> 
   }
 
   revalidatePath(BILLING);
-  revalidatePath("/account/memberships");
+  revalidatePath("/account/pass");
   redirect(`${BILLING}?cancelled=1`);
 }
 
@@ -174,6 +174,6 @@ export async function resumeMembershipAction(formData: FormData): Promise<void> 
   }
 
   revalidatePath(BILLING);
-  revalidatePath("/account/memberships");
+  revalidatePath("/account/pass");
   redirect(`${BILLING}?resumed=1`);
 }

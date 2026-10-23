@@ -19,15 +19,23 @@ export function BackLink({
   href,
   children,
   className,
+  inline = false,
 }: {
   href: string;
   children: ReactNode;
   className?: string;
+  /**
+   * In a row with other things (a header, a bar), so without the space below
+   * it that it keeps above a page's title.
+   */
+  inline?: boolean;
 }) {
   return (
-    <ButtonLink href={href} variant="outline" size="sm" className={cn("mb-6", className)}>
+    // A long label (a course's title on a phone) shortens with an ellipsis
+    // rather than pushing the button off the screen.
+    <ButtonLink href={href} variant="outline" size="sm" className={cn("max-w-full", !inline && "mb-6", className)}>
       <span aria-hidden="true">&larr;</span>
-      {children}
+      <span className="min-w-0 truncate">{children}</span>
     </ButtonLink>
   );
 }

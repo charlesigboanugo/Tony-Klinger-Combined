@@ -136,7 +136,7 @@ export async function myBookings(): Promise<MyBooking[]> {
     }>) {
       bySessionId.set(s.id, {
         title: s.private_coaching_services?.name ?? "Private coaching",
-        seriesName: "Private coaching",
+        seriesName: "One-to-one coaching",
       });
     }
   }

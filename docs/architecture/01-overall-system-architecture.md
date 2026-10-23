@@ -61,7 +61,7 @@ Core routes include:
 /auth                Authentication
 /cart                Shopping cart
 /checkout            Checkout
-/bookings            Booking flows
+/book                Booking flows
 /api                 HTTP endpoints/integrations
 ```
 

@@ -1,8 +1,11 @@
 import { AcademyNav } from "@/components/academy/AcademyNav";
+import { StaffViewBanner } from "@/components/academy/StaffView";
 import { Container } from "@/components/layout/Container";
 import { PublicFooter } from "@/components/navigation/PublicFooter";
 import { PublicHeader } from "@/components/navigation/PublicHeader";
 import { WorkspaceHeader } from "@/components/navigation/WorkspaceHeader";
+import { SessionSync } from "@/components/navigation/SessionSync";
+import { academyStaffView } from "@/lib/academy/staff";
 import { getAuthContext } from "@/lib/permissions";
 
 /**
@@ -39,14 +42,19 @@ export default async function AcademyLayout({
     );
   }
 
+  const staffView = await academyStaffView();
+
   return (
     <div className="flex min-h-svh flex-col">
+      <SessionSync email={context.email} />
       {/* Identity strip in noir, then the shared workspace header (note 04 §10). */}
       <WorkspaceHeader
         label="Academy"
         home="/academy"
         strip="bg-block-noir"
         email={context.email ?? ""}
+        admin={context.isStaff}
+        menu={<AcademyNav variant="drawer" />}
       />
 
       <Container className="flex-1">
@@ -59,14 +67,20 @@ export default async function AcademyLayout({
           normally. `overflow-y-scroll`, not `-auto`: the short Academy menu
           never overflows, and the owner wants the scroll track drawn anyway as
           the menu/content separation Account gets from its longer menu.
+          Below lg there is no sidebar: the header's hamburger opens the
+          same list (note 04 §32.4).
         */}
         <div className="flex flex-col gap-6 pt-6 pb-20 sm:pt-8 lg:flex-row lg:items-start lg:gap-12 lg:pt-0 lg:pb-0">
-          <aside className="z-30 lg:sticky lg:top-16.25 lg:h-[calc(100svh-4.0625rem)] lg:w-52 lg:shrink-0 lg:overflow-y-scroll">
+          <aside className="z-30 hidden lg:sticky lg:block lg:top-16.25 lg:h-[calc(100svh-4.0625rem)] lg:w-52 lg:shrink-0 lg:overflow-y-scroll">
             <div className="lg:pt-10 lg:pb-10">
               <AcademyNav />
             </div>
           </aside>
-          <main id="main" className="workspace min-w-0 flex-1 lg:pt-10 lg:pb-20">{children}</main>
+          <main id="main" className="workspace min-w-0 flex-1 lg:pt-10 lg:pb-20">
+            {/* Staff who see everything (note 06 §23.2) are told so on every page. */}
+            {staffView ? <StaffViewBanner /> : null}
+            {children}
+          </main>
         </div>
       </Container>
     </div>

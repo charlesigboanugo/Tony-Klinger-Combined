@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { LegalDocument } from "@/components/content/LegalDocument";
+import { pageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Terms of service",
-  description: "The terms that apply when you use tonyklinger.com or buy through it.",
-};
+  description:
+    "The terms that apply when you use tonyklinger.com or buy through it.",
+  path: "/terms",
+});
 
 /**
  * Legal page — note 03 §8.2. Flat at the top level rather than under /legal:
@@ -57,11 +60,10 @@ export default function Page() {
             <>
               <p>
                 Each product page states what is included, what it costs and how
-                it is delivered. Membership tiers are cumulative: a higher tier
-                includes everything in the tiers below it.
+                it is delivered. Each Coaching Pass lists everything it includes.
               </p>
               <p>
-                Membership gives you access to what your tier covers. It does not
+                A Coaching Pass gives you access to what your tier covers. It does not
                 make every service free: where a service is covered you are not
                 charged again for it; where it is not, it is bought separately.
               </p>
@@ -90,11 +92,11 @@ export default function Page() {
                 Payments are taken securely by Stripe.
               </p>
               <dl>
-                <div><dt>Monthly or yearly</dt><dd>Renews automatically until you cancel. You keep access until the end of the period already paid for.</dd></div>
-                <div><dt>One payment</dt><dd>Covers a fixed term, does not renew, and ends on its expiry date.</dd></div>
+                <div><dt>Coaching Pass</dt><dd>One payment for twelve months. It does not renew, nothing more is charged, and it ends on its expiry date.</dd></div>
+                <div><dt>A renewing subscription</dt><dd>Where a pass was taken out as a subscription, it renews automatically until you cancel. You keep access until the end of the period already paid for.</dd></div>
               </dl>
               <p>
-                Cancel a renewing membership yourself at any time from{" "}
+                Cancel a renewing subscription yourself at any time from{" "}
                 <Link href="/account/billing">Account → Billing</Link>. It stops
                 at the end of the period already paid for, you keep access until
                 then, and nothing more is charged. You can change your mind and

@@ -111,7 +111,7 @@ export function WorkWall({ items }: { items: CatalogueItem[] }) {
       delay={(i % columns.lg) * 60}
       className={cn("h-full", className)}
     >
-      <WorkCard item={item} form={forms[i] === "still" ? "still" : "poster"} priority={i < columns.lg} />
+      <WorkCard item={item} form={forms[i] === "still" ? "still" : "poster"} priority={i < columns.lg} heading="h2" />
     </Reveal>
   );
 

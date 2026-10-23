@@ -1,4 +1,4 @@
-import { ButtonLink } from "@/components/ui/Button";
+import { ButtonLink, FILLED_STATES, ON_BLOCK_FILLED_STATES } from "@/components/ui/Button";
 import type { JoinState, Recording } from "@/lib/academy/delivery";
 import { JOIN_OPENS_MINUTES } from "@/lib/academy/delivery";
 import { formatTime } from "@/lib/academy/format";
@@ -24,9 +24,9 @@ export function JoinAction({ join, onBlock = false }: { join: JoinState; onBlock
           target="_blank"
           rel="noopener noreferrer"
           className={cn(
-            "inline-flex h-9 items-center gap-2 rounded-full px-4 text-sm font-semibold shadow-card transition-transform hover:-translate-y-0.5",
+            "inline-flex h-9 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-[filter,transform,box-shadow] duration-200 ease-out active:scale-96",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-            onBlock ? "bg-block-foreground text-secondary" : "bg-button text-button-foreground",
+            onBlock ? `bg-block-foreground text-secondary ${ON_BLOCK_FILLED_STATES}` : `bg-button text-button-foreground ${FILLED_STATES}`,
           )}
         >
           <span aria-hidden="true" className="relative flex h-2 w-2">

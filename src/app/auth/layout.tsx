@@ -1,13 +1,15 @@
 import Link from "next/link";
 
 import { AuthStage } from "@/app/auth/AuthStage";
+import { SessionSync } from "@/components/navigation/SessionSync";
+import { getAuthContext } from "@/lib/permissions";
 
 /**
  * Auth layout — minimal, task-focused (note 04 §17, §33; note 03 §31).
  *
  * A split screen: the noir stage (brand, photo, the line) on the left, the
- * form alone on the paper ground on the right. On phones the stage is a short
- * band above the form.
+ * form alone on the paper ground on the right. On phones the stage is the
+ * wordmark and a short photo band above the form.
  *
  * The full public menu is deliberately absent: the user is completing one task.
  * The wordmark on the stage still links home so they are never trapped
@@ -21,12 +23,17 @@ import { AuthStage } from "@/app/auth/AuthStage";
 */
 export const dynamic = "force-dynamic";
 
-export default function AuthLayout({ children }: LayoutProps<"/auth">) {
+export default async function AuthLayout({ children }: LayoutProps<"/auth">) {
+  // Null on the signed-out forms; the 2FA and reset pages already read it, and
+  // it is cached per request.
+  const context = await getAuthContext();
+
   return (
     <div className="min-h-svh lg:grid lg:grid-cols-2 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+      <SessionSync email={context?.email ?? null} />
       <AuthStage />
 
-      <div className="flex min-h-[calc(100svh-11rem)] flex-col sm:min-h-[calc(100svh-14rem)] lg:min-h-svh">
+      <div className="flex min-h-[calc(100svh-15rem)] flex-col sm:min-h-[calc(100svh-22.5rem)] lg:min-h-svh">
         <main
           id="main"
           className="flex flex-1 items-start justify-center px-4 pt-10 pb-12 sm:px-8 sm:pt-14 lg:items-center lg:px-12 lg:py-16"

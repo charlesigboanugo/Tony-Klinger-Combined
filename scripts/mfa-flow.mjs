@@ -98,6 +98,8 @@ await cdp.send("WebAuthn.addVirtualAuthenticator", {
 
 async function signIn() {
   await page.goto(`${BASE}/auth/sign-in`, { waitUntil: "domcontentloaded" });
+  // Sign-in opens on the email-link tab (owner, 2026-10-13); passwords are the other tab.
+  await page.getByRole("tab", { name: "Password" }).click();
   await page.fill('input[type="email"]', EMAIL);
   await page.fill('input[type="password"]', PASS);
   await Promise.all([
@@ -159,7 +161,12 @@ step(`enrolled "${keyName}"`);
 await page.goto(`${BASE}/account`, { waitUntil: "domcontentloaded" });
 await Promise.all([
   page.waitForURL((u) => !u.pathname.startsWith("/account"), { timeout: 20000 }),
-  page.getByRole("button", { name: /^Sign out$/i }).first().click(),
+  // Sign out lives in the Account menu (owner, 2026-10-15).
+  page
+    .locator("button[aria-haspopup=menu]")
+    .first()
+    .click()
+    .then(() => page.getByRole("menuitem", { name: /^Sign out$/i }).click()),
 ]);
 await page.goto(`${BASE}/account`, { waitUntil: "domcontentloaded" });
 await page.waitForLoadState("networkidle").catch(() => {});

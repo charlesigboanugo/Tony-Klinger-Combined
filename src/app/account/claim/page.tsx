@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 
 import { ClaimForm } from "@/app/account/claim/ClaimForm";
 import { AccountHeader } from "@/components/account/AccountHeader";
-import { BackLink } from "@/components/ui/BackLink";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 
@@ -18,11 +17,13 @@ export const metadata: Metadata = { title: "Claim your purchase", robots: { inde
 export default async function ClaimPage({ searchParams }: PageProps<"/account/claim">) {
   const params = await searchParams;
   const token = typeof params.token === "string" ? params.token : null;
+  // Set on a gift's link (lib/commerce/notify): wording only — the recipient
+  // did not buy it (owner, 2026-10-23). The token decides what is claimed.
+  const gift = params.gift === "1";
 
   if (!token) {
     return (
       <>
-        <BackLink href="/account/orders">Your orders</BackLink>
         <EmptyState icon="link"
           title="No claim link"
           description="Open the link from your receipt email to add a guest purchase to your account."
@@ -34,14 +35,16 @@ export default async function ClaimPage({ searchParams }: PageProps<"/account/cl
 
   return (
     <>
-      <BackLink href="/account/orders">Your orders</BackLink>
-
       <AccountHeader
-        title="Claim your purchase"
-        description="You bought this as a guest. Linking it to this account gives you access."
+        title={gift ? "Add your gift" : "Claim your purchase"}
+        description={
+          gift
+            ? "Someone has bought this for you. Adding it to this account gives you access."
+            : "You bought this as a guest. Linking it to this account gives you access."
+        }
       />
       <div className="max-w-md rounded-(--radius) border border-border bg-surface p-6">
-        <ClaimForm token={token} />
+        <ClaimForm token={token} gift={gift} />
         <p className="mt-4 text-xs text-muted-foreground">
           Purchases are linked to the account you are signed in as now. If that
           is the wrong account, sign out and sign in as the right one before

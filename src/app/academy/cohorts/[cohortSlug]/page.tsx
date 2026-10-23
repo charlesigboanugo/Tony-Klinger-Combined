@@ -4,12 +4,14 @@ import { notFound } from "next/navigation";
 
 import { AccountSection } from "@/components/account/AccountHeader";
 import { DateBadge, JoinAction, RecordingAction } from "@/components/academy/SessionParts";
+import { StaffOnly } from "@/components/academy/StaffView";
 import { StoredImage } from "@/components/media/StoredImage";
 import { BackLink } from "@/components/ui/BackLink";
 import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { cohortBySlug } from "@/lib/academy/delivery";
 import { formatSlot } from "@/lib/academy/format";
+import { academyStaffView } from "@/lib/academy/staff";
 import { formatDate } from "@/lib/account/format";
 import { requireUser } from "@/lib/permissions";
 
@@ -36,8 +38,10 @@ export default async function AcademyCohortPage({
   const { cohortSlug } = await params;
   await requireUser(`/academy/cohorts/${cohortSlug}`);
 
-  const cohort = await cohortBySlug(cohortSlug);
+  const cohort = await cohortBySlug(cohortSlug, { staffView: await academyStaffView() });
   if (!cohort) notFound();
+  // In the cohort, or seeing it through the staff view (note 06 §23.2).
+  const open = cohort.entitled || cohort.staffOnly;
 
   const level = `${cohort.cohortLevel[0].toUpperCase()}${cohort.cohortLevel.slice(1)}`;
   const runs =
@@ -63,7 +67,7 @@ export default async function AcademyCohortPage({
         </p>
       ) : null}
       <p className="mt-5 text-sm text-block-foreground/70">{runs}</p>
-      {!cohort.entitled ? (
+      {!open ? (
         <div className="mt-7 flex flex-wrap gap-3">
           <ButtonLink href={`/coaching/cohorts/${cohort.slug}`} variant="onBlock">
             See this cohort
@@ -73,7 +77,7 @@ export default async function AcademyCohortPage({
     </section>
   );
 
-  if (!cohort.entitled) {
+  if (!open) {
     return (
       <>
         <BackLink href="/academy/cohorts">Your cohorts</BackLink>
@@ -103,7 +107,7 @@ export default async function AcademyCohortPage({
                   <p className="font-display text-xl font-semibold text-balance">{next.title}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{formatSlot(next.startsAt, next.endsAt)}</p>
                 </div>
-                <JoinAction join={next.join} />
+                {cohort.staffOnly ? <StaffOnly /> : <JoinAction join={next.join} />}
               </div>
             ) : (
               <div className="rounded-(--radius-lg) border border-dashed border-border p-6 text-center">
@@ -155,7 +159,9 @@ export default async function AcademyCohortPage({
         <aside className="space-y-6">
           {cohort.benefits.length ? (
             <div className="rounded-(--radius-lg) border border-border bg-surface p-5">
-              <h2 className="font-sans text-sm font-semibold">Your place includes</h2>
+              <h2 className="font-sans text-sm font-semibold">
+                {cohort.staffOnly ? "A place includes" : "Your place includes"}
+              </h2>
               <ul className="mt-4 space-y-3">
                 {cohort.benefits.map((b) => (
                   <li key={b} className="flex gap-3 text-sm">

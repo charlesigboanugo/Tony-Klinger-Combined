@@ -3,7 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Private coaching availability — migration 0020, note 09 §35 (book-first).
+ * Private coaching availability — migration 0020, note 09 §36.
  *
  * Times come from `private_coaching_availability`, a security-definer function
  * that returns only start and end: the slots table itself carries the call
@@ -49,7 +49,7 @@ export type PrivateCredit = { slug: string; name: string; durationMinutes: numbe
 
 /**
  * Every private coaching service the caller still has sessions of to book —
- * what /bookings lists beside group sessions, so a paid-for session that was
+ * what /book lists beside group sessions, so a paid-for session that was
  * never scheduled (or was returned by a cancellation) is one click from a time.
  */
 export async function myPrivateCredits(): Promise<PrivateCredit[]> {

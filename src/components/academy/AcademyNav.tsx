@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { academyNavigation, isActive, isCurrentPage } from "@/lib/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -13,13 +13,13 @@ import { cn } from "@/lib/utils/cn";
  * Two arrangements of the same list, as `AccountNav` has:
  *
  *   lg and up   a sticky sidebar, each item with its icon
- *   below lg    one full-width button naming the current section, opening the
- *               list as a dropdown panel
+ *   below lg    the same list in the header's hamburger menu, a sheet
+ *               sliding in from the left (`WorkspaceDrawer`, note 04 §32.4)
  *
- * The phone arrangement used to be a horizontally scrolling strip of links
- * under the header — exactly the secondary link bar the owner rejected (note
- * 04 §27). One button that says where you are is also what a phone has room
- * for.
+ * The phone arrangement was first a horizontally scrolling strip of links
+ * under the header (the secondary link bar note 04 §27 rejects), then a
+ * full-width section button above the page, which cost a phone too much
+ * height (owner, 2026-10-15).
  *
  * The active state is teal (`--accent`: action and state, note 10 §5).
  * Exactly ONE item lights up, resolved by longest matching href: "/academy" is
@@ -33,6 +33,15 @@ const ICONS: Record<string, ReactNode> = {
       <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
       <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
       <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+    </>
+  ),
+  "/academy/pass": (
+    <path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z" />
+  ),
+  "/academy/playlists": (
+    <>
+      <path d="M4 6h11M4 11h11M4 16h7" />
+      <path d="m16 13 5 3-5 3z" />
     </>
   ),
   "/academy/courses": (
@@ -79,43 +88,38 @@ function activeHrefFor(pathname: string) {
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 }
 
-export function AcademyNav() {
+/**
+ * `sidebar` is the lg-and-up column; `drawer` is the same list inside the
+ * header's `WorkspaceDrawer` below lg. The layout shows each at its width.
+ */
+export function AcademyNav({ variant = "sidebar" }: { variant?: "sidebar" | "drawer" }) {
   const pathname = usePathname();
   const activeHref = activeHrefFor(pathname);
-  const activeLabel = academyNavigation.find((i) => i.href === activeHref)?.label ?? "Academy";
 
   return (
-    <>
-      <div className="lg:hidden">
-        <SectionSwitcher pathname={pathname} activeHref={activeHref} activeLabel={activeLabel} />
+    <nav aria-label="Academy">
+      <Items pathname={pathname} activeHref={activeHref} />
+      <div className={cn("border-t border-border", variant === "sidebar" ? "mt-8 pt-6" : "mt-4 pt-4")}>
+        <p className="px-3 text-xs leading-relaxed text-muted-foreground">
+          Looking for something new?
+        </p>
+        <Link
+          href="/coaching"
+          className="mt-1 inline-block px-3 text-sm font-medium text-accent underline-offset-4 hover:underline"
+        >
+          Explore coaching
+        </Link>
       </div>
-
-      <nav aria-label="Academy" className="hidden lg:block">
-        <Items pathname={pathname} activeHref={activeHref} />
-        <div className="mt-8 border-t border-border pt-6">
-          <p className="px-3 text-xs leading-relaxed text-muted-foreground">
-            Looking for something new?
-          </p>
-          <Link
-            href="/coaching"
-            className="mt-1 inline-block px-3 text-sm font-medium text-accent underline-offset-4 hover:underline"
-          >
-            Explore coaching
-          </Link>
-        </div>
-      </nav>
-    </>
+    </nav>
   );
 }
 
 function Items({
   pathname,
   activeHref,
-  onNavigate,
 }: {
   pathname: string;
   activeHref: string | undefined;
-  onNavigate?: () => void;
 }) {
   return (
     <ul className="space-y-0.5">
@@ -123,7 +127,6 @@ function Items({
         <li key={item.href}>
           <Link
             href={item.href}
-            onClick={onNavigate}
             aria-current={isCurrentPage(pathname, item.href) ? "page" : undefined}
             className={cn(
               "flex items-center gap-3 rounded-(--radius) border-l-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors",
@@ -139,109 +142,5 @@ function Items({
         </li>
       ))}
     </ul>
-  );
-}
-
-/**
- * Same outside-click / Escape / focus-restore contract as `UserMenu`, and the
- * shared `.dropdown-panel` motion so it animates both ways (note 10 §37.1).
- */
-function SectionSwitcher({
-  pathname,
-  activeHref,
-  activeLabel,
-}: {
-  pathname: string;
-  activeHref: string | undefined;
-  activeLabel: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const panelId = useId();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  // Close on navigation — adjusting state during render, as AccountNav does.
-  const [renderedPath, setRenderedPath] = useState(pathname);
-  if (renderedPath !== pathname) {
-    setRenderedPath(pathname);
-    if (open) setOpen(false);
-  }
-
-  useEffect(() => {
-    if (!open) return;
-
-    function onPointerDown(event: MouseEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      setOpen(false);
-      triggerRef.current?.focus();
-    }
-
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-controls={panelId}
-        className={cn(
-          "flex w-full items-center gap-3 rounded-(--radius-lg) border bg-surface p-2.5 pr-4 text-left shadow-card transition-colors",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-          open ? "border-accent" : "border-border hover:border-foreground/40",
-        )}
-      >
-        <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-block-noir text-block-foreground">
-          {activeHref ? <NavIcon href={activeHref} /> : null}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[0.6875rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-            Academy
-          </span>
-          <span className="block truncate text-sm font-medium">{activeLabel}</span>
-        </span>
-        <svg
-          viewBox="0 0 12 12"
-          aria-hidden="true"
-          className={cn(
-            "h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-200",
-            open && "rotate-180",
-          )}
-        >
-          <path d="M2 4.5 6 8.5 10 4.5" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-
-      <div
-        id={panelId}
-        aria-hidden={!open}
-        data-open={open}
-        className="dropdown-panel absolute inset-x-0 z-30 mt-2 origin-top"
-      >
-        <nav
-          aria-label="Academy"
-          className="max-h-[70svh] overflow-y-auto overscroll-contain rounded-(--radius-lg) border border-border bg-surface p-3 shadow-lift"
-        >
-          <Items pathname={pathname} activeHref={activeHref} onNavigate={() => setOpen(false)} />
-          <Link
-            href="/"
-            onClick={() => setOpen(false)}
-            className="mt-2 flex items-center gap-2 border-t border-border px-3 pt-3 pb-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <span aria-hidden="true">&larr;</span> Back to site
-          </Link>
-        </nav>
-      </div>
-    </div>
   );
 }

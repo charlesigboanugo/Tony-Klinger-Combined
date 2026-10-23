@@ -6,12 +6,17 @@ import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { datedStatus } from "@/lib/content/offer-status";
 import { listRetreats } from "@/lib/content/coaching";
+import { pageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Retreats",
-  description: "Immersive retreats with limited places.",
-};
+  description:
+    "The Virtual Retreat: a day online with working mentors, at three levels, from watching the sessions to pitching your own project.",
+  path: "/coaching/retreats",
+});
+
 
 export default async function RetreatsPage() {
   const retreats = await listRetreats();
@@ -22,13 +27,13 @@ export default async function RetreatsPage() {
         <PageHeader
           eyebrow="Coaching"
           title="Retreats"
-          description="Immersive, limited places — some by application."
+          description="A day online with working mentors. Join at the level that suits you: watch the sessions, bring your own project for feedback, or pitch it to the panel."
         />
 
         {retreats.length === 0 ? (
           <EmptyState
-            title="No retreats scheduled"
-            description="Dates and applications open here."
+            title="No retreats announced"
+            description="The next retreat will be announced here."
           />
         ) : (
           <OfferGrid count={retreats.length}>
@@ -38,23 +43,14 @@ export default async function RetreatsPage() {
                   href={`/coaching/retreats/${retreat.slug}`}
                   title={retreat.name}
                   description={retreat.description}
-                  eyebrow={retreat.requires_application ? "By application" : "Retreat"}
-                  cta="View retreat"
-                  // No retreat has its own product yet; say so where the price goes.
-                  priceLabel={retreat.requires_application ? "By application" : null}
-                  priceNote={null}
-                  meta={[
-                    retreat.starts_at
-                      ? new Date(retreat.starts_at).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })
-                      : null,
-                    retreat.capacity ? `${retreat.capacity} places` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
+                  eyebrow={retreat.inProgress ? "In progress" : retreat.requires_application ? "By interview" : "Open to all"}
+                  cta="View level"
+                  prices={retreat.prices}
+                  // Where a retreat has no product yet, say how it is entered
+                  // in the place the price would be.
+                  priceLabel={retreat.prices.length === 0 && retreat.requires_application ? "By interview" : undefined}
+                  status={datedStatus({ startsAt: retreat.starts_at, endsAt: retreat.ends_at, inProgress: retreat.inProgress, endedAt: retreat.endedAt })}
+                  meta={retreat.capacity ? `${retreat.capacity} places` : null}
                   storagePath={retreat.storagePath}
                   seed={retreat.slug}
                   priority={i < 3}

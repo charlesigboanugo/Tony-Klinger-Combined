@@ -23,14 +23,16 @@ export default async function CheckoutSuccessPage({
   const orderId = typeof params.order === "string" ? params.order : null;
 
   let status: string | null = null;
+  let isGift = false;
   if (orderId) {
     const admin = createAdminClient();
     const { data } = await admin
       .from("orders")
-      .select("status")
+      .select("status,is_gift")
       .eq("id", orderId)
       .maybeSingle();
     status = (data as { status: string } | null)?.status ?? null;
+    isGift = (data as { is_gift?: boolean } | null)?.is_gift ?? false;
   }
 
   const paid = status === "paid";
@@ -63,8 +65,10 @@ export default async function CheckoutSuccessPage({
       </h1>
 
       <p className="mx-auto max-w-md text-pretty text-muted-foreground">
-        {paid
-          ? "Your access has been set up. If you checked out as a guest, we've emailed you a link to claim it."
+        {paid && isGift
+          ? "Thank you. We've emailed them a link to add your gift to their account, and your receipt is on its way to you."
+          : paid
+          ? "Your access has been set up. If you bought coaching sessions, choose your times in the Academy. If you checked out as a guest, we've emailed you a link to claim it."
           : failed
             ? "No money has been taken. You can try again from the product page."
             : "This usually takes a few seconds. You can safely refresh this page — your payment is already with our provider, and your order is saved either way."}

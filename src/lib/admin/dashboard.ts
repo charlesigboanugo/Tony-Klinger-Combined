@@ -29,6 +29,8 @@ export type DashboardStats = {
   emailsPending: number;
   emailsFailed: number;
   unreadEnquiries: number;
+  /** Retreat applications not yet answered (migration 0032). */
+  newApplications: number;
   draftContent: number;
 };
 
@@ -86,6 +88,7 @@ export async function dashboardStats(): Promise<DashboardStats> {
     unreadEnquiries,
     draftCatalogue,
     draftPosts,
+    newApplications,
   ] = await Promise.all([
     count("orders", "status", "paid"),
     count("orders", "status", "pending"),
@@ -98,6 +101,7 @@ export async function dashboardStats(): Promise<DashboardStats> {
     count("contact_messages"),
     count("catalogue_items", "status", "draft"),
     count("blog_posts", "status", "draft"),
+    count("retreat_applications", "status", "submitted"),
   ]);
 
   return {
@@ -110,6 +114,7 @@ export async function dashboardStats(): Promise<DashboardStats> {
     emailsPending,
     emailsFailed,
     unreadEnquiries,
+    newApplications,
     draftContent: draftCatalogue + draftPosts,
   };
 }

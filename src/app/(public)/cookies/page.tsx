@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 
 import { LegalDocument } from "@/components/content/LegalDocument";
+import { pageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Cookies",
-  description: "The cookies tonyklinger.com uses, and what each is for.",
-};
+  description:
+    "The cookies tonyklinger.com uses, and what each is for.",
+  path: "/cookies",
+});
 
 /**
  * Legal page — note 03 §8.2. Flat at the top level rather than under /legal:

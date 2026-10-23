@@ -6,16 +6,16 @@
   FRAGMENT. A fragment is never sent to a server, so our callback saw no code
   and treated a perfectly good invitation as a broken link.
 
-  `next` carries the invitee to the form that sets their password, because that
-  is what accepting an invitation means. Without it they arrive holding a
-  session and no credential of their own: able to use the site once, and unable
-  to sign in again.
+  `next` carries the invitee to the password form, where a password is optional
+  (owner, 2026-10-23): accepting confirms the address, so an email link or
+  Google signs them in afterwards, and the form offers "Skip for now".
 -->
 <h2>You've been invited</h2>
 
 <p>
-  You have been invited to create an account on Tony Klinger. Follow the link
-  below to choose a password and finish setting it up.
+  You have been invited to an account on Tony Klinger. Follow the link below to
+  accept. You can choose a password, or sign in with an email link or Google
+  instead.
 </p>
 
 <p>

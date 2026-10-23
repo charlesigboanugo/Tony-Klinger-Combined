@@ -9,17 +9,18 @@ import { cn } from "@/lib/utils/cn";
  * Knows nothing about memberships, entitlements or any other business concept
  * (note 02 §12). Higher-level feature components compose it.
  *
- * NOT A PLAIN RECTANGLE. Each variant is built from three things a flat filled
- * box does not have:
+ * STATES (owner, 2026-10-13: the sheen that swept across on hover and the
+ * lift were disliked; a plain darken was then "too dull" — modern, and a
+ * button must plainly say it is one under the pointer):
  *
- *   - a hairline highlight along the top edge (`before:`), which is what makes
- *     a solid shape read as lit from above rather than printed on;
- *   - a sheen that sweeps across on hover (`after:`), clipped to the button, so
- *     the control acknowledges the pointer rather than just changing tint;
- *   - real elevation that lifts on hover and compresses on `:active`.
+ *   - hover     a filled button brightens and lights up: a soft halo of its
+ *               own colour around it and a glow beneath. An outline button
+ *               fills solid, its text inverting. Nothing travels or jumps.
+ *   - pressed   the button presses in (shrinks a little) and the glow drops.
+ *   - focus     the ring.
  *
- * All three are pure CSS on pseudo-elements — no extra DOM, no library, and
- * they animate on the compositor, so the cost is a repaint of one element.
+ * Filled variants keep a hairline highlight along the top edge (`before:`),
+ * which is what makes a solid shape read as lit rather than printed on.
  *
  * THE DISABLED STATE IS STILL READABLE. It used to be `opacity-50`, which took
  * the contact form's submit button to 2.88:1 while it waited for the captcha —
@@ -45,34 +46,42 @@ const base = [
   // surfaces around it already use a sharp radius, so the contrast between
   // "surface" and "thing you press" does real work.
   "overflow-hidden rounded-full font-semibold tracking-[0.01em] whitespace-nowrap",
-  "transition-[transform,box-shadow,background-color,border-color,color] duration-(--dur-fast) ease-expo",
+  "transition-[transform,filter,box-shadow,background-color,border-color,color] duration-200 ease-out",
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-  "active:translate-y-px",
-  // Sheen. Skewed and parked off the left edge, swept across on hover.
-  "after:pointer-events-none after:absolute after:inset-y-0 after:-left-full after:-z-10 after:w-1/2",
-  "after:skew-x-[-20deg] after:bg-white/18 after:transition-[left] after:duration-500 after:ease-expo",
-  "hover:after:left-[150%]",
+  "active:scale-96",
   // Legible when disabled, rather than faded to nothing.
-  "disabled:pointer-events-none disabled:translate-y-0 disabled:shadow-none",
-  "disabled:border-border disabled:bg-muted disabled:text-muted-foreground disabled:after:hidden",
-  "motion-reduce:transform-none motion-reduce:transition-none motion-reduce:after:hidden",
+  "disabled:pointer-events-none disabled:scale-100 disabled:shadow-none disabled:brightness-100",
+  "disabled:border-border disabled:bg-muted disabled:text-muted-foreground",
+  "motion-reduce:transform-none motion-reduce:transition-none",
 ].join(" ");
+
+/**
+ * A filled button's states: it brightens and takes a halo and glow of its own
+ * colour, then settles when pressed. The glow colours are written out in full
+ * (not built from a variable) so Tailwind can see each class.
+ */
+const filledBase = "shadow-card hover:brightness-110 active:brightness-95 active:shadow-card";
+export const FILLED_STATES = `${filledBase} hover:shadow-[0_0_0_4px_color-mix(in_oklab,var(--button)_22%,transparent),0_12px_28px_-8px_color-mix(in_oklab,var(--button)_65%,transparent)]`;
+const filledSecondary = `${filledBase} hover:shadow-[0_0_0_4px_color-mix(in_oklab,var(--secondary)_22%,transparent),0_12px_28px_-8px_color-mix(in_oklab,var(--secondary)_65%,transparent)]`;
+const filledError = `${filledBase} hover:shadow-[0_0_0_4px_color-mix(in_oklab,var(--error)_22%,transparent),0_12px_28px_-8px_color-mix(in_oklab,var(--error)_65%,transparent)]`;
+export const ON_BLOCK_FILLED_STATES = `${filledBase} hover:shadow-[0_0_0_4px_color-mix(in_oklab,var(--block-foreground)_25%,transparent),0_12px_28px_-8px_color-mix(in_oklab,var(--block-foreground)_45%,transparent)]`;
+/** An outline button's states: it fills solid on hover, the text inverting. */
+export const OUTLINE_STATES =
+  "hover:border-foreground hover:bg-foreground hover:text-background hover:shadow-[0_0_0_4px_color-mix(in_oklab,var(--foreground)_14%,transparent)] active:shadow-none";
 
 /** Top-edge highlight — only on filled variants, where it reads as light. */
 const lit =
   "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/25";
 
 const variants: Record<ButtonVariant, string> = {
-  primary: `bg-button text-button-foreground shadow-card hover:-translate-y-0.5 hover:shadow-lift ${lit}`,
-  secondary: `bg-secondary text-secondary-foreground shadow-card hover:-translate-y-0.5 hover:shadow-lift ${lit}`,
-  destructive: `bg-error text-error-foreground shadow-card hover:-translate-y-0.5 hover:shadow-lift ${lit}`,
-  // Outline fills from the bottom on hover rather than merely tinting.
-  outline:
-    "border border-input-border bg-transparent text-foreground hover:-translate-y-0.5 hover:border-primary hover:bg-primary/10 hover:text-primary hover:shadow-card",
-  ghost: "bg-transparent text-foreground hover:bg-surface-muted",
-  onBlock: `bg-block-foreground text-secondary shadow-card hover:-translate-y-0.5 hover:shadow-lift ${lit}`,
+  primary: `bg-button text-button-foreground ${FILLED_STATES} ${lit}`,
+  secondary: `bg-secondary text-secondary-foreground ${filledSecondary} ${lit}`,
+  destructive: `bg-error text-error-foreground ${filledError} ${lit}`,
+  outline: `border border-input-border bg-transparent text-foreground ${OUTLINE_STATES}`,
+  ghost: "bg-transparent text-foreground hover:bg-foreground/8 active:bg-foreground/14",
+  onBlock: `bg-block-foreground text-secondary ${ON_BLOCK_FILLED_STATES} ${lit}`,
   onBlockOutline:
-    "border border-block-foreground/55 bg-transparent text-block-foreground hover:-translate-y-0.5 hover:border-block-foreground hover:bg-block-foreground/12",
+    "border border-block-foreground/55 bg-transparent text-block-foreground hover:border-block-foreground hover:bg-block-foreground hover:text-secondary hover:shadow-[0_0_0_4px_color-mix(in_oklab,var(--block-foreground)_22%,transparent)] active:shadow-none",
 };
 
 const sizes: Record<ButtonSize, string> = {
@@ -88,15 +97,25 @@ type BaseProps = {
   children: ReactNode;
 };
 
+/**
+ * A button that does NOT submit a form unless asked to.
+ *
+ * The browser's default `type` is "submit", so a Cancel, Close or Remove
+ * button placed inside a form used to submit it: Cancel on "clear security
+ * keys" would clear them if a reason had been typed. `SubmitButton` sets
+ * `type="submit"` itself; everything else is an ordinary button.
+ */
 export function Button({
   variant = "primary",
   size = "md",
   className,
+  type = "button",
   ...props
 }: BaseProps & ComponentProps<"button">) {
   return (
     <button
       {...props}
+      type={type}
       className={cn(base, variants[variant], sizes[size], className)}
     />
   );

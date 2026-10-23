@@ -21,8 +21,7 @@ export type ResourceType =
   | "group_coaching_session"
   | "cohort"
   | "retreat"
-  | "event"
-  | "masterclass";
+  | "event";
 
 /**
  * The caller's entitlement for one resource.

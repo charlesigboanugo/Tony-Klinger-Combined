@@ -47,7 +47,7 @@ const AREAS: Array<{ href: string; title: string; description: string; icon: Ico
     href: "/account/entitlements",
     icon: "key",
     title: "Your access",
-    description: "What you can use, how long it lasts and when it renews.",
+    description: "What you can use, and how long it lasts.",
   },
 ];
 
@@ -101,7 +101,7 @@ export default async function SettingsPage() {
             {profile?.display_name ? "your registered address" : "your account address"}
           </span>{" "}
           and we will close it. Your personal details are removed, and any
-          courses or memberships you hold end at that point.
+          courses or Coaching Pass you hold end at that point.
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
           Records of what you paid are kept — we are legally required to hold

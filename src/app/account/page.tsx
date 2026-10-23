@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AccessCard } from "@/components/account/AccessCard";
+import { AccessRow } from "@/components/account/AccessRow";
 import { AccountHeader, AccountSection } from "@/components/account/AccountHeader";
-import { ORDER_STATUS, SUBSCRIPTION_STATUS, StatusPill, statusOf } from "@/components/account/StatusPill";
+import { UnclaimedOrders } from "@/components/account/UnclaimedOrders";
+import { ORDER_STATUS, StatusPill, statusOf } from "@/components/account/StatusPill";
 import { ButtonLink } from "@/components/ui/Button";
 import { IconTile } from "@/components/ui/Icon";
-import { myOrders, myProfile, mySubscriptions, orderTitle } from "@/lib/account";
+import { myMembership } from "@/lib/academy/membership";
+import { myOrders, myProfile, orderTitle } from "@/lib/account";
 import { myAccess } from "@/lib/account/access";
 import { dateBadge, formatDate, formatDateTime } from "@/lib/account/format";
 import { myBookingsByTime } from "@/lib/bookings";
@@ -30,20 +32,20 @@ export const metadata: Metadata = { title: "Account", robots: { index: false } }
  */
 export default async function AccountPage() {
   const context = await requireUser("/account");
-  const [profile, access, bookings, subscriptions, orders] = await Promise.all([
+  const [profile, access, bookings, membership, orders] = await Promise.all([
     myProfile(),
     myAccess(),
     myBookingsByTime(),
-    mySubscriptions(),
+    myMembership(),
     myOrders(),
   ]);
 
   const firstName = profile?.first_name?.trim() || profile?.display_name?.trim().split(" ")[0];
   const live = access.filter((a) => a.state === "active");
   const next = bookings.upcoming[0] ?? null;
-  const canBook = live.some((a) => a.href === "/bookings");
-  const membership =
-    subscriptions.find((s) => ["active", "trialing", "past_due"].includes(s.status)) ?? null;
+  const canBook = live.some((a) => a.href === "/book");
+  // The entitlement, not the subscription (note 09 §16.1): a member who paid
+  // once for a year has no subscription, and is a member all the same.
   const recentOrders = orders.slice(0, 3);
 
   return (
@@ -52,6 +54,8 @@ export default async function AccountPage() {
         title={firstName ? `Hello, ${firstName}` : "Your account"}
         description="What's coming up, what you can use, and what you've paid, all in one place."
       />
+
+      <UnclaimedOrders />
 
       <div className="space-y-14 sm:space-y-16">
         {/* 1 — Up next. Noir: the site's one colour field (note 10 §5). */}
@@ -110,16 +114,76 @@ export default async function AccountPage() {
                 Nothing booked yet
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Your Group Coaching access lets you book sessions. Pick one that suits you.
+                You have sessions paid for and still to schedule. Pick a time that suits you.
               </p>
             </div>
-            <ButtonLink href="/bookings" size="sm">
+            <ButtonLink href="/book" size="sm">
               Book a session
             </ButtonLink>
           </section>
         ) : null}
 
-        {/* 2 — What you can use. */}
+        {/* 2 — The Coaching Pass, on a line of its own and ahead of the access
+            list (owner, 2026-10-09). */}
+        <AccountSection
+          title="Coaching Pass"
+          action={
+            <Link href="/account/pass" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+              Details
+            </Link>
+          }
+        >
+          <div className="rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:p-6">
+            {membership ? (
+              <>
+                {/* Across the page now: what it is and when it ends on the
+                    left, its state and the way in on the right. */}
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <IconTile name="star" tone="accent" />
+                    <div className="min-w-0">
+                      <p className="font-display text-2xl leading-tight font-semibold">{membership.tierName}</p>
+                      {membership.date ? (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {membership.renews ? "Renews" : "Ends"} on{" "}
+                          <span className="font-medium text-foreground">{formatDate(membership.date)}</span>
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3 pl-14 sm:pl-0">
+                    <StatusPill tone={membership.pastDue ? "warn" : "good"}>
+                      {membership.pastDue ? "Payment due" : "Active"}
+                    </StatusPill>
+                    <ButtonLink href="/academy/pass" size="sm">
+                      Open your pass
+                    </ButtonLink>
+                  </div>
+                </div>
+                {membership.pastDue ? (
+                  <p className="mt-4 rounded-(--radius) border border-warning/40 bg-warning/10 p-3 text-sm sm:ml-14">
+                    A payment failed. Your pass continues for now. Update your card under
+                    Billing to keep it.
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <p className="font-medium">You don&apos;t have a Coaching Pass yet</p>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  Live Group Coaching, the video playlists and a monthly Q&amp;A with Tony.
+                </p>
+                <div className="mt-4">
+                  <ButtonLink href="/coaching/passes" size="sm" variant="outline">
+                    Compare tiers
+                  </ButtonLink>
+                </div>
+              </>
+            )}
+          </div>
+        </AccountSection>
+
+        {/* 3 — What you can use. */}
         <AccountSection
           title="Your access"
           action={
@@ -150,10 +214,10 @@ export default async function AccountPage() {
               </div>
             </div>
           ) : (
-            <ul className="grid gap-5 md:grid-cols-2">
+            <ul className="space-y-6 sm:space-y-8">
               {live.slice(0, 4).map((item) => (
                 <li key={item.id}>
-                  <AccessCard item={item} />
+                  <AccessRow item={item} />
                 </li>
               ))}
             </ul>
@@ -169,112 +233,54 @@ export default async function AccountPage() {
           ) : null}
         </AccountSection>
 
-        {/* 3 — Membership and money, side by side from md. */}
-        <div className="grid gap-12 md:grid-cols-2 md:gap-8">
-          {/* Both columns stretch to the taller card, so the pair ends on one
-              line whatever each holds (owner, 2026-09-27). */}
-          <AccountSection
-            className="flex flex-col"
-            title="Membership"
-            action={
-              <Link href="/account/memberships" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
-                Details
+        {/* 4 — Recent orders, on a line of their own (owner, 2026-10-09: the
+            pass and the orders are not set side by side). */}
+        <AccountSection
+          title="Recent orders"
+          action={
+            orders.length > 0 ? (
+              <Link href="/account/orders" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+                All orders
               </Link>
-            }
-          >
-            <div className="flex-1 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:p-6">
-              {membership ? (
-                <>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <IconTile name="star" tone="accent" />
-                      <p className="font-display text-2xl font-semibold capitalize">
-                        {membership.membership_tier ?? "Member"}
-                      </p>
-                    </div>
-                    <StatusPill tone={statusOf(SUBSCRIPTION_STATUS, membership.status).tone}>
-                      {statusOf(SUBSCRIPTION_STATUS, membership.status).label}
-                    </StatusPill>
-                  </div>
-                  {membership.current_period_end ? (
-                    <p className="mt-2 pl-13 text-sm text-muted-foreground">
-                      {membership.cancel_at ? "Ends" : "Renews"} on{" "}
-                      <span className="font-medium text-foreground">
-                        {formatDate(membership.current_period_end)}
-                      </span>
-                    </p>
-                  ) : null}
-                  {membership.status === "past_due" ? (
-                    <p className="mt-3 ml-13 rounded-(--radius) border border-warning/40 bg-warning/10 p-3 text-sm">
-                      A payment failed. Your membership continues for now. Contact us to update
-                      your card.
-                    </p>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <p className="font-medium">You&apos;re not a member yet</p>
-                  <p className="mt-1.5 text-sm text-muted-foreground">
-                    Each tier includes everything in the tiers below it.
-                  </p>
-                  <div className="mt-4">
-                    <ButtonLink href="/coaching/memberships" size="sm" variant="outline">
-                      Compare tiers
-                    </ButtonLink>
-                  </div>
-                </>
-              )}
+            ) : null
+          }
+        >
+          {recentOrders.length === 0 ? (
+            <div className="rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:p-6">
+              <p className="font-medium">No orders yet</p>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Receipts for everything you buy are kept here.
+              </p>
             </div>
-          </AccountSection>
-
-          <AccountSection
-            className="flex flex-col"
-            title="Recent orders"
-            action={
-              orders.length > 0 ? (
-                <Link href="/account/orders" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
-                  All orders
-                </Link>
-              ) : null
-            }
-          >
-            {recentOrders.length === 0 ? (
-              <div className="flex-1 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:p-6">
-                <p className="font-medium">No orders yet</p>
-                <p className="mt-1.5 text-sm text-muted-foreground">
-                  Receipts for everything you buy are kept here.
-                </p>
-              </div>
-            ) : (
-              <ul className="flex-1 divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface shadow-card">
-                {recentOrders.map((order) => {
-                  const status = statusOf(ORDER_STATUS, order.status);
-                  return (
-                    <li key={order.id}>
-                      <Link
-                        href={`/account/orders/${order.id}`}
-                        className="flex items-center gap-4 p-4 transition-colors hover:bg-surface-muted"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{orderTitle(order)}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(order.created_at)}</p>
-                        </div>
-                        <div className="flex shrink-0 flex-col items-end gap-1">
-                          <span className="text-sm font-semibold tabular-nums">
-                            {formatPrice(order.total, order.currency)}
-                          </span>
-                          {order.status !== "paid" ? (
-                            <StatusPill tone={status.tone}>{status.label}</StatusPill>
-                          ) : null}
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </AccountSection>
-        </div>
+          ) : (
+            <ul className="divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface shadow-card">
+              {recentOrders.map((order) => {
+                const status = statusOf(ORDER_STATUS, order.status);
+                return (
+                  <li key={order.id}>
+                    <Link
+                      href={`/account/orders/${order.id}`}
+                      className="flex items-center gap-4 p-4 transition-colors hover:bg-surface-muted"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{orderTitle(order)}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(order.created_at)}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span className="text-sm font-semibold tabular-nums">
+                          {formatPrice(order.total, order.currency)}
+                        </span>
+                        {order.status !== "paid" ? (
+                          <StatusPill tone={status.tone}>{status.label}</StatusPill>
+                        ) : null}
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </AccountSection>
 
         {context.isStaff ? (
           <p className="flex items-center gap-3 rounded-(--radius-lg) border border-border bg-surface p-5 text-sm">

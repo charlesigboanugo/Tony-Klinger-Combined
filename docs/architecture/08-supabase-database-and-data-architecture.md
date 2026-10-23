@@ -132,6 +132,37 @@ and every section carries a banner naming its former file:
 | `0009_events_and_academy_delivery` | `0017`–`0019` |
 | `0010_coaching_billing_and_account_security` | `0020`–`0022` |
 
+**Consolidated a third time 2026-10-15, before first deployment.** The thirty-nine files
+became fifteen, again as adjacent runs in their original order, with one exception: 0015
+(the `series_pass` enum value) moved up beside 0011, because Postgres refuses to use an enum
+value in the transaction that adds it, so the enum additions keep a file of their own ahead
+of everything that uses them. Verified on a separate local stack: built from the 39 and from
+the 15, then `pg_dump` compared. Structure (17,563 lines), all public and bucket data (737
+rows, ids and times masked) and every table's row count are identical. `pnpm test:db` gives
+the same result on both builds; on the developer database (with `pnpm dev:samples`) it passes
+178/178. The local database's migration history was repaired to the new list (16–39 marked
+reverted). One addition in the merged 0015: the storage delete guard is switched back on
+after the `documents` bucket delete, since later sections now share its transaction.
+
+| Now | Formerly (2026-09-28 numbering and later) |
+|-----|----------|
+| `0001`–`0010` | unchanged |
+| `0011_entitlement_kinds` | 0011, 0015 |
+| `0012_coaching_pass_series_and_cohorts` | 0012–0014, 0016–0019 |
+| `0013_coaching_schedules_and_sales_rules` | 0020–0028 |
+| `0014_retreats_and_level_codes` | 0029–0034 |
+| `0015_products_media_and_lessons` | 0035–0039 |
+| `0016_checkout_account_match` | new 2026-10-15 (checkout account offer, gifts, adding purchases from the account; §42) |
+| `0017_session_and_pass_reminders` | new 2026-10-16 (`session_reminders_due`, `passes_ending_due`; `event_reminders_due` and six other server-only functions closed to the API; §35) |
+| `0018_staff_academy_view` | new 2026-10-23 (`academy.view_all` permission and a read policy on `course_modules`, `lessons`, `cohort_workshops`, `group_coaching_sessions`, `member_qa_sessions`, `playlist_videos`, `retreat_batches`; note 06 §23.2) |
+| `0019_academy_viewer_role` | new 2026-10-23 (`roles.is_staff`; role `academy_viewer`, not staff; `is_staff()`, `admin_record_mfa_reset`, `authorise_security_key_removal` count staff roles only; policy "resources: academy staff view recording"; note 06 §23.2) |
+| `0020_admins_manage_roles` | new 2026-10-23 (`roles.manage` granted to `admin`; owner role still owner-only in `admin_set_role`; note 06 §34) |
+| `0021_grants_outlive_granter` | new 2026-10-23 (admin grants need a reason; `granted_by` required on insert by trigger, may be nulled when the granter's account is deleted; note 06 §14.4) |
+| `0022_sale_status_reasons` | new 2026-10-23 (`coaching_sale_status`: `ended`; `past`/`unscheduled` for series with no run to start; note 09 §28.1) |
+
+Bare migration numbers above 0010 in notes, comments and change-log rows written before
+2026-10-15 refer to the earlier numbering; the section banners resolve them.
+
 Bare migration numbers above 0005 in older notes, comments and change-log rows refer to
 the numbering in force when they were written.
 
@@ -657,6 +688,144 @@ For permanent purchases, `expires_at` may be null where the business rules allow
 
 The application must define expiration behaviour deliberately.
 
+## 21.1 Membership, playlists and packs — migrations 0011, 0012
+
+```text
+entitlement_resource   + 'membership' (resource_id = membership_tiers.id)
+                       + 'playlist'   (resource_id = playlists.id, or null for all)
+
+membership_tiers       + series_allowance, playlist_allowance   null = all
+                       + includes_qa, includes_retreats
+                         benefits is now the tier's FULL list (note 07 §10.1)
+
+products               + credits, valid_months        sessions granted, and how long they last
+                       + pack_of                      the single-session product a pack is several of
+                       + option_group, option_label,  alternatives of one offer (note 07 §14.1)
+                         option_position
+
+group_coaching_series  + capacity                     default group size, set in admin
+retreats               + level, benefits, position
+
+playlists              name, slug, description, min_tier, position, status      public read
+playlist_videos        playlist, title, video provider/id/hash, published_at    members only
+member_qa_sessions     title, starts/ends, meeting_url, recording               members only
+membership_choices     user, kind ('playlist'), resource_id                     own read
+retreat_access         retreat, join_url, joining_notes                         attendees only
+```
+
+Functions: `membership_of(uuid)` (internal), `my_membership()`, `has_member_benefit(text)`,
+`can_view_playlist(uuid)`, `has_retreat_access(uuid)`, `sync_membership_entitlements(uuid)`
+(internal, and run by a trigger on membership entitlement rows),
+`apply_subscription_membership(uuid)` (service role; called by the Stripe webhook),
+`choose_membership_item(text, uuid)` (replaced by `choose_playlist(uuid)` in migration 0018),
+`coaching_sale_status(uuid)`.
+`grant_entitlements_for_order` and `book_group_session` are replaced.
+
+The three functions used inside RLS policies (`has_member_benefit`, `can_view_playlist`,
+`has_retreat_access`) stay executable by `anon` (§61.1): revoking them hides nothing — each
+answers false without a session — and makes every signed-out read of a table whose policy
+calls one fail outright. The pgTAP suite asserts both halves.
+
+**Migration 0013 — terms. WITHDRAWN by migration 0018, below; kept here as the record of
+what 0013 creates and 0018 drops.** `coaching_terms` (name, starts_at, ends_at, status; published
+terms may not overlap, enforced by trigger; no end given means twelve weeks).
+`membership_choices.term_id`: set for a series choice, null for a playlist, with the unique
+index widened to include it. `term_at(timestamptz)`, `member_holds_session(uuid)` (an RLS
+predicate, so executable by `anon`), `choose_membership_item(text, uuid, uuid)` replacing the
+two-argument form, `schedule_series_sessions(...)` (service role). `sync_membership_entitlements`
+no longer derives a chosen series; `book_group_session` gains the term-choice route.
+
+**Migration 0014 — sessions by series.** `products.series_id` (the series a Group Coaching
+product's sessions are for). A `group_coaching_session` entitlement's `resource_id` is that
+series, or null for any. `has_session_credits_for(uuid)`, an RLS predicate (executable by
+`anon`), replaces `has_session_credits()` in the session policy; the no-argument form remains
+for callers asking about any unspent session. `grant_entitlements_for_order`,
+`coaching_sale_status` and `book_group_session` are replaced again.
+
+**Migrations 0015, 0016 — series runs.** `entitlement_resource` + `series_pass` (a paid place
+on one run; `resource_id` the series). `coaching_runs` (series, label, registration_opens_at,
+starts_at, ends_at, capacity, status; public read when published), `coaching_registrations`
+(user, run, entitlement; own read), `group_coaching_sessions.run_id`. Functions:
+`run_places_left(uuid)` (public), `holds_seat(uuid)` (an RLS predicate, executable by `anon`),
+`register_for_run(uuid)`, and — internal, service role only — `run_seats_taken`,
+`register_user_for_run`, `place_on_open_run`, `schedule_series_run` (replacing
+`schedule_series_sessions`). `grant_entitlements_for_order`, `coaching_sale_status` and
+`book_group_session` are replaced again.
+
+**Migration 0018 — terms removed; a member's series counted by the year.** Drops
+`coaching_terms`, `membership_choices.term_id`, `term_at`, `member_holds_session` and
+`choose_membership_item`, and the policies that used them. Adds
+`coaching_registrations.source` ('purchase' | 'membership'), `starts_at` to what
+`membership_of` and `my_membership` return, `membership_series_used(uuid)` (internal),
+`my_series_allowance()` and `choose_playlist(uuid)`. `register_user_for_run` uses a bought
+place first and otherwise the membership, answering `limit_reached` at the tier's number for
+the year; `holds_seat` and `run_seats_taken` count a membership-source registration only
+while the membership is live. `sync_membership_entitlements` derives no series;
+`book_group_session` loses the term route. Platinum's `series_allowance` becomes 4 (it was
+null, meaning all). The public schema holds 59 tables.
+
+**Migration 0027 — pass upgrades.** `grant_entitlements_for_order`: a membership line whose
+`order_items.metadata` names `upgrade_from` changes the tier (`resource_id`) of that live,
+purchase-sourced membership entitlement of the buyer, upward only, and grants no new one;
+`entitlements_sync_membership` then follows the change. No schema change.
+
+**Migration 0026 — pass holders register first.** `coaching_runs.pass_opens_at` (not null;
+filled by the same trigger as `registration_closes_at` with `registration_opens_at` less
+`pass_priority_days()`, seven, and capped at the public opening). `register_user_for_run`
+accepts a registration from that date where it is made through a pass, and answers `not_open`
+to anyone else; `coaching_runs_one_open` counts a run's window from that date.
+
+**Migration 0025 — when series registration closes.** `coaching_runs.registration_closes_at`
+(not null; trigger `coaching_runs_closes_default` fills it with `starts_at`, caps it there, and
+keeps it following the start where it was never set apart; check
+`registration_opens_at < registration_closes_at`). `register_user_for_run`,
+`place_on_open_run`, `coaching_sale_status`, `coaching_runs_one_open`, `coming_sessions` and
+`session_sale_status` ask about that date where they asked whether the run had started.
+
+**Migration 0024 — single sessions after the series starts.** `coming_sessions` and
+`session_sale_status` require the session's run to have started; before that only the series
+is sold.
+
+**Migration 0023 — weekly sessions keep their UK time.** `same_uk_time(timestamptz, integer)`
+(internal) adds weeks on the London clock; `schedule_series_run` uses it, so a run's sessions
+fall at the same time of day in the UK as its first, across a clock change. Before it, the
+weeks were added to the instant and a 5pm series became 4pm when the clocks went back.
+
+**Migration 0022 — one session, bought for a date.** `session_places_left(uuid)`,
+`coming_sessions(uuid)` and `session_sale_status(uuid)` (public; the dates sell the session,
+and none carries a joining link), `book_session_for(uuid, uuid)` (internal; the body of
+`book_group_session`, which becomes a wrapper for the caller). `coaching_sale_status` sells
+the one-session product while any session of its series is still to come with a seat;
+`grant_entitlements_for_order` reads `order_items.metadata.session_id` and takes that seat.
+
+**Migration 0021 — one open run per series.** Trigger `coaching_runs_one_open` refuses a
+published run whose registration window overlaps another of the same series that still has
+places; `place_on_open_run` takes the soonest run with a place and returns `none_open`
+rather than `choose`.
+
+**Migration 0020 — masterclasses removed.** See §27.
+
+**Migration 0019 — a membership place lasts the run.** `registration_stands(text, uuid)`
+(internal), used by `holds_seat` and `run_seats_taken`, both replaced: a registration made
+through a membership paid for the year stands to the end of the run; one made through a
+subscription stands while the subscription is live; neither survives a revoked entitlement.
+
+**Migration 0017 — cohort intakes.** `cohort_intakes` (cohort, label, registration_opens_at,
+starts_at, ends_at, capacity nullable, status; public read when published),
+`cohort_enrolments` (user, intake, entitlement; own read), `cohort_workshops.intake_id`. A
+purchased `cohort` entitlement is now COUNTED (a place, spent on an intake); one with no
+quantity is standing access. Functions: `intake_places_left` (public); `holds_intake`,
+`has_standing_cohort_access`, `in_cohort` (RLS predicates, executable by `anon`);
+`enrol_in_intake`; and — internal — `intake_seats_taken`, `enrol_user_in_intake`,
+`place_on_open_intake`. The workshop and recording policies follow the intake.
+`cohorts.starts_at`, `ends_at`, `capacity` remain as columns and are unused.
+
+**How a later change to the offer reaches a database that already holds the content
+(§60.1.2).** `supabase/content/12_coaching_offer.sql` is written to be re-run: every statement
+is an upsert or an update keyed on a slug. It is the last content file on a fresh setup, and
+on an existing project it is run alone with
+`pnpm content:setup --env <file> --only 12_coaching_offer.sql`, after `supabase db push`.
+
 ---
 
 # 22. Courses
@@ -803,10 +972,41 @@ updated_at
 Private files should use protected storage/access mechanisms.
 
 `storage_path` is a **bucket-relative key**, not a URL — see §60.1. Which bucket it
-refers to follows from whether the resource is gated: `course-assets` for material
-attached to Academy content, `documents` for standalone gated files.
+refers to follows from whether the resource is gated: `course-assets` for course material
+only, `private-media` for any other private file (migration 0037, replacing `documents`).
 
 Do not expose protected Academy resources through a publicly accessible static directory.
+
+**Uploaded from Admin → Media (owner, 2026-10-15).** The form follows the item's type: an
+image, audio file or document is uploaded (no path is typed); a video takes its Livid link
+and a link its address. An image always goes to `site-media`. For audio and documents staff
+set "Anyone can open it": on puts the file in `site-media`, off in `private-media`
+(never `course-assets`, which is for course material only). The
+server checks the Media write permission, makes the path (`{8 random hex}-{cleaned
+name}.{ext}`, bucket-prefixed when stored) and issues a one-time signed upload link; the
+browser sends the file straight to storage with it, because a request through the
+application cannot carry 50 MB. Accepted types are decided by extension
+(`lib/storage/upload-kinds.ts`) and backed by each bucket's own list. An image's width and
+height are read in the browser and saved with it.
+
+**Public ↔ private by moving the file (owner, 2026-10-15).** "Anyone can open it" can be
+changed on a saved audio file or document: on save the file is MOVED between `site-media` and
+`private-media` under the same key (storage `move` with `destinationBucket`) and
+`storage_path` follows, so nothing is uploaded again (`lib/storage/visibility.ts`, called from
+`createRow`/`updateRow`; the form sends `__visibility`). Refused when another Media item names
+the same file; the move is put back if the row update fails. Images never move (always
+public), nor do files in other buckets. A file made private stops being served at its public
+address, though a copy already fetched may sit in a browser or CDN cache for a while.
+
+**A file belongs to its Media item (owner, 2026-10-15).** Form uploads are stored under
+`uploads/` in their bucket. Deleting a Media item deletes its file; replacing an item's file
+deletes the old one on save. A Media item still used anywhere (a cover, a photo, a
+recording, a gallery entry: every foreign key to `resources`, listed in
+`lib/admin/media-usage.ts` and counted by a database test) cannot be deleted, and the refusal
+names where it is used, because most of those keys are `on delete set null` and would
+otherwise quietly blank the page. An upload never saved as a Media item is removed by the
+daily `cleanup-uploads` job after a day (note 09 §44); it only looks in `uploads/`, so files
+imported before launch are removed only by deleting their Media item.
 
 **Recording read policy (migration 0019, 2026-09-26):** a resource row is also readable
 when it is the recording of a workshop or session the caller may open — note 07 §23 has the
@@ -816,6 +1016,16 @@ server-minted signed URL.
 ---
 
 # 27. Masterclasses
+
+> **Removed, owner 2026-10-09 (migration 0020): "tables not in use should be removed".**
+> The `masterclasses` table, its RLS policies and the `masterclasses.*` permissions are
+> dropped, with the Admin → Masterclasses screen. It had been empty since the concept folded
+> into Courses on 2026-09-05. `grant_entitlements_for_order` loses its masterclass branch and
+> the course-assets storage policies ask for `courses.update` alone. The label `masterclass`
+> remains in the `product_type`, `entitlement_resource` and `bookable_type` enums only
+> because Postgres cannot drop an enum value in use by columns; the application offers it
+> nowhere. The section below is kept as the record of what was specified. The public schema
+> holds 58 tables.
 
 Masterclasses are an Ultimate Membership benefit.
 
@@ -1360,7 +1570,14 @@ The exact relationship to bookings/orders should be defined by the event type.
 - `cancel_booking` now refuses a paid event ticket (`paid_ticket`).
 - Staff functions: `event_attendees(event_id)` (`events.read`),
   `check_in_ticket(reference, undo)` (`events.update`). Service role only:
-  `event_reminders_due(kind)`.
+  `event_reminders_due(kind)`. Until migration 0017 that function was still executable
+  through PUBLIC (revoked from `anon` and `authenticated` by name only), so the API would
+  return every ticket holder's email and joining link to anyone; 0017 revokes it from PUBLIC.
+- Coaching reminders (migration 0017), service role only: `session_reminders_due(kind)`
+  returns one row per person per upcoming Group Coaching session, private session, cohort
+  workshop, member Q&A or retreat batch, with the recipients worked out by the same rules
+  as the Academy's access policies; `passes_ending_due(kind)` returns Coaching Passes
+  ending within a month (`month`) or a week (`week`). Both revoke EXECUTE from PUBLIC.
 - `event_sale_status(product_id)` is public: checkout's guard before taking payment. A race
   on the last place can still sell one over capacity; the ticket is issued rather than a
   paying customer refused.
@@ -1557,6 +1774,14 @@ Potential mechanisms include:
 - Manual support intervention for exceptional cases
 
 The final implementation should avoid allowing a different authenticated user to claim another customer's purchase merely by knowing an order ID or email address.
+
+**Implemented** (note 05 §29.3): the signed claim token (`order_claim_tokens`, `claim_order`),
+and from 2026-10-15 (migration 0016) the verified checkout email — a signed-in customer whose
+account email is confirmed adds the paid guest orders made with it, at their request
+(`my_unclaimed_orders`, `claim_my_orders`, helper `my_confirmed_email`). Also in 0016:
+`email_has_account(email)`, service role only, used by checkout (note 05 §29.2.1), and
+`orders.is_gift` (boolean, default false): the order was bought for the person whose email is
+`guest_email`. It changes wording only and grants nothing (note 05 §29.2.2).
 
 ---
 
@@ -2120,9 +2345,12 @@ stored path; file organisation can be fixed with a path change, access cannot.
 avatars         public    profile photos
 site-media      public    all marketing media — imagery for books, films, blog,
                           events, retreats, coaching, team, testimonials and course
-                          thumbnails; and public audio (interviews, podcasts)
+                          thumbnails; public audio (interviews, podcasts); and
+                          public documents (PDF, Word), since migration 0036
 course-assets   private   material attached to Academy content, entitlement-gated
-documents       private   standalone gated documents, not tied to a course
+private-media   private   every other private file: audio and documents uploaded
+                          through Admin → Media with "Anyone can open it" off
+                          (migration 0037, owner 2026-10-15; replaced `documents`)
 ```
 
 Course thumbnails sit in the **public** bucket deliberately. They are marketing —
@@ -2140,7 +2368,7 @@ note 01 §17–§18 and note 09 §40 is unchanged.
 
 **Gated audio mirrors documents, not this.** A masterclass or course recording is
 entitlement-gated content that happens to be audio. It goes in `course-assets` where it
-is attached to Academy content and `documents` where it stands alone, and it is reached
+is course material and `private-media` where it stands alone, and it is reached
 the way every other private asset is — a short-lived signed URL minted after
 `has_active_entitlement()` (§60.2). **A file's format never decides its bucket; who may
 read it does.**
@@ -2374,7 +2602,12 @@ group_coaching_series.slug
 masterclasses.slug
 blog_posts.slug
 catalogue_items.slug (unique within category)
+lower(products.name) (among active and paused products only)
 ```
+
+**Product names (migration 0035, owner 2026-10-15).** Two products on sale cannot share a name, compared case-insensitively, because Stripe shows products by name and identical names cannot be told apart in its dashboard. An archived product frees its name for reuse; a draft is checked when it goes live. The admin form reports the clash in plain words.
+
+**Slugs left empty are generated.** Every admin form with a slug makes one from the name or title when the field is left empty on create, adding `-2`, `-3`, … until it is unused in that table. On edit, an empty slug keeps the stored one, since a changed slug breaks existing links.
 
 Do not assume uniqueness based solely on application code.
 
@@ -2688,3 +2921,24 @@ The schema should be managed through version-controlled SQL migrations, protecte
 | 2026-09-27 | §60: customer-facing "my …" queries also filter by the caller's id, because staff read-all policies made a staff account's own Account and Academy list every customer's bookings, access and orders. |
 | 2026-09-27 | §44: `billing_customers`, `invoices`, `payments.receipt_url`, `orders.checkout_mode`, `subscriptions.cancel_at_period_end` (migration 0021) for receipts, invoice history and self-service cancellation. |
 | 2026-09-27 | Migration 0022: SECURITY DEFINER functions over `auth.mfa_factors` / `auth.sessions`, each scoped to `auth.uid()` — `my_security_keys()`, `my_sessions()`, `sign_out_my_session(uuid)`, `authorise_security_key_removal(uuid)` (writes `audit_logs`, enqueues `security_key_removed`). Executable by `authenticated` only. Note 05 §11.2. |
+| 2026-10-08 | §21.1 (new): migrations 0011 and 0012 — `membership` and `playlist` entitlement types; tier allowances; product packs and options; series capacity; retreat levels; `playlists`, `playlist_videos`, `member_qa_sessions`, `membership_choices`, `retreat_access`; the membership functions and which stay callable by `anon`. `content:setup --only` recorded as how a re-runnable content file reaches an existing project. |
+| 2026-10-08 | §21.1: migration 0013 (coaching terms, per-term series choices, `member_holds_session`, `schedule_series_sessions`); `subscriptions.billing_interval` and `membership_tiers.retreats_require_yearly` (0012). pgTAP table count 56. |
+| 2026-10-09 | §21.1: migration 0014 — `products.series_id`; session entitlements carry their series; `has_session_credits_for`. |
+| 2026-10-09 | §21.1: migrations 0015 and 0016 — `series_pass`, `coaching_runs`, `coaching_registrations`, `group_coaching_sessions.run_id` and the registration functions. pgTAP table count 58. |
+| 2026-10-09 | §21.1: migration 0017 — `cohort_intakes`, `cohort_enrolments`, `cohort_workshops.intake_id`; a counted `cohort` entitlement is a place on an intake. pgTAP table count 60. |
+| 2026-10-14 | §21.1: migration 0028 — `admin` gains `users.delete` (account deletion, note 06 §14.4). Data only; no schema change. |
+| 2026-10-14 | §21.1: migration 0029 — the `membership_tier` and `cohort_level` types are dropped; `membership_tiers.tier`, `playlists.min_tier`, `subscriptions.membership_tier`, `invoices.membership_tier` and `cohorts.cohort_level` become text. Codes are checked for format and unique (`cohorts.cohort_level` newly unique); `playlists.min_tier` and `subscriptions.membership_tier` reference `membership_tiers(tier)`; `cohorts.rank` added. `membership_of`, `my_membership` and `active_member_emails` rebuilt with text. pgTAP 155. |
+| 2026-10-14 | §21.1: migration 0030 — `retreat_batches` and `retreat_places` added (RLS: staff, and attendees via `has_retreat_batch_access`; places read own); `retreat_batch_dates()`, `retreat_batch_places_left()`, `place_on_open_retreat_batch()`; `coaching_sale_status` and `grant_entitlements_for_order` updated for batches; `retreat_access` dropped; `retreats.starts_at`, `ends_at`, `capacity` dropped after moving to a first batch. Public table count 59; pgTAP 159. |
+| 2026-10-14 | §21.1: migration 0031 — unique index on `retreats.level` where set. pgTAP 160. |
+| 2026-10-14 | §21.1: migration 0032 — `retreat_applications` gains `batch_id`, `message`, `approved_at` (unique per batch and person; stamped by trigger, retreat filled from batch); `apply_for_retreat()`; sale status and placement read approval per batch. pgTAP 164. |
+| 2026-10-14 | §21.1: migration 0033 — `retreat_places.source` (purchase, membership, staff). |
+| 2026-10-14 | Migration 0034: `retreat_applications.closed_at` (stamped by the existing trigger when an application becomes declined or withdrawn, cleared when it reopens) and `staff_note` (optional line from staff for the applicant). |
+| 2026-10-15 | §63: migration 0035 — unique index `products_live_name_key` on `lower(name)` where status is active or paused. Admin slugs left empty are generated from the name or title. |
+| 2026-10-15 | §26, §60.1: Media items are uploaded from the admin form (type-led: image, audio or document uploaded; video and link take a URL), browser to storage through a server-issued signed upload link. Migration 0036 — `site-media` also accepts `audio/mp4`, PDF and Word, so audio and documents can be public when staff choose. |
+| 2026-10-15 | §26, §60.1: migration 0037 — `private-media` bucket (private, 50 MB, MP3/M4A/PDF/Word; writes by `catalogue.update`/`catalogue.delete`, staff read) takes private Media uploads; `course-assets` is course material only; the unused `documents` bucket and its policies removed. |
+| 2026-10-15 | §26: Media files follow their item — deleted with it, replaced on save, refused while in use; form uploads under `uploads/`, swept daily when never saved. pgTAP 167 (references to `resources` counted, live product names, bucket set). |
+| 2026-10-15 | §26: "Anyone can open it" can be changed on a saved Media file; saving moves the file between `site-media` and `private-media` and updates `storage_path` (`lib/storage/visibility.ts`). |
+| 2026-10-15 | Migration 0038: `lessons.description` (nullable text, blank refused): the one- or two-sentence summary under a lesson's title. Filled for all 42 lessons by the content setup from the earlier course app's `courseModules`, spelling corrected. |
+| 2026-10-15 | Migration 0039: `course_modules.status` (content_status, default published). RLS: `lessons: entitled read` and `course_modules: entitled read` require Published (a lesson also needs its module Published); staff read unchanged. New `events: holders read` (a booking for the event) and `private_coaching_services: holders read` (an entitlement for the service, or a booking of one of its slots), so unpublishing something already sold does not break the holder's ticket or sessions. pgTAP 178. |
+| 2026-10-15 | §4: migrations consolidated 39 → 15 (mapping table in §4); verified identical by `pg_dump` on a separate stack. `content/12_coaching_offer.sql` no longer writes `retreats.capacity` (dropped by the retreat-batch migration), which had stopped a fresh setup. |
+| 2026-10-16 | §4, §35: migration 0017 — `session_reminders_due` and `passes_ending_due` (service role only) for the new reminder jobs; `event_reminders_due` revoked from PUBLIC, which had left it callable through the API; the same revoke for `record_marketing_consent`, `withdraw_marketing_consent`, `consume_rate_limit`, `cleanup_rate_limits`, `release_private_coaching_hold` and `private_coaching_time_taken`. Rule: a server-only function revokes EXECUTE from `public` as well as `anon` and `authenticated`. pgTAP 180. |

@@ -33,15 +33,15 @@ export const metadata: Metadata = { title: "Billing", robots: { index: false } }
 
 const NOTICES: Record<string, { tone: "success" | "error"; text: string }> = {
   updated: { tone: "success", text: "Your billing details are updated. Changes can take a moment to appear here." },
-  resumed: { tone: "success", text: "Your membership will carry on renewing as before." },
+  resumed: { tone: "success", text: "Your subscription will carry on renewing as before." },
   cancelled: {
     tone: "success",
-    text: "Your membership is cancelled. You keep full access until the date below, and nothing more will be charged.",
+    text: "Your subscription is cancelled. You keep full access until the date below, and nothing more will be charged.",
   },
-  cancel: { tone: "error", text: "We couldn't cancel your membership just now. Please try again, or get in touch." },
+  cancel: { tone: "error", text: "We couldn't cancel your subscription just now. Please try again, or get in touch." },
   portal: { tone: "error", text: "We couldn't open billing management just now. Please try again in a moment." },
-  resume: { tone: "error", text: "We couldn't restart your membership. Please try again, or get in touch." },
-  subscription: { tone: "error", text: "That membership couldn't be found on your account." },
+  resume: { tone: "error", text: "We couldn't restart your subscription. Please try again, or get in touch." },
+  subscription: { tone: "error", text: "That subscription couldn't be found on your account." },
 };
 
 const HISTORY_STATUS: Record<HistoryEntry["status"], { label: string; tone: PillTone }> = {
@@ -111,7 +111,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/account/
     <>
       <AccountHeader
         title="Billing"
-        description="What renews, the card it's charged to, and every payment with its receipt."
+        description="Your card and every payment with its receipt."
         actions={customerId ? <PortalButton flow="home" variant="outline">Manage in Stripe</PortalButton> : null}
       />
 
@@ -122,14 +122,14 @@ export default async function BillingPage({ searchParams }: PageProps<"/account/
       ) : null}
 
       <div className="space-y-5">
-        <AccountCard icon="star" id="membership" title="Membership" description="Recurring payments on your account.">
+        <AccountCard icon="star" id="membership" title="Subscriptions" description="Recurring payments on your account.">
           {live.length === 0 ? (
             <div className="text-sm">
               <p className="font-medium">Nothing renews automatically</p>
               <p className="mt-1 text-muted-foreground">
                 {ended.length > 0
-                  ? "Your membership has ended and nothing more will be charged. "
-                  : "You have no subscription. A membership bought as a single payment runs for its term and then simply ends — nothing is charged again. "}
+                  ? "Your subscription has ended and nothing more will be charged. "
+                  : "You have no subscription. A Coaching Pass is a single payment: it runs for its twelve months and then simply ends — nothing is charged again. "}
                 <Link href="/account/entitlements" className="font-medium text-primary underline-offset-4 hover:underline">
                   See when your access ends
                 </Link>
@@ -139,7 +139,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/account/
           ) : (
             <ul className="space-y-6">
               {live.map((m) => {
-                const tier = m.tier ? `${m.tier[0].toUpperCase()}${m.tier.slice(1)}` : "Membership";
+                const tier = m.tier ? `${m.tier[0].toUpperCase()}${m.tier.slice(1)}` : "Coaching";
                 const status = m.cancelling
                   ? { label: "Cancelling", tone: "warn" as const }
                   : statusOf(SUBSCRIPTION_STATUS, m.status);
@@ -147,7 +147,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/account/
                 return (
                   <li key={m.id} className="space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-lg font-semibold">{tier} membership</p>
+                      <p className="text-lg font-semibold">{tier} Pass</p>
                       <StatusPill tone={status.tone}>{status.label}</StatusPill>
                     </div>
 
@@ -180,7 +180,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/account/
                         <form action={resumeMembershipAction}>
                           <input type="hidden" name="subscription" value={m.id} />
                           <SubmitButton size="sm" pendingLabel="Restarting…">
-                            Keep my membership
+                            Keep my subscription
                           </SubmitButton>
                         </form>
                       ) : (
@@ -197,7 +197,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/account/
                           />
                         </>
                       )}
-                      <Link href="/account/memberships" className={linkClass}>
+                      <Link href="/account/pass" className={linkClass}>
                         What&apos;s included &rarr;
                       </Link>
                     </div>
@@ -208,7 +208,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/account/
           )}
         </AccountCard>
 
-        <AccountCard icon="card" id="card" title="Payment method" description="The card your renewals are charged to.">
+        <AccountCard icon="card" id="card" title="Payment method" description="The card saved on your account.">
           {card === "unavailable" ? (
             <p className="text-sm text-muted-foreground">Card details can&apos;t be loaded just now. Please try again shortly.</p>
           ) : card ? (
@@ -235,7 +235,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/account/
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No card saved. You enter your card securely at checkout, and a card used for a membership appears here.
+              No card saved. You enter your card securely at checkout, and a card used for a subscription appears here.
             </p>
           )}
           <p className="mt-4 text-xs text-muted-foreground">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { codeLabel } from "@/lib/admin/labels";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -36,8 +37,13 @@ export function AdminPageHeader({
     >
       <div className="min-w-0 space-y-1.5">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="text-balance">{title}</h1>
-          {meta ? <span className="text-sm text-muted-foreground tabular-nums">{meta}</span> : null}
+          {/* `min-w-0`: a flex item will not shrink below its longest word
+              without it, so an unbroken title pushed out of the page. */}
+          <h1 className="min-w-0 text-balance">{title}</h1>
+          {/* The count beside the title ("49 accounts") is in the teal accent
+              (owner, 2026-10-14), so it is read at a glance on every admin
+              page. A deliberate exception to teal meaning action or state. */}
+          {meta ? <span className="text-sm font-semibold text-accent tabular-nums">{meta}</span> : null}
         </div>
         {description ? (
           <div className="measure text-[0.9375rem] leading-relaxed text-muted-foreground text-pretty">
@@ -157,12 +163,12 @@ export function AdminSearch({
   keep?: Record<string, string | undefined>;
 }) {
   return (
-    <form method="get" action={path} role="search" className="flex flex-wrap items-center gap-2">
+    <form method="get" action={path} role="search" className="flex max-w-full flex-wrap items-center gap-2">
       {Object.entries(keep).map(([k, v]) => (v ? <input key={k} type="hidden" name={k} value={v} /> : null))}
       <label htmlFor={`${path}-q`} className="sr-only">
         {label}
       </label>
-      <div className="relative">
+      <div className="relative min-w-0 flex-1 sm:flex-none">
         <svg
           viewBox="0 0 24 24"
           aria-hidden="true"
@@ -181,7 +187,7 @@ export function AdminSearch({
           type="search"
           defaultValue={query ?? ""}
           placeholder={placeholder}
-          className="h-10 w-72 max-w-full rounded-full border border-border bg-surface pr-4 pl-9 text-sm shadow-card placeholder:text-muted-foreground focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-ring/40"
+          className="h-10 w-full rounded-full border border-border bg-surface pr-4 pl-9 text-sm shadow-card sm:w-72 placeholder:text-muted-foreground focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-ring/40"
         />
       </div>
       <button
@@ -199,6 +205,70 @@ export function AdminSearch({
         </Link>
       ) : null}
     </form>
+  );
+}
+
+/**
+ * First / Previous / Next / Last for a list shown a page at a time. Links, so a page is a
+ * URL like the search and the sort; `params` are carried across.
+ */
+export function AdminPager({
+  path,
+  page,
+  pages,
+  from,
+  to,
+  total,
+  params = {},
+}: {
+  path: string;
+  /** 1-based. */
+  page: number;
+  pages: number;
+  from: number;
+  to: number;
+  total: number;
+  params?: Record<string, string | undefined>;
+}) {
+  if (total === 0) return null;
+  const href = (n: number) => {
+    const query = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) if (v) query.set(k, v);
+    if (n > 1) query.set("page", String(n));
+    return query.size ? `${path}?${query}` : path;
+  };
+  const step = "inline-flex h-9 items-center rounded-full border border-border bg-surface px-4 text-sm font-medium";
+  const off = cn(step, "text-muted-foreground opacity-60");
+  const on = cn(step, "transition-colors hover:bg-surface-muted");
+  return (
+    <nav aria-label="Pages" className="mt-5 flex flex-wrap items-center justify-between gap-3">
+      <p className="text-sm text-muted-foreground">
+        {from} to {to} of {total}
+        {pages > 1 ? ` · page ${page} of ${pages}` : ""}
+      </p>
+      {pages > 1 ? (
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ["First", 1, page > 1, undefined],
+              ["Previous", page - 1, page > 1, "prev"],
+              ["Next", page + 1, page < pages, "next"],
+              ["Last", pages, page < pages, undefined],
+            ] as const
+          ).map(([label, to, live, rel]) =>
+            live ? (
+              <Link key={label} href={href(to)} rel={rel} className={on}>
+                {label}
+              </Link>
+            ) : (
+              <span key={label} aria-disabled="true" className={off}>
+                {label}
+              </span>
+            ),
+          )}
+        </div>
+      ) : null}
+    </nav>
   );
 }
 
@@ -270,6 +340,7 @@ export function ukDateTime(value: string | null | undefined) {
   });
 }
 
+/** A stored code as words; see `codeLabel` for the names that differ. */
 export function humanise(value: string) {
-  return value.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+  return codeLabel(value);
 }

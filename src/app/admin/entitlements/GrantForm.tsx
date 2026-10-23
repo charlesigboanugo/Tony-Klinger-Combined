@@ -1,65 +1,86 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { grantEntitlementAction, type AdminState } from "@/app/admin/actions";
-import { Field, FormMessage, Input } from "@/components/ui/Field";
+import { FormGrid, Wide } from "@/components/admin/AdminForm";
+import { Field, FormMessage, Input, Select } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 
 const initialState: AdminState = {};
 
-const RESOURCE_TYPES = [
-  "course", "group_coaching_series", "group_coaching_session", "cohort",
-  "retreat", "event", "masterclass", "resource", "release", "partner_discount",
-];
+type GrantGroup = { kind: string; label: string; options: Array<{ value: string; name: string }> };
+
+/** Kinds held as a number of sessions; the rest are plain access. */
+const COUNTED = ["private_coaching", "group_coaching_session"];
 
 /**
  * Manual entitlement grant — note 06 §23.1.
  *
+ * WHAT TO GIVE IS PICKED BY NAME (owner, 2026-10-15): one list of every
+ * course, pass, cohort, series, service, retreat, event and playlist, grouped
+ * by kind, in place of a type dropdown plus an id to paste. The number of
+ * sessions is asked only for what is held as sessions.
+ *
  * The reason field is required, not optional: a grant with no reason is
  * indistinguishable from a mistake or an abuse of privilege.
  */
-export function GrantForm() {
+export function GrantForm({ groups }: { groups: GrantGroup[] }) {
   const [state, action] = useActionState(grantEntitlementAction, initialState);
+  const [item, setItem] = useState("");
+  const kind = item.slice(0, item.indexOf(":"));
 
   return (
-    <form action={action} className="max-w-lg space-y-5">
-      {state.error ? <FormMessage>{state.error}</FormMessage> : null}
-      {state.success ? <FormMessage tone="success">{state.success}</FormMessage> : null}
+    <form action={action}>
+      <FormGrid>
+        {state.error || state.success ? (
+          <Wide>
+            {state.error ? <FormMessage>{state.error}</FormMessage> : null}
+            {state.success ? <FormMessage tone="success">{state.success}</FormMessage> : null}
+          </Wide>
+        ) : null}
 
-      <Field label="Customer user id" name="userId">
-        <Input name="userId" required placeholder="00000000-0000-…" />
-      </Field>
+        <Field label="Customer email" name="userId" hint="The email address on their account.">
+          <Input name="userId" type="email" required placeholder="name@example.com" />
+        </Field>
 
-      <div className="space-y-2">
-        <label htmlFor="resourceType" className="block text-sm font-medium">
-          Resource type
-        </label>
-        <select
-          id="resourceType"
-          name="resourceType"
-          required
-          className="h-11 w-full rounded-(--radius) border border-border bg-background px-3 text-base"
+        <Field
+          label="What to give"
+          name="item"
+          hint={kind === "membership" ? "A Coaching Pass given here has no end date until you revoke it." : undefined}
         >
-          {RESOURCE_TYPES.map((t) => (
-            <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
-          ))}
-        </select>
-      </div>
+          <Select name="item" required value={item} onChange={(event) => setItem(event.target.value)}>
+            <option value="">Choose…</option>
+            {groups
+              .filter((group) => group.options.length > 0)
+              .map((group) => (
+                <optgroup key={group.kind} label={group.label}>
+                  {group.options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+          </Select>
+        </Field>
 
-      <Field label="Resource id" name="resourceId" hint="Leave blank to cover the whole type.">
-        <Input name="resourceId" />
-      </Field>
+        {COUNTED.includes(kind) ? (
+          <Field label="Number of sessions" name="quantity">
+            <Input name="quantity" type="number" min={1} required defaultValue={1} />
+          </Field>
+        ) : null}
 
-      <Field label="Quantity" name="quantity" hint="Blank for unlimited access; a number for consumable credits.">
-        <Input name="quantity" type="number" min={1} />
-      </Field>
+        <Wide>
+          <Field label="Reason" name="reason" hint="Filled in for you; change it if you like. Recorded in the audit log.">
+            <Input name="reason" required defaultValue="Access given from Admin" />
+          </Field>
+        </Wide>
 
-      <Field label="Reason" name="reason" hint="Recorded in the audit log. Required.">
-        <Input name="reason" required placeholder="Goodwill after support ticket #123" />
-      </Field>
-
-      <SubmitButton pendingLabel="Granting…">Grant access</SubmitButton>
+        <Wide className="flex justify-end border-t border-border pt-5">
+          <SubmitButton pendingLabel="Granting…">Grant access</SubmitButton>
+        </Wide>
+      </FormGrid>
     </form>
   );
 }

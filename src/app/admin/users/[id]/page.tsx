@@ -9,21 +9,24 @@ import { BackLink } from "@/components/ui/BackLink";
 import { KeysForm } from "@/app/admin/users/[id]/KeysForm";
 import { RoleForm } from "@/app/admin/users/[id]/RoleForm";
 import { TeamForm } from "@/app/admin/users/[id]/TeamForm";
+import { DeleteUserForm } from "@/app/admin/users/[id]/DeleteUserForm";
+import { EntitlementChange } from "@/app/admin/entitlements/EntitlementChange";
 import {
   adminRoles,
   adminTeamMembership,
   adminUserDetail,
   adminUserFactors,
 } from "@/lib/admin";
-import { peopleByIds } from "@/lib/admin/operations";
+import { accessNames, kindLabel } from "@/lib/admin/entitlement-products";
+import { accountDeletionBlockers, peopleByIds } from "@/lib/admin/operations";
 import { formatPrice } from "@/lib/commerce/pricing";
-import { requirePermission } from "@/lib/permissions";
+import { can, requirePermission } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "User · Admin", robots: { index: false } };
 
 export default async function AdminUserPage({ params }: PageProps<"/admin/users/[id]">) {
   const { id } = await params;
-  await requirePermission("users.read", `/admin/users/${id}`);
+  const context = await requirePermission("users.read", `/admin/users/${id}`);
 
   const [detail, roles, team, keys] = await Promise.all([
     adminUserDetail(id),
@@ -35,6 +38,12 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/users/
 
   const name = (detail.profile.display_name as string | null) ?? "Unnamed account";
   const email = (await peopleByIds([id])).get(id)?.email ?? null;
+  // Only worked out for someone who may delete accounts; others never see it.
+  const mayDelete = context.permissions.has("users.delete") && context.userId !== id;
+  const blockers = mayDelete ? await accountDeletionBlockers(id) : [];
+  const canAdjust = can(context, "entitlements.adjust");
+  const canRevoke = can(context, "entitlements.revoke");
+  const names = await accessNames(detail.entitlements);
 
   return (
     <>
@@ -53,18 +62,32 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/users/
 
       <AdminSection title="Access" description="What this person can use, and why.">
         <AdminTable
-          headers={["Resource", "Source", "Status", "Remaining", "Reason"]}
+          headers={["Access to", "Source", "Status", "Remaining", "Reason", ...(canAdjust || canRevoke ? [""] : [])]}
           empty={detail.entitlements.length === 0 ? "No entitlements." : undefined}
         >
           {detail.entitlements.map((e) => (
             <tr key={e.id}>
-              <td className="px-4 py-3">{humanise(e.resource_type)}</td>
+              <td className="px-4 py-3">
+                <span className="font-medium">{names.get(e.id)}</span>
+                <span className="block text-xs text-muted-foreground">{kindLabel(e.resource_type)}</span>
+              </td>
               <td className="px-4 py-3">{humanise(e.source_type)}</td>
               <td className="px-4 py-3"><StatusPill value={e.status} /></td>
               <td className="px-4 py-3 tabular-nums">
                 {e.quantity == null ? "Unlimited" : `${e.quantity - e.quantity_used} of ${e.quantity}`}
               </td>
               <td className="px-4 py-3 text-muted-foreground">{e.grant_reason ?? "—"}</td>
+              {canAdjust || canRevoke ? (
+                <td className="px-4 py-3 text-right">
+                  <EntitlementChange
+                    entitlement={e}
+                    what={names.get(e.id) ?? kindLabel(e.resource_type)}
+                    person={name}
+                    canAdjust={canAdjust}
+                    canRevoke={canRevoke}
+                  />
+                </td>
+              ) : null}
             </tr>
           ))}
         </AdminTable>
@@ -95,16 +118,18 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/users/
           for that decision — is on this page (note 06 §13.1). */}
       <AdminSection
         title="Roles"
-        description={
-          detail.roles.length
-            ? `Currently holds ${detail.roles.map((r) => r.replace(/_/g, " ")).join(", ")}.`
-            : "This account holds no staff roles — it is a customer."
-        }
+        // The list itself shows what they hold, so this says how to change it.
+        description="Add or remove roles in the list, then save. A person can hold several."
       >
         <RoleForm
+          // Started afresh from the saved roles after every save.
+          key={detail.roles.join(",")}
           userId={id}
-          roles={roles.map((role) => role.name)}
+          roles={roles.map((role) => ({ name: role.name, description: role.description }))}
           held={detail.roles}
+          // Admins manage roles too since migration 0020, all but owner, which
+          // only an owner grants or removes (note 06 §34).
+          ownerRoleLocked={!context.roles.includes("owner")}
         />
       </AdminSection>
 
@@ -132,6 +157,15 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/users/
           unlinked={team.unlinked}
         />
       </AdminSection>
+
+      {mayDelete ? (
+        <AdminSection
+          title="Delete account"
+          description="Permanent. Only possible once nothing on the account is still live."
+        >
+          <DeleteUserForm userId={id} email={email} blockers={blockers} />
+        </AdminSection>
+      ) : null}
     </>
   );
 }

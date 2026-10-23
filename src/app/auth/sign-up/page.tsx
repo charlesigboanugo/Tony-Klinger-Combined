@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 
 import { AuthCard } from "@/app/auth/AuthCard";
-import { SignUpForm } from "@/app/auth/sign-up/SignUpForm";
 import { OrRule } from "@/app/auth/AuthParts";
+import { EmailMethods } from "@/app/auth/EmailMethods";
 import { GoogleButton } from "@/app/auth/GoogleButton";
+import { MagicSignUpForm } from "@/app/auth/sign-up/MagicSignUpForm";
+import { SignUpForm } from "@/app/auth/sign-up/SignUpForm";
 import { safeRedirect } from "@/lib/auth/safe-redirect";
 
 export const metadata: Metadata = { title: "Create account", robots: { index: false } };
@@ -27,7 +29,12 @@ export default async function SignUpPage({ searchParams }: PageProps<"/auth/sign
 
         <OrRule>or sign up with email</OrRule>
 
-        <SignUpForm next={next} />
+        {/* The same two email methods as sign-in (owner, 2026-10-23). */}
+        <EmailMethods
+          label="Email sign-up method"
+          magic={<MagicSignUpForm next={next} />}
+          password={<SignUpForm next={next} />}
+        />
       </div>
     </AuthCard>
   );

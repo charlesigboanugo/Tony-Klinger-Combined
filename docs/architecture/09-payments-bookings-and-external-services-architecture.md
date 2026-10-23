@@ -128,6 +128,12 @@ Entitlement
 
 Both flows must result in a secure customer identity for account-based delivery.
 
+**2026-10-15 (owner):** an email that already has an account cannot check out as a guest —
+its owner signs in; a guest or signed-in customer can buy for someone else as a
+gift, made out to the recipient's email, which must have no account; and a signed-in customer can add paid guest orders
+made with their confirmed email from their account. Rules in note 05 §29.2.1, §29.2.2 and
+§29.3.
+
 ---
 
 ## 5. Guest Checkout Identity
@@ -215,6 +221,9 @@ Does it need a real configuration step before it is even a well-formed purchase
 
 Does it depend on a specific calendar slot existing before payment means anything?
   → yes                                     → Book-first, pay to confirm
+                                                (nothing on sale uses this since
+                                                2026-10-08 — private coaching is
+                                                pay first, then book)
 ```
 
 ```text
@@ -240,14 +249,15 @@ Cohorts                Buy-now    — capacity-limited, single high-commitment
                                     filled; there is no cart-item hold/reservation
                                     mechanism, so buy-now collapses that window to
                                     effectively zero
-Private coaching       Book-first — the scarce thing sold is a calendar SLOT, not a
-                                    generic credit. Availability must be checked
-                                    before payment can mean anything, so booking
-                                    necessarily precedes paying, not the reverse
+Private coaching       Buy-now, then book — one session or a pack, bought through
+                                    checkout like any product (guests included);
+                                    a time is chosen afterwards with the session
+                                    the purchase grants (§36). Was book-first until
+                                    the owner reversed it on 2026-10-08
 Retreats                (undecided) — no live product yet. Settle deliberately when
                                     built: one fixed-capacity instance behaves like a
                                     cohort (buy-now), several selectable dates behave
-                                    like private coaching (book-first). Do not inherit
+                                    book-first, pay to confirm. Do not inherit
                                     whichever pattern happens to be nearest by default.
 ```
 
@@ -257,6 +267,30 @@ line is rejected outright, with the reasoning kept in the comment there — "a b
 holding a subscription and a book is two different commitments that should be agreed
 to separately." This section makes explicit what was previously only implicit in
 which pages happened to render `AddToCart` versus a direct link to `/checkout`.
+
+### 8.2 Changing a choice in the cart and at checkout (2026-10-08)
+
+A cart line whose product is one option of several (note 07 §14.1) carries the switch: the
+line is swapped for the other product in place (`switchCartOptionAction`, which accepts only a
+product the database lists as an alternative of that line). A membership line carries the
+monthly / one-year switch. A buy-now checkout shows the same two switches in its summary, each
+choice a link back to `/checkout` with the other product or period.
+
+`/checkout?product=<slug>` names any product. The older kind-specific parameters
+(`membership`, `course`, `series`, `cohort`, `retreat`, `event`) mean the same and are still
+read. `cohort` was not read before this change, so a cohort's "Join" button reached an empty
+checkout.
+
+**Once in the cart, not offered again (owner, 2026-10-08).** A product page asks `/api/session`
+which products are in the cart (`cartSlugs`) and, for one that is, shows "In your cart" with
+"View cart" and "Remove" in place of "Add to cart". `addToCartAction` refuses a duplicate
+regardless. Where another option of the same offer is in the cart, adding this one replaces
+it — one offer is one cart line — and the button says so.
+
+**One of each at a time (owner, 2026-10-08).** Within one order, every item is bought singly. The cart has no quantity
+control, `addLine` never raises a quantity, a cart cookie written earlier is read as one of
+each, and `priceCart` prices every line at a quantity of one whatever it is handed. Someone
+who wants a second pack buys it as a second order.
 
 ---
 
@@ -325,6 +359,12 @@ Stripe is responsible for:
 - Customer/payment-provider records
 
 Tony Klinger application data remains the application's source of truth for its own orders, memberships and entitlements after trusted Stripe events are processed.
+
+### 12.1 Catalogue mirror
+
+Each product has one Stripe Product and each active price one Stripe Price, recorded back as `products.stripe_product_id` and `prices.stripe_price_id` (`lib/stripe/sync.ts`). The sync runs immediately when an administrator saves a product or price, and the scheduled `sync-stripe` job sweeps every active and paused product as a safety net.
+
+The Stripe Product's name and description follow the product's: a rename in admin updates the existing Stripe Product in place (2026-10-15). A Stripe Price cannot be edited, so a changed amount, currency or interval archives the old Price and creates a replacement. The slug and row id travel only in metadata, for tracing.
 
 ---
 
@@ -416,6 +456,13 @@ Membership access must reflect the authoritative subscription state.
 
 ## 16.1 Two ways to buy a membership
 
+> **Owner, 2026-10-09: only the lump sum is on sale.** Membership is one payment for twelve
+> months that does not renew (note 07). The recurring prices are removed (or, where an order
+> or subscription still names one, switched off), so no new subscription is created; the subscription path below is kept for any that already exist
+> and for the day a recurring price is switched back on. The storefront, cart and checkout
+> word themselves from the active prices (`leadPrice`, `periodNote` in
+> `lib/commerce/billing`) and show no monthly/yearly switch while a tier is sold one way.
+
 Every membership tier is purchasable **either** as a recurring subscription **or** as a
 one-time payment for a fixed year. Both grant the same benefits for the same duration; they
 differ only in how the money arrives and whether the term renews by itself.
@@ -474,6 +521,18 @@ resource.
   human decision rather than an automatic calculation, because the fair credit depends on
   circumstances the system cannot judge.
 
+**On sale since 2026-10-08: monthly and yearly, both subscriptions** (owner; note 07 §31.1).
+The lump-sum year described above is no longer offered, though it remains supported.
+
+**Implemented 2026-10-08 (migration 0012; note 07 §31.2).** The webhook calls
+`apply_subscription_membership` after every subscription event, and throws if it fails so
+Stripe retries: that call is what turns a subscription into access. A one-time membership
+price is granted by `grant_entitlements_for_order` as a year's membership entitlement, running
+from now or from the end of a year already held. Checkout refuses a second subscription to an
+account that already has one. `/account/memberships`, the account overview and the Academy
+read the membership from the entitlement (`my_membership()`), so a lump-sum member is shown as
+a member with an end date and "does not renew".
+
 ---
 
 ## 17. Membership Lifecycle
@@ -504,7 +563,7 @@ The exact grace-period and cancellation policy must be explicitly configured.
 setup, production ready"):**
 
 - **One Stripe Customer per account** (`billing_customers`, `ensureStripeCustomer`).
-  Signed-in checkouts, including private coaching, pass `customer` instead of
+  Signed-in checkouts pass `customer` instead of
   `customer_email`; guests still pay by email.
 - **Stripe Customer Portal** for card changes, invoice history, billing details and
   cancellation; "Update card" deep-links to `payment_method_update` (`flow_data`). Its settings live in code, `scripts/stripe-portal-setup.mjs`, and
@@ -561,7 +620,9 @@ invoice.payment_failed
 ```
 
 `checkout.session.expired` is also handled (2026-09-27): it releases a private coaching hold
-(§36). The production webhook endpoint must be subscribed to it.
+(§36). Since private coaching became pay first, then book (2026-10-08) no checkout creates a
+hold, so it has nothing to release; the handler stays. The production webhook endpoint must
+be subscribed to it.
 
 Also handled from 2026-09-27 (migration 0021): `invoice.paid`, `invoice.payment_failed`,
 `invoice.finalized` and `invoice.voided` record the subscription invoice for billing history.
@@ -744,6 +805,86 @@ Academy / Booking / Resources
 
 Entitlement creation must be idempotent.
 
+### 28.1 What an order grants, and whether it may be sold (migration 0012)
+
+```text
+group coaching     the one-session product: a seat of its series (products.series_id),
+                   spent at once on the session named on the order line (0022); left
+                   on the account, for that series and valid_months, only if that
+                   session had filled
+                   the eight-session product: a place on a run of its series (series_pass),
+                   and the buyer is registered for the run at once where there is one (0016)
+private coaching   sessions of the service sold by the product, or by its pack_of product
+membership         one-time price: a year's membership entitlement
+                   recurring price: nothing here — granted from the subscription
+cohort             a place on one intake (a counted entitlement), and the buyer is put on
+                   the intake at once where there is exactly one open (0017)
+course, retreat,   access to the one thing the product sells; a retreat product with no
+event              retreat behind it grants nothing
+bundle             nothing (no fulfilment rule exists); bundle products are paused
+```
+
+**Why it can't be bought, said right (migration 0022, 2026-10-23).** `coaching_sale_status`
+answers `ended` for a retreat or cohort whose every batch or intake has finished (it used to
+say "no date yet"); for a series with no run still to start, `past` while one is under way and
+`unscheduled` when there is none (it used to say registration "closes on the date shown on its
+page"); and `unscheduled` for a single session whose series has no run to come. The refusals
+themselves are unchanged. A retreat page whose batches have all run says "Last ran …" with a
+"Finished" chip.
+
+**Buying again (owner, 2026-10-08).**
+
+```text
+course             bought once, kept for life; cannot be bought again
+cohort             one place on one intake; cannot be bought again while that intake runs.
+                   The next intake is a new purchase of the same product (0017).
+retreat            one place; cannot be bought again. Each running is its own row and product.
+group coaching     sessions are for one series and lapse three months after purchase
+                   (single or pack); "still to use" is asked per series
+private coaching   sessions lapse six months after purchase (single or pack)
+                   For both: more can be bought once every session held is used or has
+                   lapsed, whichever comes first.
+membership         one payment for twelve months (owner, 2026-10-09). The same tier or a
+                   lower one cannot be bought while more than thirty days remain; inside
+                   the last thirty it can, and the new year is added to the end of the one
+                   held. A HIGHER tier is an UPGRADE (owner, 2026-10-10, migration 0027):
+                   the difference between the two prices, while at least four months of
+                   the pass remain; the same pass then becomes the higher tier for the
+                   rest of its own year (same end date), with what that tier adds. With
+                   less than four months left it waits for the renewal window. A
+                   membership still renewing as a subscription must be cancelled first.
+```
+
+An upgrade is decided and priced in one place, `lib/commerce/pass-upgrade`: `applyPassUpgrades`
+rewrites the priced line (the difference, no Stripe price, `upgradeFrom` = the pass's
+entitlement) for the cart, the checkout page and the checkout action alike; the order line
+carries `metadata.upgrade_from`, and `grant_entitlements_for_order` changes that entitlement's
+tier in place and grants nothing new.
+
+The membership rule is asked in the application, not by `coaching_sale_status`:
+`saleCheck` (`lib/commerce/sale-check`) is the one function the cart, the checkout page and
+the checkout action call for every line, and it answers membership from `my_membership` and
+everything else from the database function.
+
+**Listing by time (owner, 2026-10-08).** For cohorts, retreats and events alike:
+
+```text
+upcoming       listed; can be joined once it has a date
+in progress    listed and marked "in progress"; closed to new people
+ended          off the coaching listings (its own page still resolves for those in it);
+               an ended event moves to the events page's "Past events"
+```
+
+"Ended" is `ends_at`. Where none was entered, a cohort is taken to run twelve weeks, a
+retreat one day and an event three hours, so a row with no end is never listed for ever.
+
+`coaching_sale_status(product)` is asked of EVERY line by checkout before any order is
+created, by the checkout and cart pages (which say so in place of the form), and by the
+product pages to word their buttons: `owned`, `unused` (paid for and not yet used), `closed`
+(a Group Coaching series with no run open for registration), `ok`, `full` (capacity as set in admin), `unscheduled` (a
+cohort or retreat with no date), `past` (it has begun), `application` (a level entered by interview, and no approved
+application), `unavailable`.
+
 ---
 
 ## 29. Booking Architecture
@@ -815,6 +956,13 @@ Booking
 The booking system must confirm that the customer has the correct entitlement or purchase eligibility.
 
 ---
+
+**How a seat is held (migrations 0016, 0018), tried in this order:** being registered for
+the run the session belongs to — by a paid place, or by a member against their tier's number
+for the year (note 07 §12.1) — in which case the seat is theirs already and asking to book
+returns `enrolled` and spends nothing; standing access to the series (a series granted
+outright); a session credit for that series, the one that lapses soonest first. Only the
+last is counted down. The term-choice route of migration 0013 is removed.
 
 ## 32. Group Coaching Capacity
 
@@ -913,39 +1061,42 @@ Booking
 
 Membership access to Private Coaching exists only where the relevant membership entitlement explicitly provides it.
 
-**Implementation status (2026-09-27, migration 0020), at the owner's direction: slots set in
-Admin, paid at booking.** Book-first per §35:
+**Implementation status (2026-09-27, migration 0020; pay first, then book since the owner's
+decision of 2026-10-08).** Slots are set in Admin. A session is paid for before a time is
+chosen, for one session and for a pack alike:
 
 ```text
-Slot (staff open it)
+Checkout — one session or a pack, like any product   /checkout?product=…
    ↓
-Hold — a pending booking, 35 minutes            hold_private_coaching_slot
+Webhook → fulfil_order → `private_coaching` entitlement (one per session bought)
    ↓
-Stripe Checkout, expires after 30 minutes       /bookings/private/[serviceSlug]
+Choose a time — signed in, holding a session         /book/private/[serviceSlug]
    ↓
-Webhook → fulfil_order → `private_coaching` entitlement (quantity 1)
-   ↓
-Trigger spends it on the held booking → confirmed
+bookPrivateSlotAction spends one session → booking confirmed
 ```
+
+Until 2026-10-08 a single session was book-first instead (hold a slot, then pay, with the
+booking confirmed from the order's entitlement). `bookPrivateSlotAction` now books only
+against a held session and creates no checkout. `hold_private_coaching_slot` can still return
+a hold for a caller with none (the function is unchanged); the action releases it at once.
 
 - **Slots** (`private_coaching_slots`) belong to one service. A time overlapping any live
   booking of any service is hidden (Tony cannot be in two sessions). At least 12 hours'
   notice. Times reach customers only through `private_coaching_availability`; the table,
   which carries the call link, is readable by staff and by the person who booked it.
-- **Holds** are pending bookings with `hold_expires_at`, linked to their order by
-  `bookings.order_id`. Choosing again releases the customer's earlier hold. A
-  `checkout.session.expired` webhook releases the hold at once; otherwise it lapses.
-- **Payment never lost:** if the hold lapsed and the time went to someone else before the
-  payment landed, the entitlement stays unspent — a credit — and the customer is emailed
-  to choose another time (`private_coaching_rebook`).
-- **Credits** book outright with no payment. They come from a purchase whose time was
-  lost, a cancellation made at least 48 hours ahead, or staff cancelling a booked slot
-  (always returned, customer emailed). Inside 48 hours `cancel_booking` refuses
-  (`too_late`) and the customer is pointed to contact.
-- Sign-in is required; there is no guest private coaching purchase.
+- **Holds** (`bookings.hold_expires_at`, `bookings.order_id`, `release_private_coaching_hold`)
+  remain from the book-first flow with nothing left to hold: no checkout creates one.
+  `private_coaching_rebook` (the email for a held time lost before payment landed) is
+  likewise kept but no longer sent by this flow.
+- **Credits** — unspent sessions — book outright with no payment. They come from a
+  purchase not yet given a time, a cancellation made at least 48 hours ahead, or staff
+  cancelling a booked slot (always returned, customer emailed). Inside 48 hours
+  `cancel_booking` refuses (`too_late`) and the customer is pointed to contact.
+- **Buying needs no account;** a guest pays with an email like any one-off purchase (§4).
+  Choosing a time needs a signed-in account holding a session, so a guest claims the
+  order first (note 05 §29.3).
 - Membership inclusion of private coaching is still not modelled, per the rule above.
 
----
 
 ## 37. Cohort Registration
 
@@ -1196,6 +1347,14 @@ Booking still exists
 
 Email delivery can be retried independently.
 
+**Every paid order gets a receipt, and one place sends it** (2026-10-23). `notifyPaidOrder`
+(`lib/commerce/notify`) is called by the Stripe webhook and by reconciliation alike: an order
+with no account yet (guest or gift) gets the claim link at the order's own email (the
+recipient, for a gift), and whoever paid always gets `order_receipt`. Guest and gift buyers used
+to get no receipt, and reconciliation, holding its own copy of this code, sent a recovered
+gift's claim link to the payer. A retreat applicant now gets `retreat_application_sent` when
+they apply, as well as the email when accepted.
+
 ## 42.1 Outbox
 
 Sending is decoupled from the event that causes it. The business transaction writes a row
@@ -1330,7 +1489,30 @@ send-emails          every 5 minutes    deliver queued messages (§42.1)
 reconcile-stripe     every 15 minutes   fulfil orders Stripe says were paid (§46)
 expire-entitlements  hourly             transition lapsed access to expired
 cleanup-tokens       daily              remove spent one-time tokens
+cleanup-uploads      daily              remove Media uploads never saved (2026-10-15)
+sync-audiences       daily              reconcile the Members email list with who holds access
+sync-stripe          hourly             mirror products and prices to Stripe (§12.1)
+event-reminders      every 15 minutes   event tickets: day-before reminder, link again at the start
+session-reminders    every 15 minutes   coaching sessions: the same two reminders (2026-10-16)
+pass-reminders       daily              "your Coaching Pass ends soon", a month and a week before
 ```
+
+The schedules live in `vercel.json.test` until it becomes the production `vercel.json`
+(`docs/deployment.md`).
+
+`session-reminders` covers Group Coaching sessions, private sessions, cohort workshops, the
+members' Q&A and retreat batches. The recipients come from `session_reminders_due`, which
+mirrors the rules that show each session in the Academy (a booking or a run registration; a
+place on the intake or standing cohort access; a pass whose tier includes the Q&A; a retreat
+place or a pass covering a retreat with no interview), so the email reaches exactly the
+people who can open the session. The "starting soon" email goes only when the session has a
+joining link, since handing over the link is its purpose. Keys are per kind, session and
+person.
+
+`pass-reminders` exists because a Coaching Pass is one payment and does not renew (§16.1):
+`passes_ending_due` returns passes ending in 8 to 30 days (buying the next year is open,
+`RENEWAL_WINDOW_DAYS`) and within 7, leaving out anyone who has already bought the next
+year, passes on a subscription that will renew, and grants shorter than 60 days.
 
 `reconcile-stripe` fulfils through the same `fulfil_order` the webhook uses, so a reconciled
 order is indistinguishable from a normally processed one, and racing a late webhook is
@@ -1339,6 +1521,11 @@ authoritative answer.
 
 `cleanup-tokens` removes credentials, never commercial records. The paid order a token
 pointed at outlives every token issued for it (§45).
+
+`cleanup-uploads` deletes files under `uploads/` in `site-media` and `private-media` that are
+more than a day old and that no Media item (`resources.storage_path`) names: uploads whose
+form was cancelled or closed before saving. It looks nowhere else, so files imported before
+launch are never in its reach (note 08 §26).
 
 **Vercel Cron is the single primary scheduler.** Scheduled jobs invoke secured Next.js Route
 Handlers under:
@@ -1359,6 +1546,21 @@ The rules:
   previous run, or retry after a failure.
 - **One implementation per job.** Supabase Cron is not introduced as a competing scheduler.
   A job that runs on Vercel Cron does not also exist as a Supabase Edge Function.
+
+### Test deploy: GitHub Actions stands in for Vercel Cron
+
+*Recorded 2026-10-23 (owner).* While the test deploy is on Vercel Hobby, which allows a cron
+only once a day, `.github/workflows/scheduled-jobs.yml` calls the same `/api/cron/[job]`
+routes with the same `CRON_SECRET`. It is a temporary deviation from "Vercel Cron is the
+single scheduler", not a second implementation: the jobs and routes are unchanged, and the
+workflow is deleted when the project moves to Pro and `vercel.json.test` becomes
+`vercel.json`. Both must never run against the same deploy.
+
+It uses the same schedules as `vercel.json.test`, one schedule line per job, so a new job is
+added to both files until launch. This relies on the repository being public while it is on
+the test account (Actions minutes are free); private, those schedules would exceed the free
+allowance. GitHub may start a scheduled run late or skip one when busy; because every job
+catches up on outstanding work, that only delays email and reminders.
 
 Supabase remains the database, Auth, RLS and Storage layer. PostgreSQL triggers and
 constraints are still used where the guarantee genuinely belongs in the database (note 08
@@ -1391,6 +1593,25 @@ Expired entitlement
 ```
 
 should normally transition to an expired/inactive state rather than being deleted when historical retention is required.
+
+### Unfinished checkouts are closed, not deleted
+
+*Recorded 2026-10-23 (owner).* An order whose checkout was never finished is marked
+`cancelled`, shown to the customer as **"Not completed"**, never deleted
+(`cancelUnfinishedOrder`, which touches only a still-pending order, so a payment that lands
+first always wins):
+
+```text
+checkout.session.expired (unpaid)            webhook, as it happens (Stripe closes the page 24 h after it opens)
+reconcile-stripe: session expired            catches an event that was missed
+reconcile-stripe: session gone from Stripe   it can never be paid (e.g. a test-mode reset)
+reconcile-stripe: no session, over 24 h      the payment page was never made (Stripe unreachable)
+```
+
+Left pending, these piled up for ever, and since `orders_awaiting_reconciliation` returns the
+oldest hundred pending orders, enough of them would have kept the job from ever reaching a
+paid order whose webhook was lost. Nothing else changes for the customer: nothing was charged,
+the cart is kept, and buying again makes a new order.
 
 ---
 
@@ -1761,3 +1982,17 @@ at every stage of the customer and administrative workflows.
 | 2026-09-27 | §19, §36: private coaching booking implemented (migration 0020) — Admin-set slots, a 35-minute hold, Stripe Checkout limited to 30 minutes, fulfilment confirming the hold through a `private_coaching` entitlement, credit fallback when the held time is lost, 48-hour cancellation returning the session. `checkout.session.expired` added to the handled webhook events. |
 | 2026-09-27 | §17, §19: billing self-service (migration 0021) — one Stripe Customer per account, Customer Portal for card changes, invoices and at-period-end cancellation (settings in `scripts/stripe-portal-setup.mjs`, plan switching off), on-site resume, receipts for one-off payments and invoices for subscriptions; `invoice.*` events recorded. |
 | 2026-09-27 | §17: memberships can be cancelled on the site (confirmation dialog, reason sent to Stripe as `cancellation_details`) as well as in the Stripe portal (owner). |
+| 2026-10-08 | §8.2 (new), §16.1, §28.1 (new): option and billing switches in the cart and at checkout; `/checkout?product=`; quantity held at one for products held by one person; membership access granted from the subscription and from a one-time purchase; what each product type grants; `coaching_sale_status`. Migration 0012. |
+| 2026-10-08 | §8.2, §16.1, §28.1, §31: one of each per order and no repeat add; yearly membership as a renewing subscription; `coaching_sale_status` asked of every line (`owned`, `unused`), buying-again rules, and listing by time; the three ways to hold a Group Coaching seat, with a member's term choice. |
+| 2026-10-09 | §28.1, §36: Group Coaching sessions are granted for, and spent on, the series of the product that sold them (migration 0014); private coaching is pay first, then book. |
+| 2026-10-09 | §28.1, §31: series runs — a place on a run granted and registered on payment; Group Coaching sold only while a run is open for registration (`closed`, `full`); being registered for a session's run as a way of holding a seat. Migration 0016. |
+| 2026-10-10 | §28.1: a higher pass is an upgrade for the difference in price while four months remain, changing the tier of the same pass (migration 0027, `lib/commerce/pass-upgrade`). |
+| 2026-10-09 | §28.1: one Group Coaching session is bought for a date and booked on fulfilment (`order_items.metadata.session_id`, `session_sale_status`, `book_session_for`, migration 0022); one run of a series open at a time (0021). |
+| 2026-10-09 | §16.1, §28.1: membership sold only as one payment for twelve months; recurring prices retired; buying-again rule for membership and `saleCheck`. |
+| 2026-10-09 | §28.1: a cohort is sold only while one of its intakes is open for registration, and its price buys a place on that intake (migration 0017). |
+| 2026-10-14 | Email `retreat_application_closed`: sent when staff decline or withdraw a retreat application, one wording for both, with the optional staff note; once per closing (idempotency key carries `closed_at`). Optional Brevo template `BREVO_TEMPLATE_RETREAT_APPLICATION_CLOSED`. |
+| 2026-10-15 | §12.1 (new): the catalogue mirror described; a product renamed or re-described in admin now updates its Stripe Product in place instead of keeping the name it was created with. |
+| 2026-10-15 | §44: `cleanup-uploads` job added (daily): removes Media uploads under `uploads/` never saved as a Media item after a day. |
+| 2026-10-16 | §44: job list completed (sync-audiences, sync-stripe and event-reminders were missing) and two jobs added: `session-reminders` (every 15 minutes; reminders for Group Coaching, private sessions, workshops, the Q&A and retreats) and `pass-reminders` (daily; a month and a week before a Coaching Pass ends). New emails `session_reminder`, `session_starting`, `pass_ending`, with optional Brevo templates `BREVO_TEMPLATE_SESSION_REMINDER`, `BREVO_TEMPLATE_SESSION_STARTING`, `BREVO_TEMPLATE_PASS_ENDING`. Migration 0017. |
+| 2026-10-23 | §44: test deploy scheduled by GitHub Actions (`.github/workflows/scheduled-jobs.yml`, same schedules as `vercel.json.test`) while Vercel is on Hobby; removed when Vercel Cron is switched on at launch. |
+| 2026-10-23 | §28.1: sale status `ended`, and `past`/`unscheduled` for series without a run to start (migration 0022). §42: one `notifyPaidOrder` for webhook and reconciliation; guest and gift payers get a receipt; recovered gifts' claim links go to the recipient; applicants get `retreat_application_sent`. |

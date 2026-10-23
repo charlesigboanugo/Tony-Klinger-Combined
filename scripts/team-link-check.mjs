@@ -83,6 +83,8 @@ const only = async (which) => {
 
 async function signIn(email) {
   await page.goto(`${BASE}/auth/sign-in`, { waitUntil: "domcontentloaded" });
+  // Sign-in opens on the email-link tab (owner, 2026-10-13); passwords are the other tab.
+  await page.getByRole("tab", { name: "Password" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', PASS);
   await Promise.all([

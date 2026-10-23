@@ -29,7 +29,9 @@ export function PasswordInput({
 
   return (
     <div>
-      <div className="relative">
+      {/* data-field-anchor: a validation message goes after this box, not
+          inside it, where it would stretch the reveal button. */}
+      <div className="relative" data-field-anchor>
         <Input
           {...props}
           type={visible ? "text" : "password"}
@@ -44,7 +46,7 @@ export function PasswordInput({
           aria-pressed={visible}
           aria-controls={props.name}
           aria-label="Show password"
-          className="absolute inset-y-0 right-0 grid w-12 place-items-center rounded-r-(--radius) text-muted-foreground transition-colors hover:text-accent focus-visible:outline-offset-[-3px]"
+          className="absolute top-0 right-0 grid h-11 w-12 place-items-center rounded-r-(--radius) text-muted-foreground transition-colors hover:text-accent focus-visible:outline-offset-[-3px]"
         >
           <EyeIcon crossed={visible} />
         </button>

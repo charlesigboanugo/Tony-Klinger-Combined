@@ -41,7 +41,7 @@ The major route areas are:
 ├── /auth
 ├── /cart
 ├── /checkout
-├── /bookings
+├── /book
 └── /api
 ```
 
@@ -324,7 +324,8 @@ online and hybrid events, the private joining link.
 - **Formats**: `in_person`, `online`, `hybrid`. Joining links live in `event_access`,
   readable only by ticket holders and staff.
 - **Event day**: a reminder the day before, and the joining link again within the hour for
-  online/hybrid (`event-reminders` job, every 15 minutes). Staff use `/admin/check-in`:
+  online/hybrid (`event-reminders` job, every 15 minutes). Coaching sessions get the same
+  two emails from `session-reminders`, each linking to the session's Academy page. Staff use `/admin/check-in`:
   an in-page **scanner** (the phone's camera, decoded with the browser's BarcodeDetector or
   jsQR) that checks tickets in one after another, with typing the code as its backup; it
   refuses a ticket for a different event. The same page has the attendee list (check in /
@@ -411,6 +412,14 @@ The exact product pages may use dynamic routes where appropriate.
 ---
 
 # 10. Coaching Memberships
+
+> **Owner, 2026-10-09: membership is called the Coaching Pass, and lives at
+> `/coaching/passes` and `/coaching/passes/[slug]`.** Wherever this note says
+> `/coaching/memberships`, read `/coaching/passes` (the owner confirmed the name on 2026-10-10).
+> The pass's other pages followed the same day: `/academy/pass`, `/account/pass`, `/admin/passes`
+> (were `/academy/membership`, `/account/memberships`, `/admin/memberships`). The old addresses
+> no longer redirect (owner, 2026-10-14): they were never public on tonyklinger.com, so they now
+> return the 404 page. Nothing in the database is renamed.
 
 ```text
 /coaching/memberships
@@ -660,12 +669,19 @@ A baseline structure is:
 
 ```text
 /academy
+├── /membership
+├── /membership/playlists/[slug]
 ├── /courses
 ├── /courses/[courseSlug]
 ├── /cohorts
 ├── /cohorts/[cohortSlug]
 └── /coaching
 ```
+
+**`/academy/membership` added 2026-10-08 (migration 0012).** What a member's tier gives them:
+the Group Coaching series they hold or have still to choose, their video playlists, and the
+live Q&A with its recordings. `/academy/membership/playlists/[slug]` plays a playlist, one
+video at a time (`?v=`). A retreat place is shown under `/academy/coaching`.
 
 **Four routes, at the user's direction (2026-09-05) — reversing both R8 and the earlier
 Progress addition.** Masterclasses, Calendar, Resources and Progress each had a route at
@@ -828,7 +844,7 @@ It may include:
 The public product information remains under `/coaching`.
 
 **Implemented 2026-09-26** as three lists: *Booked* (with the joining link in the window,
-note 07 §36), *Available to book* (linking to `/bookings/[id]`), and *Replays* (booked
+note 07 §36), *Available to book* (linking to `/book/[id]`), and *Replays* (booked
 sessions that have ended, with their recording).
 
 **2026-09-27:** confirmed private coaching sessions join the *Booked* list, and an unspent
@@ -1121,23 +1137,38 @@ routes must work for a guest.
 
 The secure process for linking a guest purchase to an account is defined in note 05 §29.
 
+**2026-10-15:** `?gift=1` puts checkout in gift mode (the recipient's email is asked for;
+note 05 §29.2.2), on a buy-now or a cart checkout alike. A signed-out checkout links to
+sign-in and back, and requires sign-in when the email typed has an account (§29.2.1).
+`/account` and `/account/orders` show purchases made with the customer's confirmed email
+that are not in the account yet, with a button to add them (§29.3).
+
 ---
 
 # 29. Bookings
 
+> **Owner, 2026-10-09: the booking area is `/book`, not `/bookings`.** `/bookings` and
+> `/account/bookings` read alike while doing different things: one MAKES a booking, the other
+> lists and manages those made. The first is now `/book` (`/book/[bookableId]`,
+> `/book/private/[serviceSlug]`); `/bookings/*` redirects to it permanently.
+> `/account/bookings` and `/admin/bookings` are unchanged.
+
+
 ```text
-/bookings
+/book
 ```
 
 Bookings are separate from products and payments.
 
-Possible routes include:
+Routes:
 
 ```text
-/bookings
-/bookings/[bookingId]
-/bookings/[bookingId]/cancel
+/book                          what the customer can book now
+/book/[bookableId]             book a group session
+/book/private/[serviceSlug]    choose a time for a private session already paid for
 ```
+
+Cancelling is done from `/account/bookings`.
 
 The booking system may also have selection flows under the relevant product/service pages.
 
@@ -1153,11 +1184,12 @@ Booking
 
 Customers should be able to view relevant bookings through Account and/or Academy where appropriate.
 
-**Private coaching (2026-09-27):** `/bookings/private/[serviceSlug]` — choose one of the
-service's open times, then pay (or book with an unspent session). Reached from the service
-page's "Check availability", which previously pointed at `/bookings/[bookableId]` with a
-service slug and so returned 404. The static `private` segment keeps it apart from
-`/bookings/[bookableId]` (group sessions). Staff manage times at `/admin/coaching-slots`.
+**Private coaching (2026-09-27; pay first since 2026-10-08):** `/book/private/[serviceSlug]`
+— choose one of the service's open times with a session already paid for. Signed in only;
+with no session held the times are shown read-only beside the session and pack to buy, which
+go through `/checkout` like any product (a guest can buy). Reached from the service page.
+The static `private` segment keeps it apart from `/book/[bookableId]` (group sessions).
+Staff manage times at `/admin/coaching-slots`.
 
 ---
 
@@ -1386,7 +1418,7 @@ Examples:
 
 /academy/cohorts/[cohortSlug]
 
-/bookings/[bookingId]
+/book/[bookableId]
 
 /admin/entitlements/[entitlementId]
 ```
@@ -1508,6 +1540,8 @@ src/app/
 │
 ├── academy/
 │   ├── page.tsx
+│   ├── membership/
+│   │   └── playlists/[slug]/
 │   ├── courses/
 │   ├── cohorts/
 │   └── coaching/
@@ -1622,3 +1656,20 @@ The exact pages, nested routes and supporting files may be expanded where later 
 | 2026-09-27 | §21, §29: `/bookings/private/[serviceSlug]` (choose a time and pay) and `/admin/coaching-slots`; private sessions shown in `/academy/coaching`. Fixes the service page's "Check availability" link, which 404'd. |
 | 2026-09-27 | §24: `/account/billing` rebuilt for self-service (membership cancel/keep, card, history with receipts) via the Stripe Customer Portal; order pages link their receipt. |
 | 2026-09-27 | §25: every baseline Admin page built (Bookings, Payments, Emails, Settings were placeholders). New `/admin/orders/[id]`, `/admin/enquiries` (contact messages — previously stored with no admin view) and `/admin/audit`. |
+| 2026-10-08 | §17, §40: `/academy/membership` and `/academy/membership/playlists/[slug]` added. `/coaching/retreats/[slug]` (already in §16) now exists, one page per retreat level with a switch between levels. `/checkout?product=` accepted for any product (note 09 §8.2). |
+| 2026-10-08 | Admin: `/admin/terms` (Coaching terms, a generated resource page) and `/admin/schedule` (Schedule a series, a custom page) added for Group Coaching terms (note 07 §12.1). |
+| 2026-10-10 | `/academy/playlists` (new: the playlists a pass includes, and Silver's choice) and `/academy/playlists/[slug]` (moved from `/academy/pass/playlists/[slug]`, which redirects). Playlists are an Academy section of their own; the pass page keeps a line and a link. |
+| 2026-10-09 | "Membership" left the remaining addresses: `/academy/membership` → `/academy/pass` (and `/playlists/[slug]` under it), `/account/memberships` → `/account/pass`, `/admin/memberships` → `/admin/passes`, `/admin/member-choices` → `/admin/playlist-choices`; checkout links use `?product=`. Each old address redirects temporarily (REVERSE.md §1). |
+| 2026-10-09 | The booking task moved from `/bookings` to `/book` (with `/book/[bookableId]` and `/book/private/[serviceSlug]`), so it no longer reads like `/account/bookings`; the old addresses redirect permanently. |
+| 2026-10-09 | `/bookings` (where a booking is made) now lists only what needs a time: one-to-one sessions paid for, and a Group Coaching session left on the account. It no longer lists every scheduled group session. `/account/bookings` (bookings already made) is unchanged. |
+| 2026-10-09 | `/checkout` takes `?session=` with a single Group Coaching session (the date bought); `/coaching/group-coaching/[seriesSlug]` lists coming sessions to choose from (note 07 §14.2). |
+| 2026-10-09 | Admin: `/admin/masterclasses` removed with the `masterclasses` table (note 08 §27). |
+| 2026-10-09 | §10: `/coaching/memberships` → `/coaching/passes` (the Coaching Pass), with a temporary redirect from the old address. Reversal steps in `REVERSE.md`. |
+| 2026-10-09 | Admin: `/admin/terms` removed with Group Coaching terms (note 07 §12.1). `/academy/membership` gains the member's series for the year and registration for an open run. |
+| 2026-10-09 | Admin: `/admin/schedule` is now Series runs (lists runs, creates a run with its sessions); `/admin/runs` and `/admin/registrations` added as generated resource pages (note 07 §14.2). |
+| 2026-10-09 | Admin: `/admin/intakes` (Cohort intakes) and `/admin/cohort-places` added as generated resource pages (note 07 §16.2). |
+| 2026-10-13 | Admin: `/admin/bookings` and `/admin/entitlements` are now product lists; `/admin/bookings/[kind]/[id]` and `/admin/entitlements/[type]/[id]` show one product's bookings or holders; `/admin/bookings/all` and `/admin/entitlements/all` are the flat lists those addresses used to be (note 10 §33.2). |
+| 2026-10-15 | Admin: `/admin/entitlements/all` deleted (owner); the Entitlements area is the product list and one product's holders. A person's access is on `/admin/users/[id]`. |
+| 2026-10-14 | §10: the five "membership" redirects removed (`/coaching/memberships`, `/academy/membership`, `/academy/membership/playlists`, `/account/memberships`, `/admin/memberships`). The site never launched under those addresses, so they now 404. |
+| 2026-10-14 | §18: the guest rendering of `/academy` is indexable, with a description for newcomers and a canonical; the signed-in dashboard stays `noindex`. The sitemap now lists every published coaching offer and event page and `/about/testimonials`. |
+| 2026-10-14 | Page metadata: every public page builds its title, description, canonical, Open Graph and X card through `pageMetadata` (`src/lib/seo/metadata.ts`); the root layout sets `metadataBase` from the site URL and a default share card (`/og-default.jpg`). Structured data: `WebSite` and `Person` (Tony) on home, `Person` on About, `Event`, `Course` and catalogue works (`Book`/`Movie`/`PodcastSeries`/`CreativeWork`) on their pages, from `src/lib/seo/structured-data.ts`. `/manifest.webmanifest` added. |

@@ -20,6 +20,13 @@
 // Refuses to run twice. The content files are safe to repeat for most rows, but
 // not all (prices have no natural key), so a second run is blocked unless
 // --force is given — by which point someone has decided to, deliberately.
+//
+//   pnpm content:setup --env <file> --only 12_coaching_offer.sql
+//
+// --only runs ONE named file against a project that already holds the content,
+// and nothing else: no other file, no media import. For a file written to be
+// re-run (it says so at its head) — the way a later change to the offer reaches
+// a database that was set up before it.
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -46,12 +53,18 @@ if (!env.SUPABASE_DB_URL) {
 }
 
 const dir = "supabase/content";
-const files = fs.readdirSync(dir).filter((f) => f.endsWith(".sql")).sort();
+const only = flag("--only") ? argv[argv.indexOf("--only") + 1] : null;
+const files = fs.readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()
+  .filter((f) => !only || f === only);
+if (only && files.length === 0) {
+  console.error(`No content file named ${only} in ${dir}.`);
+  process.exit(1);
+}
 const sql = postgres(env.SUPABASE_DB_URL, { max: 1, onnotice: () => {} });
 
 try {
   const [{ n }] = await sql`select count(*)::int as n from public.products`;
-  if (n > 0 && !flag("--force")) {
+  if (n > 0 && !flag("--force") && !only) {
     console.error(`Target already has ${n} products — content looks loaded. Re-run with --force only if that is intended.`);
     process.exit(1);
   }
@@ -67,6 +80,9 @@ try {
 } finally {
   await sql.end();
 }
+
+// One re-runnable file changes no media.
+if (only) process.exit(0);
 
 // Media last: it links to rows the content just created. Images, then the
 // catalogue's hosted recordings (scripts/import-audio.mjs).

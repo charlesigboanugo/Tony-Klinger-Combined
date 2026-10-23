@@ -20,9 +20,8 @@ import { cn } from "@/lib/utils/cn";
  *
  * Everything under the heading starts at the heading's text, not the icon.
  */
-const KIND_ICON: Record<string, IconName> = {
+export const KIND_ICON: Record<string, IconName> = {
   course: "play",
-  masterclass: "play",
   group_coaching_series: "chat",
   group_coaching_session: "chat",
   cohort: "users",
@@ -39,17 +38,26 @@ export function AccessCard({ item }: { item: AccessItem }) {
   const left = item.credits ? item.credits.total - item.credits.used : null;
 
   const facts: Array<{ label: string; value: string }> = [];
-  if (item.when) facts.push({ label: item.resourceType === "event" ? "Date" : "Starts", value: formatDateTime(item.when) });
-  facts.push({
-    label: ended ? "Ended" : "Access until",
-    value: item.expiresAt
-      ? formatDate(item.expiresAt)
-      : ended
-        ? "—"
-        : item.resourceType === "event"
-          ? "The event"
-          : "No end date",
-  });
+  if (item.when) {
+    facts.push({
+      label: item.whenLabel ?? (item.resourceType === "event" ? "Date" : "Starts"),
+      value: formatDateTime(item.when),
+    });
+  }
+  // A booked or finished session is said by its own date above; a second
+  // "access until" line under it would only repeat or contradict it.
+  if (!(item.whenLabel && !item.expiresAt) && item.whenLabel !== "Took place") {
+    facts.push({
+      label: item.endLabel ?? (ended ? "Ended" : "Access until"),
+      value: item.expiresAt
+        ? formatDate(item.expiresAt)
+        : ended
+          ? "—"
+          : item.resourceType === "event"
+            ? "The event"
+            : "No end date",
+    });
+  }
   facts.push({ label: "How you got it", value: item.source });
 
   return (
@@ -70,6 +78,8 @@ export function AccessCard({ item }: { item: AccessItem }) {
             <h3 className={cn("mt-1 text-lg leading-snug font-semibold text-pretty", ended && "text-muted-foreground")}>
               {item.title}
             </h3>
+            {/* The card in one line: "2 sessions bought · 1 booked · 1 to book". */}
+            {item.summary ? <p className="mt-1 text-sm font-medium text-accent">{item.summary}</p> : null}
           </div>
         </div>
 
@@ -83,17 +93,19 @@ export function AccessCard({ item }: { item: AccessItem }) {
             ))}
           </dl>
 
-          {item.credits && left != null ? (
+          {/* A meter of sessions left is for a pack; for one session it only says
+              "1 of 1" (owner, 2026-10-09). */}
+          {item.credits && left != null && item.credits.total > 1 ? (
             <div className="mt-4">
               <div className="flex items-baseline justify-between text-sm">
-                <span className="text-muted-foreground">Sessions left</span>
+                <span className="text-muted-foreground">Still to book</span>
                 <span className="font-medium tabular-nums">
                   {left} of {item.credits.total}
                 </span>
               </div>
               <div
                 role="progressbar"
-                aria-label="Sessions left"
+                aria-label="Sessions still to book"
                 aria-valuemin={0}
                 aria-valuemax={item.credits.total}
                 aria-valuenow={left}

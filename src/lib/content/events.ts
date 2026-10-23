@@ -21,6 +21,8 @@ export type PublicEvent = {
   description: string | null;
   starts_at: string | null;
   ends_at: string | null;
+  /** Started and not yet over. Set by `listEventsByTime`, which reads the clock. */
+  inProgress?: boolean;
   location: string | null;
   capacity: number | null;
   is_free: boolean;
@@ -142,9 +144,17 @@ export async function eventViewer(eventId: string): Promise<EventViewer> {
   };
 }
 
+/** An event with no stated end is taken to run for three hours. */
+const ASSUMED_LENGTH_MS = 3 * 60 * 60 * 1000;
+
 /**
- * Split events into upcoming and past. Upcoming runs soonest first; past runs
- * most recent first, because the last event is the one people look for.
+ * Split events into what is still on the programme and what is over.
+ *
+ *   upcoming   not yet dated, still to come, or UNDER WAY — an event in
+ *              progress stays on the programme, marked as such (owner,
+ *              2026-10-08), and leads it because it started soonest
+ *   past       ended, most recent first, because the last event is the one
+ *              people look for
  *
  * Done here rather than in the page because reading the clock during render
  * makes a component impure — the same render could produce different output.
@@ -158,9 +168,15 @@ export async function listEventsByTime(): Promise<{
   const events = await listEvents();
   const now = Date.now();
 
+  const endOf = (e: PublicEvent) =>
+    e.ends_at ? +new Date(e.ends_at) : e.starts_at ? +new Date(e.starts_at) + ASSUMED_LENGTH_MS : Infinity;
+  const started = (e: PublicEvent) => Boolean(e.starts_at && +new Date(e.starts_at) < now);
+
   return {
-    upcoming: events.filter((e) => !e.starts_at || +new Date(e.starts_at) >= now),
-    past: events.filter((e) => e.starts_at && +new Date(e.starts_at) < now).reverse(),
+    upcoming: events
+      .filter((e) => endOf(e) >= now)
+      .map((e) => (started(e) ? { ...e, inProgress: true } : e)),
+    past: events.filter((e) => endOf(e) < now).reverse(),
   };
 }
 

@@ -16,13 +16,15 @@ import {
   type CatalogueItem,
 } from "@/lib/content/catalogue";
 import { Eyebrow } from "@/components/ui/Eyebrow";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { cn } from "@/lib/utils/cn";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Catalogue",
   description:
     "Books, films, audio, interviews and more from six decades of Tony Klinger's work.",
-};
+  path: "/catalogue",
+});
 
 /**
  * What each collection holds, in a sentence. A card that says only "Books"

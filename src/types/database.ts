@@ -340,12 +340,194 @@ export type Database = {
           },
         ]
       }
+      coaching_registrations: {
+        Row: {
+          created_at: string
+          entitlement_id: string | null
+          id: string
+          run_id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entitlement_id?: string | null
+          id?: string
+          run_id: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entitlement_id?: string | null
+          id?: string
+          run_id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coaching_registrations_entitlement_id_fkey"
+            columns: ["entitlement_id"]
+            isOneToOne: false
+            referencedRelation: "entitlements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coaching_registrations_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "coaching_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coaching_runs: {
+        Row: {
+          capacity: number
+          created_at: string
+          ends_at: string
+          id: string
+          label: string
+          pass_opens_at: string
+          registration_closes_at: string
+          registration_opens_at: string
+          series_id: string
+          starts_at: string
+          status: Database["public"]["Enums"]["content_status"]
+          updated_at: string
+        }
+        Insert: {
+          capacity: number
+          created_at?: string
+          ends_at: string
+          id?: string
+          label: string
+          pass_opens_at: string
+          registration_closes_at: string
+          registration_opens_at?: string
+          series_id: string
+          starts_at: string
+          status?: Database["public"]["Enums"]["content_status"]
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          ends_at?: string
+          id?: string
+          label?: string
+          pass_opens_at?: string
+          registration_closes_at?: string
+          registration_opens_at?: string
+          series_id?: string
+          starts_at?: string
+          status?: Database["public"]["Enums"]["content_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coaching_runs_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "group_coaching_series"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohort_enrolments: {
+        Row: {
+          created_at: string
+          entitlement_id: string | null
+          id: string
+          intake_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entitlement_id?: string | null
+          id?: string
+          intake_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entitlement_id?: string | null
+          id?: string
+          intake_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_enrolments_entitlement_id_fkey"
+            columns: ["entitlement_id"]
+            isOneToOne: false
+            referencedRelation: "entitlements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cohort_enrolments_intake_id_fkey"
+            columns: ["intake_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_intakes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cohort_intakes: {
+        Row: {
+          capacity: number | null
+          cohort_id: string
+          created_at: string
+          ends_at: string
+          id: string
+          label: string
+          registration_opens_at: string
+          starts_at: string
+          status: Database["public"]["Enums"]["content_status"]
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number | null
+          cohort_id: string
+          created_at?: string
+          ends_at: string
+          id?: string
+          label: string
+          registration_opens_at?: string
+          starts_at: string
+          status?: Database["public"]["Enums"]["content_status"]
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number | null
+          cohort_id?: string
+          created_at?: string
+          ends_at?: string
+          id?: string
+          label?: string
+          registration_opens_at?: string
+          starts_at?: string
+          status?: Database["public"]["Enums"]["content_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cohort_intakes_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cohort_workshops: {
         Row: {
           cohort_id: string
           created_at: string
           ends_at: string
           id: string
+          intake_id: string | null
           meeting_url: string | null
           position: number
           recording_resource_id: string | null
@@ -358,6 +540,7 @@ export type Database = {
           created_at?: string
           ends_at: string
           id?: string
+          intake_id?: string | null
           meeting_url?: string | null
           position?: number
           recording_resource_id?: string | null
@@ -370,6 +553,7 @@ export type Database = {
           created_at?: string
           ends_at?: string
           id?: string
+          intake_id?: string | null
           meeting_url?: string | null
           position?: number
           recording_resource_id?: string | null
@@ -386,6 +570,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "cohort_workshops_intake_id_fkey"
+            columns: ["intake_id"]
+            isOneToOne: false
+            referencedRelation: "cohort_intakes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "cohort_workshops_recording_resource_id_fkey"
             columns: ["recording_resource_id"]
             isOneToOne: false
@@ -398,7 +589,7 @@ export type Database = {
         Row: {
           benefits: string[]
           capacity: number | null
-          cohort_level: Database["public"]["Enums"]["cohort_level"]
+          cohort_level: string
           cover_resource_id: string | null
           created_at: string
           description: string | null
@@ -406,6 +597,7 @@ export type Database = {
           id: string
           name: string
           product_id: string | null
+          rank: number
           slug: string
           starts_at: string | null
           status: Database["public"]["Enums"]["content_status"]
@@ -414,7 +606,7 @@ export type Database = {
         Insert: {
           benefits?: string[]
           capacity?: number | null
-          cohort_level: Database["public"]["Enums"]["cohort_level"]
+          cohort_level: string
           cover_resource_id?: string | null
           created_at?: string
           description?: string | null
@@ -422,6 +614,7 @@ export type Database = {
           id?: string
           name: string
           product_id?: string | null
+          rank?: number
           slug: string
           starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
@@ -430,7 +623,7 @@ export type Database = {
         Update: {
           benefits?: string[]
           capacity?: number | null
-          cohort_level?: Database["public"]["Enums"]["cohort_level"]
+          cohort_level?: string
           cover_resource_id?: string | null
           created_at?: string
           description?: string | null
@@ -438,6 +631,7 @@ export type Database = {
           id?: string
           name?: string
           product_id?: string | null
+          rank?: number
           slug?: string
           starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
@@ -506,6 +700,7 @@ export type Database = {
           description: string | null
           id: string
           position: number
+          status: Database["public"]["Enums"]["content_status"]
           title: string
           updated_at: string
         }
@@ -515,6 +710,7 @@ export type Database = {
           description?: string | null
           id?: string
           position?: number
+          status?: Database["public"]["Enums"]["content_status"]
           title: string
           updated_at?: string
         }
@@ -524,6 +720,7 @@ export type Database = {
           description?: string | null
           id?: string
           position?: number
+          status?: Database["public"]["Enums"]["content_status"]
           title?: string
           updated_at?: string
         }
@@ -876,6 +1073,7 @@ export type Database = {
       }
       group_coaching_series: {
         Row: {
+          capacity: number
           cover_resource_id: string | null
           created_at: string
           description: string | null
@@ -888,6 +1086,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          capacity?: number
           cover_resource_id?: string | null
           created_at?: string
           description?: string | null
@@ -900,6 +1099,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          capacity?: number
           cover_resource_id?: string | null
           created_at?: string
           description?: string | null
@@ -937,6 +1137,7 @@ export type Database = {
           id: string
           meeting_url: string | null
           recording_resource_id: string | null
+          run_id: string | null
           series_id: string
           starts_at: string
           status: string
@@ -944,13 +1145,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          capacity?: number
+          capacity: number
           coach_id?: string | null
           created_at?: string
           ends_at: string
           id?: string
           meeting_url?: string | null
           recording_resource_id?: string | null
+          run_id?: string | null
           series_id: string
           starts_at: string
           status?: string
@@ -965,6 +1167,7 @@ export type Database = {
           id?: string
           meeting_url?: string | null
           recording_resource_id?: string | null
+          run_id?: string | null
           series_id?: string
           starts_at?: string
           status?: string
@@ -977,6 +1180,13 @@ export type Database = {
             columns: ["recording_resource_id"]
             isOneToOne: false
             referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_coaching_sessions_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "coaching_runs"
             referencedColumns: ["id"]
           },
           {
@@ -997,7 +1207,7 @@ export type Database = {
           hosted_invoice_url: string | null
           id: string
           invoice_pdf: string | null
-          membership_tier: Database["public"]["Enums"]["membership_tier"] | null
+          membership_tier: string | null
           number: string | null
           order_id: string | null
           paid_at: string | null
@@ -1019,9 +1229,7 @@ export type Database = {
           hosted_invoice_url?: string | null
           id?: string
           invoice_pdf?: string | null
-          membership_tier?:
-            | Database["public"]["Enums"]["membership_tier"]
-            | null
+          membership_tier?: string | null
           number?: string | null
           order_id?: string | null
           paid_at?: string | null
@@ -1043,9 +1251,7 @@ export type Database = {
           hosted_invoice_url?: string | null
           id?: string
           invoice_pdf?: string | null
-          membership_tier?:
-            | Database["public"]["Enums"]["membership_tier"]
-            | null
+          membership_tier?: string | null
           number?: string | null
           order_id?: string | null
           paid_at?: string | null
@@ -1106,6 +1312,7 @@ export type Database = {
         Row: {
           content: string | null
           created_at: string
+          description: string | null
           id: string
           module_id: string
           position: number
@@ -1121,6 +1328,7 @@ export type Database = {
         Insert: {
           content?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           module_id: string
           position?: number
@@ -1136,6 +1344,7 @@ export type Database = {
         Update: {
           content?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           module_id?: string
           position?: number
@@ -1200,65 +1409,76 @@ export type Database = {
         }
         Relationships: []
       }
-      masterclasses: {
+      member_qa_sessions: {
         Row: {
           created_at: string
           description: string | null
-          ends_at: string | null
+          ends_at: string
           id: string
           meeting_url: string | null
-          product_id: string | null
           recording_resource_id: string | null
-          slug: string
-          starts_at: string | null
-          status: Database["public"]["Enums"]["content_status"]
+          starts_at: string
+          status: string
           title: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           description?: string | null
-          ends_at?: string | null
+          ends_at: string
           id?: string
           meeting_url?: string | null
-          product_id?: string | null
           recording_resource_id?: string | null
-          slug: string
-          starts_at?: string | null
-          status?: Database["public"]["Enums"]["content_status"]
+          starts_at: string
+          status?: string
           title: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           description?: string | null
-          ends_at?: string | null
+          ends_at?: string
           id?: string
           meeting_url?: string | null
-          product_id?: string | null
           recording_resource_id?: string | null
-          slug?: string
-          starts_at?: string | null
-          status?: Database["public"]["Enums"]["content_status"]
+          starts_at?: string
+          status?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "masterclasses_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "masterclasses_recording_resource_id_fkey"
+            foreignKeyName: "member_qa_sessions_recording_resource_id_fkey"
             columns: ["recording_resource_id"]
             isOneToOne: false
             referencedRelation: "resources"
             referencedColumns: ["id"]
           },
         ]
+      }
+      membership_choices: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          resource_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          resource_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          resource_id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       membership_tiers: {
         Row: {
@@ -1267,11 +1487,16 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          includes_qa: boolean
+          includes_retreats: boolean
           name: string
+          playlist_allowance: number | null
           product_id: string | null
           rank: number
+          retreats_require_yearly: boolean
+          series_allowance: number | null
           slug: string
-          tier: Database["public"]["Enums"]["membership_tier"]
+          tier: string
           updated_at: string
         }
         Insert: {
@@ -1280,11 +1505,16 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          includes_qa?: boolean
+          includes_retreats?: boolean
           name: string
+          playlist_allowance?: number | null
           product_id?: string | null
           rank: number
+          retreats_require_yearly?: boolean
+          series_allowance?: number | null
           slug: string
-          tier: Database["public"]["Enums"]["membership_tier"]
+          tier: string
           updated_at?: string
         }
         Update: {
@@ -1293,11 +1523,16 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          includes_qa?: boolean
+          includes_retreats?: boolean
           name?: string
+          playlist_allowance?: number | null
           product_id?: string | null
           rank?: number
+          retreats_require_yearly?: boolean
+          series_allowance?: number | null
           slug?: string
-          tier?: Database["public"]["Enums"]["membership_tier"]
+          tier?: string
           updated_at?: string
         }
         Relationships: [
@@ -1448,6 +1683,7 @@ export type Database = {
           external_reference: string | null
           guest_email: string | null
           id: string
+          is_gift: boolean
           paid_at: string | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
@@ -1463,6 +1699,7 @@ export type Database = {
           external_reference?: string | null
           guest_email?: string | null
           id?: string
+          is_gift?: boolean
           paid_at?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
@@ -1478,6 +1715,7 @@ export type Database = {
           external_reference?: string | null
           guest_email?: string | null
           id?: string
+          is_gift?: boolean
           paid_at?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
@@ -1557,6 +1795,116 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      playlist_videos: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          playlist_id: string
+          position: number
+          published_at: string | null
+          status: Database["public"]["Enums"]["content_status"]
+          title: string
+          updated_at: string
+          video_duration_seconds: number | null
+          video_hash: string | null
+          video_id: string | null
+          video_provider: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          playlist_id: string
+          position?: number
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["content_status"]
+          title: string
+          updated_at?: string
+          video_duration_seconds?: number | null
+          video_hash?: string | null
+          video_id?: string | null
+          video_provider?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          playlist_id?: string
+          position?: number
+          published_at?: string | null
+          status?: Database["public"]["Enums"]["content_status"]
+          title?: string
+          updated_at?: string
+          video_duration_seconds?: number | null
+          video_hash?: string | null
+          video_id?: string | null
+          video_provider?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_videos_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "playlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playlists: {
+        Row: {
+          cover_resource_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          min_tier: string
+          name: string
+          position: number
+          slug: string
+          status: Database["public"]["Enums"]["content_status"]
+          updated_at: string
+        }
+        Insert: {
+          cover_resource_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          min_tier?: string
+          name: string
+          position?: number
+          slug: string
+          status?: Database["public"]["Enums"]["content_status"]
+          updated_at?: string
+        }
+        Update: {
+          cover_resource_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          min_tier?: string
+          name?: string
+          position?: number
+          slug?: string
+          status?: Database["public"]["Enums"]["content_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlists_cover_resource_id_fkey"
+            columns: ["cover_resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playlists_min_tier_fkey"
+            columns: ["min_tier"]
+            isOneToOne: false
+            referencedRelation: "membership_tiers"
+            referencedColumns: ["tier"]
+          },
+        ]
       }
       prices: {
         Row: {
@@ -1730,41 +2078,77 @@ export type Database = {
       products: {
         Row: {
           created_at: string
+          credits: number | null
           description: string | null
           id: string
           metadata: Json
           name: string
+          option_group: string | null
+          option_label: string | null
+          option_position: number
+          pack_of: string | null
           product_type: Database["public"]["Enums"]["product_type"]
+          series_id: string | null
           slug: string
           status: Database["public"]["Enums"]["product_status"]
           stripe_product_id: string | null
           updated_at: string
+          valid_months: number | null
         }
         Insert: {
           created_at?: string
+          credits?: number | null
           description?: string | null
           id?: string
           metadata?: Json
           name: string
+          option_group?: string | null
+          option_label?: string | null
+          option_position?: number
+          pack_of?: string | null
           product_type: Database["public"]["Enums"]["product_type"]
+          series_id?: string | null
           slug: string
           status?: Database["public"]["Enums"]["product_status"]
           stripe_product_id?: string | null
           updated_at?: string
+          valid_months?: number | null
         }
         Update: {
           created_at?: string
+          credits?: number | null
           description?: string | null
           id?: string
           metadata?: Json
           name?: string
+          option_group?: string | null
+          option_label?: string | null
+          option_position?: number
+          pack_of?: string | null
           product_type?: Database["public"]["Enums"]["product_type"]
+          series_id?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["product_status"]
           stripe_product_id?: string | null
           updated_at?: string
+          valid_months?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_pack_of_fkey"
+            columns: ["pack_of"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "group_coaching_series"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -1862,35 +2246,57 @@ export type Database = {
       retreat_applications: {
         Row: {
           answers: Json
+          approved_at: string | null
+          batch_id: string | null
+          closed_at: string | null
           created_at: string
           id: string
+          message: string | null
           retreat_id: string
           reviewed_by: string | null
+          staff_note: string | null
           status: string
           updated_at: string
           user_id: string
         }
         Insert: {
           answers?: Json
+          approved_at?: string | null
+          batch_id?: string | null
+          closed_at?: string | null
           created_at?: string
           id?: string
+          message?: string | null
           retreat_id: string
           reviewed_by?: string | null
+          staff_note?: string | null
           status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           answers?: Json
+          approved_at?: string | null
+          batch_id?: string | null
+          closed_at?: string | null
           created_at?: string
           id?: string
+          message?: string | null
           retreat_id?: string
           reviewed_by?: string | null
+          staff_note?: string | null
           status?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "retreat_applications_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "retreat_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "retreat_applications_retreat_id_fkey"
             columns: ["retreat_id"]
@@ -1900,49 +2306,147 @@ export type Database = {
           },
         ]
       }
-      retreats: {
+      retreat_batches: {
         Row: {
           capacity: number | null
-          cover_resource_id: string | null
           created_at: string
-          description: string | null
-          ends_at: string | null
+          ends_at: string
           id: string
-          name: string
-          product_id: string | null
-          requires_application: boolean
-          slug: string
-          starts_at: string | null
+          join_url: string | null
+          joining_notes: string | null
+          label: string
+          registration_closes_at: string | null
+          registration_opens_at: string
+          retreat_id: string
+          starts_at: string
           status: Database["public"]["Enums"]["content_status"]
           updated_at: string
         }
         Insert: {
           capacity?: number | null
-          cover_resource_id?: string | null
           created_at?: string
-          description?: string | null
-          ends_at?: string | null
+          ends_at: string
           id?: string
-          name: string
-          product_id?: string | null
-          requires_application?: boolean
-          slug: string
-          starts_at?: string | null
+          join_url?: string | null
+          joining_notes?: string | null
+          label: string
+          registration_closes_at?: string | null
+          registration_opens_at?: string
+          retreat_id: string
+          starts_at: string
           status?: Database["public"]["Enums"]["content_status"]
           updated_at?: string
         }
         Update: {
           capacity?: number | null
+          created_at?: string
+          ends_at?: string
+          id?: string
+          join_url?: string | null
+          joining_notes?: string | null
+          label?: string
+          registration_closes_at?: string | null
+          registration_opens_at?: string
+          retreat_id?: string
+          starts_at?: string
+          status?: Database["public"]["Enums"]["content_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retreat_batches_retreat_id_fkey"
+            columns: ["retreat_id"]
+            isOneToOne: false
+            referencedRelation: "retreats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retreat_places: {
+        Row: {
+          batch_id: string
+          created_at: string
+          entitlement_id: string | null
+          id: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          entitlement_id?: string | null
+          id?: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          entitlement_id?: string | null
+          id?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retreat_places_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "retreat_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retreat_places_entitlement_id_fkey"
+            columns: ["entitlement_id"]
+            isOneToOne: false
+            referencedRelation: "entitlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retreats: {
+        Row: {
+          benefits: string[]
+          cover_resource_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          level: number | null
+          name: string
+          position: number
+          product_id: string | null
+          requires_application: boolean
+          slug: string
+          status: Database["public"]["Enums"]["content_status"]
+          updated_at: string
+        }
+        Insert: {
+          benefits?: string[]
           cover_resource_id?: string | null
           created_at?: string
           description?: string | null
-          ends_at?: string | null
           id?: string
+          level?: number | null
+          name: string
+          position?: number
+          product_id?: string | null
+          requires_application?: boolean
+          slug: string
+          status?: Database["public"]["Enums"]["content_status"]
+          updated_at?: string
+        }
+        Update: {
+          benefits?: string[]
+          cover_resource_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          level?: number | null
           name?: string
+          position?: number
           product_id?: string | null
           requires_application?: boolean
           slug?: string
-          starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
           updated_at?: string
         }
@@ -1998,24 +2502,30 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_staff: boolean
           name: string
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
+          is_staff?: boolean
           name: string
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
+          is_staff?: boolean
           name?: string
         }
         Relationships: []
       }
       subscriptions: {
         Row: {
+          billing_interval:
+            | Database["public"]["Enums"]["billing_interval"]
+            | null
           cancel_at: string | null
           cancel_at_period_end: boolean
           created_at: string
@@ -2023,7 +2533,7 @@ export type Database = {
           current_period_start: string | null
           grace_period_ends_at: string | null
           id: string
-          membership_tier: Database["public"]["Enums"]["membership_tier"] | null
+          membership_tier: string | null
           price_id: string | null
           product_id: string | null
           provider: string
@@ -2033,6 +2543,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          billing_interval?:
+            | Database["public"]["Enums"]["billing_interval"]
+            | null
           cancel_at?: string | null
           cancel_at_period_end?: boolean
           created_at?: string
@@ -2040,9 +2553,7 @@ export type Database = {
           current_period_start?: string | null
           grace_period_ends_at?: string | null
           id?: string
-          membership_tier?:
-            | Database["public"]["Enums"]["membership_tier"]
-            | null
+          membership_tier?: string | null
           price_id?: string | null
           product_id?: string | null
           provider?: string
@@ -2052,6 +2563,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          billing_interval?:
+            | Database["public"]["Enums"]["billing_interval"]
+            | null
           cancel_at?: string | null
           cancel_at_period_end?: boolean
           created_at?: string
@@ -2059,9 +2573,7 @@ export type Database = {
           current_period_start?: string | null
           grace_period_ends_at?: string | null
           id?: string
-          membership_tier?:
-            | Database["public"]["Enums"]["membership_tier"]
-            | null
+          membership_tier?: string | null
           price_id?: string | null
           product_id?: string | null
           provider?: string
@@ -2071,6 +2583,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "subscriptions_membership_tier_fkey"
+            columns: ["membership_tier"]
+            isOneToOne: false
+            referencedRelation: "membership_tiers"
+            referencedColumns: ["tier"]
+          },
           {
             foreignKeyName: "subscriptions_price_id_fkey"
             columns: ["price_id"]
@@ -2266,9 +2785,17 @@ export type Database = {
       active_member_emails: {
         Row: {
           email: string | null
-          membership_tier: Database["public"]["Enums"]["membership_tier"] | null
+          membership_tier: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_membership_tier_fkey"
+            columns: ["membership_tier"]
+            isOneToOne: false
+            referencedRelation: "membership_tiers"
+            referencedColumns: ["tier"]
+          },
+        ]
       }
     }
     Functions: {
@@ -2313,6 +2840,14 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_for_retreat: {
+        Args: { p_answers?: Json; p_batch_id: string; p_message: string }
+        Returns: string
+      }
+      apply_subscription_membership: {
+        Args: { p_subscription_id: string }
+        Returns: undefined
+      }
       assert_admin_action: {
         Args: { p_permission: string }
         Returns: undefined
@@ -2322,6 +2857,11 @@ export type Database = {
         Returns: Json
       }
       book_group_session: { Args: { p_session_id: string }; Returns: Json }
+      book_session_for: {
+        Args: { p_session_id: string; p_user_id: string }
+        Returns: Json
+      }
+      can_view_playlist: { Args: { p_playlist_id: string }; Returns: boolean }
       cancel_booking: {
         Args: { p_booking_id: string; p_window_hours?: number }
         Returns: Json
@@ -2330,6 +2870,7 @@ export type Database = {
         Args: { p_reference: string; p_undo?: boolean }
         Returns: Json
       }
+      choose_playlist: { Args: { p_playlist_id: string }; Returns: Json }
       claim_email_batch: {
         Args: { p_limit?: number }
         Returns: {
@@ -2355,15 +2896,29 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      claim_my_orders: { Args: never; Returns: Json }
       claim_order: { Args: { p_token_hash: string }; Returns: Json }
       claim_welcome: { Args: never; Returns: boolean }
       cleanup_expired_tokens: { Args: never; Returns: Json }
       cleanup_rate_limits: { Args: never; Returns: number }
+      coaching_sale_status: { Args: { p_product_id: string }; Returns: string }
+      coming_sessions: {
+        Args: { p_series_id: string }
+        Returns: {
+          ends_at: string
+          id: string
+          places_left: number
+          run_label: string
+          starts_at: string
+          title: string
+        }[]
+      }
       consume_rate_limit: {
         Args: { p_key: string; p_limit: number; p_window_seconds: number }
         Returns: boolean
       }
       current_aal: { Args: never; Returns: string }
+      email_has_account: { Args: { p_email: string }; Returns: boolean }
       enqueue_email: {
         Args: {
           p_idempotency_key: string
@@ -2372,6 +2927,11 @@ export type Database = {
           p_to_email: string
           p_to_name?: string
         }
+        Returns: string
+      }
+      enrol_in_intake: { Args: { p_intake_id: string }; Returns: Json }
+      enrol_user_in_intake: {
+        Args: { p_intake_id: string; p_user_id: string }
         Returns: string
       }
       event_attendees: {
@@ -2432,13 +2992,32 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_member_benefit: { Args: { p_benefit: string }; Returns: boolean }
       has_permission: { Args: { permission_name: string }; Returns: boolean }
+      has_retreat_access: { Args: { p_retreat_id: string }; Returns: boolean }
+      has_retreat_batch_access: {
+        Args: { p_batch_id: string }
+        Returns: boolean
+      }
       has_role: { Args: { role_name: string }; Returns: boolean }
       has_session_credits: { Args: never; Returns: boolean }
+      has_session_credits_for: {
+        Args: { p_series_id: string }
+        Returns: boolean
+      }
+      has_standing_cohort_access: {
+        Args: { p_cohort_id: string }
+        Returns: boolean
+      }
       hold_private_coaching_slot: {
         Args: { p_hold_minutes?: number; p_slot_id: string }
         Returns: Json
       }
+      holds_intake: { Args: { p_intake_id: string }; Returns: boolean }
+      holds_seat: { Args: { p_session_id: string }; Returns: boolean }
+      in_cohort: { Args: { p_cohort_id: string }; Returns: boolean }
+      intake_places_left: { Args: { p_intake_id: string }; Returns: number }
+      intake_seats_taken: { Args: { p_intake_id: string }; Returns: number }
       is_staff: { Args: never; Returns: boolean }
       join_event_waitlist: { Args: { p_event_id: string }; Returns: Json }
       leave_event_waitlist: { Args: { p_event_id: string }; Returns: Json }
@@ -2450,6 +3029,45 @@ export type Database = {
         Args: { p_id: string; p_provider_id: string }
         Returns: undefined
       }
+      membership_grace_days: { Args: never; Returns: number }
+      membership_of: {
+        Args: { p_user_id: string }
+        Returns: {
+          entitlement_id: string
+          expires_at: string
+          includes_qa: boolean
+          includes_retreats: boolean
+          playlist_allowance: number
+          rank: number
+          series_allowance: number
+          source_type: Database["public"]["Enums"]["entitlement_source"]
+          starts_at: string
+          tier: string
+          tier_id: string
+          tier_name: string
+          yearly: boolean
+        }[]
+      }
+      membership_series_used: { Args: { p_user_id: string }; Returns: number }
+      my_confirmed_email: { Args: never; Returns: string }
+      my_membership: {
+        Args: never
+        Returns: {
+          entitlement_id: string
+          expires_at: string
+          includes_qa: boolean
+          includes_retreats: boolean
+          playlist_allowance: number
+          rank: number
+          series_allowance: number
+          source_type: Database["public"]["Enums"]["entitlement_source"]
+          starts_at: string
+          tier: string
+          tier_id: string
+          tier_name: string
+          yearly: boolean
+        }[]
+      }
       my_permissions: { Args: never; Returns: string[] }
       my_roles: { Args: never; Returns: string[] }
       my_security_keys: {
@@ -2460,6 +3078,13 @@ export type Database = {
           id: string
           last_used_at: string
           name: string
+        }[]
+      }
+      my_series_allowance: {
+        Args: never
+        Returns: {
+          allowance: number
+          used: number
         }[]
       }
       my_sessions: {
@@ -2474,6 +3099,16 @@ export type Database = {
           user_agent: string
         }[]
       }
+      my_unclaimed_orders: {
+        Args: never
+        Returns: {
+          currency: string
+          items: string
+          order_id: string
+          paid_at: string
+          total: number
+        }[]
+      }
       my_waitlist_position: { Args: { p_event_id: string }; Returns: number }
       new_ticket_reference: { Args: never; Returns: string }
       orders_awaiting_reconciliation: {
@@ -2486,6 +3121,7 @@ export type Database = {
           external_reference: string | null
           guest_email: string | null
           id: string
+          is_gift: boolean
           paid_at: string | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
@@ -2499,6 +3135,29 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      pass_priority_days: { Args: never; Returns: number }
+      passes_ending_due: {
+        Args: { p_kind: string }
+        Returns: {
+          email: string
+          entitlement_id: string
+          expires_at: string
+          tier_name: string
+          user_id: string
+        }[]
+      }
+      place_on_open_intake: {
+        Args: { p_cohort_id: string; p_user_id: string }
+        Returns: string
+      }
+      place_on_open_retreat_batch: {
+        Args: { p_retreat_id: string; p_user_id: string }
+        Returns: string
+      }
+      place_on_open_run: {
+        Args: { p_series_id: string; p_user_id: string }
+        Returns: string
       }
       private_coaching_availability: {
         Args: { p_service_id: string }
@@ -2527,12 +3186,82 @@ export type Database = {
         Returns: string
       }
       register_for_event: { Args: { p_event_id: string }; Returns: Json }
+      register_for_run: { Args: { p_run_id: string }; Returns: Json }
+      register_user_for_run: {
+        Args: { p_run_id: string; p_user_id: string }
+        Returns: string
+      }
+      registration_stands: {
+        Args: { p_entitlement_id: string; p_source: string }
+        Returns: boolean
+      }
       release_private_coaching_hold: {
         Args: { p_order_id: string }
         Returns: undefined
       }
       requires_mfa: { Args: never; Returns: boolean }
+      retreat_batch_dates: {
+        Args: { p_retreat_ids?: string[] }
+        Returns: {
+          capacity: number
+          ends_at: string
+          id: string
+          label: string
+          registration_closes_at: string
+          registration_opens_at: string
+          retreat_id: string
+          starts_at: string
+        }[]
+      }
+      retreat_batch_places_left: {
+        Args: { p_batch_id: string }
+        Returns: number
+      }
+      retreat_batch_places_taken: {
+        Args: { p_batch_id: string }
+        Returns: number
+      }
+      run_places_left: { Args: { p_run_id: string }; Returns: number }
+      run_seats_taken: { Args: { p_run_id: string }; Returns: number }
+      same_uk_time: {
+        Args: { p_first: string; p_weeks: number }
+        Returns: string
+      }
+      schedule_series_run: {
+        Args: {
+          p_capacity?: number
+          p_count?: number
+          p_first_start: string
+          p_label?: string
+          p_meeting_url?: string
+          p_minutes?: number
+          p_registration_opens?: string
+          p_series_id: string
+        }
+        Returns: string
+      }
+      session_places_left: { Args: { p_session_id: string }; Returns: number }
+      session_reminders_due: {
+        Args: { p_kind: string }
+        Returns: {
+          email: string
+          group_name: string
+          group_slug: string
+          item_id: string
+          join_url: string
+          kind: string
+          notes: string
+          starts_at: string
+          title: string
+          user_id: string
+        }[]
+      }
+      session_sale_status: { Args: { p_session_id: string }; Returns: string }
       sign_out_my_session: { Args: { p_session_id: string }; Returns: boolean }
+      sync_membership_entitlements: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       verified_factor_count: { Args: never; Returns: number }
       withdraw_marketing_consent: { Args: { p_email: string }; Returns: number }
     }
@@ -2560,7 +3289,6 @@ export type Database = {
         | "stories-from-the-front-line"
         | "podcasts"
         | "watch"
-      cohort_level: "silver" | "gold" | "platinum"
       consent_source:
         | "newsletter_form"
         | "checkout"
@@ -2580,6 +3308,9 @@ export type Database = {
         | "release"
         | "partner_discount"
         | "private_coaching"
+        | "membership"
+        | "playlist"
+        | "series_pass"
       entitlement_source:
         | "purchase"
         | "membership"
@@ -2589,7 +3320,6 @@ export type Database = {
         | "other"
       entitlement_status: "active" | "expired" | "consumed" | "revoked"
       event_format: "in_person" | "online" | "hybrid"
-      membership_tier: "silver" | "gold" | "platinum" | "ultimate"
       order_status:
         | "pending"
         | "processing"
@@ -2772,7 +3502,6 @@ export const Constants = {
         "podcasts",
         "watch",
       ],
-      cohort_level: ["silver", "gold", "platinum"],
       consent_source: [
         "newsletter_form",
         "checkout",
@@ -2793,6 +3522,9 @@ export const Constants = {
         "release",
         "partner_discount",
         "private_coaching",
+        "membership",
+        "playlist",
+        "series_pass",
       ],
       entitlement_source: [
         "purchase",
@@ -2804,7 +3536,6 @@ export const Constants = {
       ],
       entitlement_status: ["active", "expired", "consumed", "revoked"],
       event_format: ["in_person", "online", "hybrid"],
-      membership_tier: ["silver", "gold", "platinum", "ultimate"],
       order_status: [
         "pending",
         "processing",

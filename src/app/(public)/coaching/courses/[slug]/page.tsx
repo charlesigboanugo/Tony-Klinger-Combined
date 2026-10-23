@@ -10,8 +10,13 @@ import {
   ViewerOwnedState,
   ViewerPurchasePanel,
 } from "@/components/coaching/ViewerOwnership";
+import { GiftLink } from "@/components/coaching/GiftLink";
+import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { formatPrice } from "@/lib/commerce/pricing";
 import { getCourse, priceForProduct } from "@/lib/content/coaching";
+import { pageMetadata } from "@/lib/seo/metadata";
+import { courseData } from "@/lib/seo/structured-data";
 
 export async function generateMetadata({
   params,
@@ -19,7 +24,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const course = await getCourse(slug);
   return course
-    ? { title: course.title, description: course.description ?? undefined }
+    ? pageMetadata({
+        title: course.title,
+        description: course.description,
+        path: `/coaching/courses/${course.slug}`,
+        image: { storagePath: course.storagePath, alt: course.title },
+      })
     : { title: "Not found" };
 }
 
@@ -47,6 +57,14 @@ export default async function CoursePage({
   const buyHref = course.productSlug ? `/checkout?course=${course.productSlug}` : undefined;
   return (
     <OwnershipProvider resourceType="course" resourceId={course.id}>
+      <JsonLd data={courseData(course)} />
+      <BreadcrumbJsonLd
+        trail={[
+          { name: "Coaching", path: "/coaching" },
+          { name: "Courses", path: "/coaching/courses" },
+          { name: course.title, path: `/coaching/courses/${course.slug}` },
+        ]}
+      />
       <ProductHero
         backHref="/coaching/courses"
         backLabel="All courses"
@@ -75,9 +93,11 @@ export default async function CoursePage({
                 both are offered rather than forcing everyone through the cart. */}
             {course.productSlug ? (
               <UnlessOwned>
-                <AddToCart slug={course.productSlug} className="mt-3 [&_button]:w-full [&_form]:w-full" />
+                <AddToCart slug={course.productSlug} block className="mt-3" />
               </UnlessOwned>
             ) : null}
+            {/* Shown to owners too: giving a course you have is the usual case. */}
+            {course.productSlug ? <GiftLink href={`/checkout?product=${course.productSlug}&gift=1`} /> : null}
           </ViewerPurchasePanel>
         }
       >
@@ -92,10 +112,10 @@ export default async function CoursePage({
         <ProductSection title="What you get">
           <CheckList
             items={[
-              "Every lesson of the course, in the order Tony teaches it",
+              "Lifetime access to every lesson of the course, in the order Tony teaches it",
               "Video lessons with written notes alongside",
-              "Downloadable resources",
-              "Your progress saved across devices",
+              "Access to the course's downloadable resources",
+              "Your progress saved across your devices",
             ]}
           />
         </ProductSection>

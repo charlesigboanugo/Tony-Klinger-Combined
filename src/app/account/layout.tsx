@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { AccountNav } from "@/components/account/AccountNav";
 import { Container } from "@/components/layout/Container";
 import { WorkspaceHeader } from "@/components/navigation/WorkspaceHeader";
+import { SessionSync } from "@/components/navigation/SessionSync";
 import { requireSession, requireUser } from "@/lib/permissions";
 
 /**
@@ -15,8 +16,8 @@ import { requireSession, requireUser } from "@/lib/permissions";
  * direction. Oxblood is Account's identity colour, on the strip.
  *
  * The sidebar sticks flush under the header and runs to the bottom of the
- * viewport, scrolling on its own if its items outgrow it (note 04 §32.2). Below lg the navigation collapses to
- * one section button above the page (AccountNav).
+ * viewport, scrolling on its own if its items outgrow it (note 04 §32.2). Below lg there is no
+ * sidebar: the header's hamburger opens the same list from the left (§32.4).
  */
 export default async function AccountLayout({
   children,
@@ -42,17 +43,19 @@ export default async function AccountLayout({
 
   return (
     <div className="flex min-h-svh flex-col">
+      <SessionSync email={context.email} />
       <WorkspaceHeader
         label="Account"
         home="/account"
         strip="bg-block-oxblood"
         email={context.email ?? ""}
-        links={context.isStaff ? [{ href: "/admin", label: "Admin" }] : []}
+        admin={context.isStaff}
+        menu={<AccountNav variant="drawer" />}
       />
 
       <Container className="flex-1">
         <div className="flex flex-col gap-6 pt-6 pb-20 sm:pt-8 lg:flex-row lg:items-start lg:gap-12 lg:pt-0 lg:pb-0">
-          <aside className="z-30 lg:sticky lg:top-16.25 lg:h-[calc(100svh-4.0625rem)] lg:w-52 lg:shrink-0 lg:overflow-y-auto">
+          <aside className="z-30 hidden lg:sticky lg:block lg:top-16.25 lg:h-[calc(100svh-4.0625rem)] lg:w-52 lg:shrink-0 lg:overflow-y-auto">
             <div className="lg:pt-10 lg:pb-10">
               <AccountNav />
             </div>

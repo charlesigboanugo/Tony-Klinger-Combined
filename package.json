@@ -11,13 +11,18 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:status": "supabase status",
-    "db:types": "supabase gen types typescript --local > src/types/database.ts",
+    "db:types": "supabase gen types typescript --db-url postgresql://postgres:postgres@127.0.0.1:54322/postgres --schema public,graphql_public > src/types/database.ts.tmp && mv src/types/database.ts.tmp src/types/database.ts || (rm -f src/types/database.ts.tmp; exit 1)",
     "test:db": "supabase test db",
     "email:send": "curl -s -H \"Authorization: Bearer $(grep '^CRON_SECRET=' .env.local | cut -d= -f2-)\" http://127.0.0.1:3000/api/cron/send-emails",
+    "stripe:reconcile": "curl -s -H \"Authorization: Bearer $(grep '^CRON_SECRET=' .env.local | cut -d= -f2-)\" http://127.0.0.1:3000/api/cron/reconcile-stripe",
+    "stripe:sync": "curl -s -H \"Authorization: Bearer $(grep '^CRON_SECRET=' .env.local | cut -d= -f2-)\" http://127.0.0.1:3000/api/cron/sync-stripe",
+    "stripe:archive": "node scripts/stripe-archive.mjs",
     "images:import": "node scripts/import-images.mjs",
     "images:compress": "node scripts/compress-images.mjs",
     "audio:import": "node scripts/import-audio.mjs",
-    "content:setup": "node scripts/setup-content.mjs"
+    "content:setup": "node scripts/setup-content.mjs",
+    "dev:samples": "node scripts/dev-samples.mjs",
+    "samples:test": "node scripts/dev-samples.mjs --env .env.remote.local"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",

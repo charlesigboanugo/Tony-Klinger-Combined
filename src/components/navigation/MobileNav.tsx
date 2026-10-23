@@ -38,12 +38,15 @@ export function MobileNav({
   open,
   onClose,
   userEmail,
+  admin = false,
   cartCount = 0,
   pathname,
 }: {
   open: boolean;
   onClose: () => void;
   userEmail?: string | null;
+  /** The account holds a staff role, so the foot offers Admin too. */
+  admin?: boolean;
   cartCount?: number;
   pathname: string;
 }) {
@@ -195,6 +198,11 @@ export function MobileNav({
             <ButtonLink href="/cart" variant="onBlockOutline" onClick={onClose}>
               {cartCount > 0 ? `Cart (${cartCount})` : "Cart"}
             </ButtonLink>
+            {userEmail && admin ? (
+              <ButtonLink href="/admin" variant="onBlockOutline" onClick={onClose} className="sm:col-span-2">
+                Admin
+              </ButtonLink>
+            ) : null}
           </div>
 
           {userEmail ? (

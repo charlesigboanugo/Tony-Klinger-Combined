@@ -123,17 +123,17 @@ export function AcademyLanding() {
       <Section>
         <Container>
           <div className="flex flex-col items-center gap-6 rounded-(--radius-lg) bg-block-noir px-6 py-12 text-center text-block-foreground sm:px-10">
-            <h2 className="max-w-2xl font-display text-balance">Already a member?</h2>
+            <h2 className="max-w-2xl font-display text-balance">Already with us?</h2>
             <p className="max-w-xl text-block-foreground/80">
-              Sign in to carry on where you left off. New here? Memberships include courses and
+              Sign in to carry on where you left off. New here? A Coaching Pass gives you a year of
               coaching from the first day.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <ButtonLink href="/auth/sign-in?next=%2Facademy" variant="onBlock">
                 Sign in
               </ButtonLink>
-              <ButtonLink href="/coaching/memberships" variant="onBlockOutline">
-                Compare memberships
+              <ButtonLink href="/coaching/passes" variant="onBlockOutline">
+                Compare the passes
               </ButtonLink>
             </div>
           </div>
@@ -195,7 +195,7 @@ const AREAS = [
 const STEPS = [
   {
     title: "Choose what suits you",
-    body: "A single course, a cohort place, coaching sessions, or a membership that bundles them.",
+    body: "A single course, a cohort place, coaching sessions, or a Coaching Pass that bundles them.",
   },
   {
     title: "It appears straight away",

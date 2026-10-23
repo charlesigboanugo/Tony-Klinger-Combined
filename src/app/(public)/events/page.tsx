@@ -14,16 +14,18 @@ import {
   listEventsByTime,
   type PublicEvent,
 } from "@/lib/content/events";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { cn } from "@/lib/utils/cn";
 
 /** Short, so an event moves from "coming up" to "past" within minutes. */
 export const revalidate = 300;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Events",
   description:
     "Talks, screenings, Q&As and live sessions with Tony Klinger — what is coming up, and what has been.",
-};
+  path: "/events",
+});
 
 /**
  * Events — note 03 §8.1.
@@ -41,13 +43,15 @@ export default async function EventsPage() {
 
   return (
     <>
-      <section className="grain relative isolate overflow-hidden bg-block-noir text-block-foreground">
+      {/* Fills the screen below the header (owner, 2026-10-08), with the words
+          centred in it; 4rem and 4.5rem are the header's height, as on home. */}
+      <section className="grain relative isolate flex min-h-[calc(100svh-4rem)] flex-col justify-center overflow-hidden bg-block-noir text-block-foreground lg:min-h-[calc(100svh-4.5rem)]">
         {/* A projector's pool of light behind the title — no photo needed. */}
         <div
           aria-hidden="true"
           className="absolute top-0 left-1/2 -z-10 h-[140%] w-[min(70rem,140vw)] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,color-mix(in_oklab,var(--block-foreground)_14%,transparent),transparent_62%)]"
         />
-        <Container className="pt-14 pb-16 text-center sm:pt-18 sm:pb-20 lg:pt-[max(3.5rem,calc(var(--hero-text-top)-1.5rem))] lg:pb-24">
+        <Container className="py-16 text-center sm:py-20 lg:py-24">
           <Reveal className="mx-auto max-w-3xl">
             <Eyebrow align="center" className="text-block-foreground/80">In person and online</Eyebrow>
             <h1 className="mt-5">Events</h1>
@@ -64,13 +68,13 @@ export default async function EventsPage() {
                 className="group inline-flex max-w-full items-center gap-3 rounded-full border border-block-foreground/25 bg-block-foreground/5 py-2 pr-5 pl-2 text-left text-sm transition-colors hover:border-block-foreground/50 hover:bg-block-foreground/10"
               >
                 <span className="shrink-0 rounded-full bg-button px-3 py-1 text-xs font-semibold tracking-[0.08em] text-button-foreground uppercase">
-                  Next
+                  {next.inProgress ? "Now" : "Next"}
                 </span>
                 <span className="min-w-0 truncate">
                   <span className="font-semibold">{next.name}</span>
                   <span className="text-block-foreground/70">
                     {" · "}
-                    {next.starts_at ? eventDay(next.starts_at) : "Date to be announced"}
+                    {next.inProgress ? "Happening now" : next.starts_at ? eventDay(next.starts_at) : "Date to be announced"}
                   </span>
                 </span>
                 <span aria-hidden="true" className="transition-transform duration-(--dur-base) ease-expo group-hover:translate-x-1 motion-reduce:transform-none">
@@ -230,7 +234,7 @@ function FeatureBilling({ event }: { event: PublicEvent }) {
       <Frame event={event} sizes="(min-width: 1024px) 58vw, 100vw" priority />
       <div>
         <p className="text-sm font-semibold tracking-[0.08em] text-primary uppercase">
-          {event.starts_at ? eventDay(event.starts_at) : "Date to be announced"}
+          {event.inProgress ? "Happening now" : event.starts_at ? eventDay(event.starts_at) : "Date to be announced"}
         </p>
         <h3 className="mt-4 font-display text-[clamp(1.75rem,1.25rem+1.5vw,2.75rem)] leading-tight font-semibold text-balance">
           {event.name}
@@ -245,7 +249,7 @@ function FeatureBilling({ event }: { event: PublicEvent }) {
           {event.location ? (
             <div className="flex gap-3"><dt className="w-14 shrink-0 text-muted-foreground">Where</dt><dd>{event.location}</dd></div>
           ) : null}
-          <div className="flex gap-3"><dt className="w-14 shrink-0 text-muted-foreground">Entry</dt><dd>{priceLabel(event)}</dd></div>
+          <div className="flex gap-3"><dt className="w-14 shrink-0 text-muted-foreground">Entry</dt><dd>{event.inProgress ? "Under way: booking has closed" : priceLabel(event)}</dd></div>
         </dl>
         <span className="mt-8 inline-flex items-center gap-2 font-semibold text-primary">
           Event details
@@ -265,14 +269,16 @@ function Billing({ event, past }: { event: PublicEvent; past?: boolean }) {
         past={past}
         sizes={past ? "(min-width: 1024px) 22vw, (min-width: 640px) 45vw, 100vw" : "(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 100vw"}
       />
-      <p className="mt-4 text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
-        {event.starts_at ? eventDay(event.starts_at) : "Date to be announced"}
+      <p className={cn("mt-4 text-xs font-semibold tracking-[0.08em] uppercase", event.inProgress ? "text-primary" : "text-muted-foreground")}>
+        {event.inProgress ? "Happening now" : event.starts_at ? eventDay(event.starts_at) : "Date to be announced"}
       </p>
       <h3 className={cn("mt-2 font-display leading-snug font-semibold text-balance transition-colors group-hover:text-primary", past ? "text-lg" : "text-xl")}>
         {event.name}
       </h3>
       {event.location ? <p className="mt-1.5 text-sm text-muted-foreground">{event.location}</p> : null}
-      {past ? null : <p className="mt-3 text-sm font-medium">{priceLabel(event)}</p>}
+      {past ? null : (
+        <p className="mt-3 text-sm font-medium">{event.inProgress ? "Under way: booking has closed" : priceLabel(event)}</p>
+      )}
     </Link>
   );
 }

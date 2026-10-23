@@ -9,18 +9,22 @@ import { DesignPhoto, PhotoMosaic } from "@/components/media/DesignPhoto";
 import { PhotoCredit } from "@/components/media/PhotoCredit";
 import { StoredImage } from "@/components/media/StoredImage";
 import { Reveal } from "@/components/motion/Reveal";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { ButtonArrow, ButtonLink } from "@/components/ui/Button";
 import { COVER_FOCUS_CLASS, listCatalogue, type CatalogueItem } from "@/lib/content/catalogue";
 import { listTestimonials } from "@/lib/content/testimonials";
+import { pageMetadata } from "@/lib/seo/metadata";
+import { tonyPerson } from "@/lib/seo/structured-data";
 import { designPhotos } from "@/lib/site/design-photos";
 import { cn } from "@/lib/utils/cn";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "About",
   description:
     "Tony Klinger — producer, director, author and educator, with six decades in film, television and music.",
-};
+  path: "/about",
+});
 
 const eyebrow = "text-xs font-semibold tracking-[0.2em] uppercase";
 
@@ -322,6 +326,7 @@ export default async function AboutPage() {
 
   return (
     <>
+      <JsonLd data={tonyPerson()} />
       {/*
         TITLE CARD — noir, with the portrait dissolved into the field rather
         than boxed beside it (owner, 2026-09-25). The photo fills the right

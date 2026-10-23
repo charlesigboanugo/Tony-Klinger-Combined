@@ -47,7 +47,7 @@ export function OwnedState({
             ? `${entitlement.remaining} session${entitlement.remaining === 1 ? "" : "s"} remaining.`
             : entitlement.expiresAt
               ? `Access runs until ${new Date(entitlement.expiresAt).toLocaleDateString("en-GB")}.`
-              : "Included in your membership."}
+              : "Included in your Coaching Pass."}
         </p>
         <div className="mt-4">
           <ButtonLink href={deliveryHref}>Go to it</ButtonLink>

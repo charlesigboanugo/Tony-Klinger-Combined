@@ -55,7 +55,7 @@ const ROUTES = [
   "/catalogue/watch",
   "/coaching",
   "/coaching/about",
-  "/coaching/memberships",
+  "/coaching/passes",
   "/coaching/courses",
   "/coaching/group-coaching",
   "/coaching/cohorts",
@@ -140,7 +140,7 @@ if (shotOnly) {
 } else if (interact) {
   // Exercise the billing toggle for real, rather than trusting the unit maths.
   const page = await browser.newPage({ viewport: VIEWPORTS[2] });
-  await page.goto(BASE + "/coaching/memberships", { waitUntil: "networkidle" });
+  await page.goto(BASE + "/coaching/passes", { waitUntil: "networkidle" });
 
   const read = () =>
     page.$$eval("ol > li", (lis) =>

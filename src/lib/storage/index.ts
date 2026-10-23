@@ -13,10 +13,10 @@ export const BUCKETS = {
   avatars: "avatars",
   /** All marketing imagery, including course thumbnails. Public. */
   siteMedia: "site-media",
-  /** Material attached to Academy content. Private, entitlement-gated. */
+  /** Course material only (owner, 2026-10-15). Private, entitlement-gated. */
   courseAssets: "course-assets",
-  /** Standalone gated documents, not tied to a course. Private. */
-  documents: "documents",
+  /** Private uploads from Media that are not course material (migration 0037). */
+  privateMedia: "private-media",
 } as const;
 
 export type Bucket = (typeof BUCKETS)[keyof typeof BUCKETS];

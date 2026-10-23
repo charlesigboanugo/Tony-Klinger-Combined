@@ -68,7 +68,7 @@ export function CancelMembership({
       {/* A button, not a link: it acts here rather than going somewhere.
           Outline, like "Update card" — the dialog carries the red one. */}
       <Button type="button" variant="outline" size="sm" onClick={show} aria-haspopup="dialog">
-        Cancel membership
+        Cancel subscription
       </Button>
 
       <dialog
@@ -83,7 +83,7 @@ export function CancelMembership({
       >
         <div className="scale-95 rounded-(--radius-lg) border border-border bg-surface p-6 text-foreground opacity-0 shadow-lift transition-[opacity,transform] duration-200 ease-out in-data-[open=true]:scale-100 in-data-[open=true]:opacity-100 motion-reduce:transition-none sm:p-7">
           <h2 id="cancel-title" className="text-xl font-semibold">
-            Cancel your {tierName} membership?
+            Cancel your {tierName} subscription?
           </h2>
           <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
             <li>
@@ -120,10 +120,10 @@ export function CancelMembership({
 
             <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:justify-end">
               <Button type="button" variant="outline" size="sm" onClick={hide}>
-                Keep my membership
+                Keep my subscription
               </Button>
               <SubmitButton variant="destructive" size="sm" pendingLabel="Cancelling…">
-                Cancel membership
+                Cancel subscription
               </SubmitButton>
             </div>
           </form>

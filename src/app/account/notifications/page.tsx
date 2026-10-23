@@ -48,7 +48,7 @@ export default async function Page() {
               </span>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Order receipts, membership changes, booking confirmations and
+              Order receipts, changes to your Coaching Pass, booking confirmations and
               security notices. These are part of your account and cannot be
               turned off while it is open.
             </p>
@@ -78,7 +78,10 @@ export default async function Page() {
           <form action={updateMarketingPreference} className="mt-4">
             <input type="hidden" name="optIn" value={optedIn ? "false" : "true"} />
             <SubmitButton variant={optedIn ? "outline" : "primary"}>
-              {optedIn ? "Unsubscribe from news and offers" : "Subscribe to news and offers"}
+              {optedIn ? "Unsubscribe" : "Subscribe"}
+              {/* The card is titled "News and offers"; on a phone the short
+                  label is enough, and the long one ran off the screen. */}
+              <span className="hidden sm:inline">{optedIn ? "from news and offers" : "to news and offers"}</span>
             </SubmitButton>
           </form>
 

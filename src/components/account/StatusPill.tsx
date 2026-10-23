@@ -41,7 +41,9 @@ export const ORDER_STATUS: Record<string, { label: string; tone: PillTone }> = {
   pending: { label: "Awaiting payment", tone: "warn" },
   processing: { label: "Processing", tone: "warn" },
   failed: { label: "Payment failed", tone: "bad" },
-  cancelled: { label: "Cancelled", tone: "neutral" },
+  // A checkout that was never finished (owner, 2026-10-23): nothing was charged,
+  // so not "cancelled", which reads as something taken back.
+  cancelled: { label: "Not completed", tone: "neutral" },
   refunded: { label: "Refunded", tone: "neutral" },
 };
 

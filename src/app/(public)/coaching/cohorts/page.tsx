@@ -7,15 +7,32 @@ import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { listCohorts } from "@/lib/content/coaching";
+import { phaseStatus } from "@/lib/content/offer-status";
+import { listCohorts, listIntakes } from "@/lib/content/coaching";
+import { pageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Interactive Cohorts",
-  description: "Eight workshops of three hours — twenty-four hours together.",
-};
+  description:
+    "Eight workshops of three hours — twenty-four hours together.",
+  path: "/coaching/cohorts",
+});
 
 export default async function CohortsPage() {
   const cohorts = await listCohorts();
+
+  // The cohorts are fixed; their intakes say when each is next on and whether
+  // it can be joined (migration 0017).
+  const intakes = await listIntakes(cohorts.map((c) => c.id));
+  const day = (value: string) =>
+    new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/London" });
+  // When it is on, as the chip on the card's photograph; the intake's dates
+  // as the quieter line at its foot.
+  const statusOf = (cohortId: string) => phaseStatus(intakes.filter((i) => i.cohortId === cohortId));
+  const datesOf = (cohortId: string) => {
+    const intake = intakes.find((i) => i.cohortId === cohortId);
+    return intake ? `${intake.label} · ${day(intake.startsAt)} to ${day(intake.endsAt)}` : null;
+  };
 
   return (
     <Section>
@@ -33,8 +50,8 @@ export default async function CohortsPage() {
             count stats). */}
         {cohorts.length === 0 ? (
           <EmptyState
-            title="No cohorts scheduled"
-            description="New cohort dates are announced here."
+            title="No cohorts yet"
+            description="Cohorts are announced here."
           />
         ) : (
           <OfferGrid count={cohorts.length}>
@@ -49,15 +66,8 @@ export default async function CohortsPage() {
                      (note 07 §16.1). */
                   eyebrow={`${cohort.cohort_level} cohort`}
                   cta="View cohort"
-                  meta={
-                    cohort.starts_at
-                      ? `Starts ${new Date(cohort.starts_at).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })}`
-                      : "Dates to be announced"
-                  }
+                  status={statusOf(cohort.id)}
+                  meta={datesOf(cohort.id)}
                   prices={cohort.prices}
                   storagePath={cohort.storagePath}
                   seed={cohort.slug}

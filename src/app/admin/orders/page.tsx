@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { AdminFilter, AdminSort } from "@/components/admin/AdminSort";
 import { AdminTable, StatusPill } from "@/components/admin/AdminTable";
-import { AdminPageHeader, FilterTabs, PersonCell, humanise, ukDate } from "@/components/admin/AdminUI";
+import { AdminPageHeader, AdminSearch, FilterTabs, humanise, PersonCell, ukDate } from "@/components/admin/AdminUI";
 import { ORDER_STATUSES, adminOrderList, isOneOf, peopleByIds } from "@/lib/admin/operations";
 import { formatPrice } from "@/lib/commerce/pricing";
+import { SEARCH_DEPTH, applyFilters, readQuery, readSort, searchRows, sortRows } from "@/lib/admin/sort";
 import { requirePermission } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Orders · Admin", robots: { index: false } };
@@ -20,8 +22,34 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
   const params = await searchParams;
   const status = isOneOf(ORDER_STATUSES, params.status) ? params.status : undefined;
 
-  const { orders, counts } = await adminOrderList(status);
-  const people = await peopleByIds(orders.map((o) => o.user_id));
+  const query = readQuery(params);
+  const { orders: loaded, counts } = await adminOrderList(status, query ? SEARCH_DEPTH : undefined);
+  const people = await peopleByIds(loaded.map((o) => o.user_id));
+  // By the customer's name or email, the order number, or its status.
+  const orders = searchRows(loaded, query, (o) => [
+    o.user_id ? people.get(o.user_id)?.name : null,
+    (o.user_id ? people.get(o.user_id)?.email : null) ?? o.guest_email,
+    o.id,
+    humanise(o.status),
+    o.user_id ? null : "guest",
+  ]);
+  const sort = readSort(params, ["placed", "customer", "status", "total"], query ? undefined : { key: "placed", dir: "desc" });
+  const f = applyFilters(orders, params, [
+    {
+      key: "customer",
+      name: "Customer",
+      read: (o) => (o.user_id ? "account" : "guest"),
+      label: (v) => (v === "guest" ? "Guest checkout" : "Has an account"),
+    },
+  ]);
+  const sortedOrders = sortRows(f.rows, sort, {
+    placed: (o) => o.created_at,
+    customer: (o) => (o.user_id ? (people.get(o.user_id)?.name ?? people.get(o.user_id)?.email) : o.guest_email),
+    status: (o) => o.status,
+    total: (o) => o.total,
+  });
+  const sortParams = params.sort ? { sort: sort?.key, dir: sort?.dir } : {};
+  const kept = { ...sortParams, ...f.active, q: query };
   const unclaimed = orders.filter((o) => o.status === "paid" && !o.user_id).length;
 
   return (
@@ -37,6 +65,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
         path="/admin/orders"
         param="status"
         current={status}
+        keep={kept}
         options={[
           { value: undefined, label: "All", count: counts.all },
           ...ORDER_STATUSES.filter((s) => counts[s] > 0 || s === status).map((s) => ({
@@ -55,11 +84,45 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
         </p>
       ) : null}
 
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <AdminSearch
+          path="/admin/orders"
+          query={query}
+          label="Customer name, email or order number"
+          placeholder="Customer name, email or order number"
+          keep={{ status, ...kept, q: undefined }}
+        />
+        <AdminSort
+          path="/admin/orders"
+          state={sort}
+          params={{ status, ...f.active, q: query }}
+          unsorted={query ? { label: "Best match" } : undefined}
+          options={[
+            { label: "Newest first", key: "placed", dir: "desc" },
+            { label: "Oldest first", key: "placed", dir: "asc" },
+            { label: "Highest total", key: "total", dir: "desc" },
+            { label: "Lowest total", key: "total", dir: "asc" },
+            { label: "Customer A to Z", key: "customer", dir: "asc" },
+            { label: "Status", key: "status", dir: "asc" },
+          ]}
+        />
+        {f.controls.map((c) => (
+          <AdminFilter key={c.param} path="/admin/orders" {...c} params={{ status, ...kept }} />
+        ))}
+      </div>
+
       <AdminTable
-        headers={["Placed", "Customer", "Status", "Total", ""]}
-        empty={orders.length === 0 ? (status ? `No ${humanise(status).toLowerCase()} orders.` : "No orders yet.") : undefined}
+        headers={[
+          { label: "Placed", key: "placed", first: "desc" },
+          { label: "Customer", key: "customer" },
+          { label: "Status", key: "status" },
+          { label: "Total", key: "total", first: "desc" },
+          "",
+        ]}
+        sort={{ path: "/admin/orders", state: sort, params: { status, ...f.active, q: query } }}
+        empty={sortedOrders.length === 0 ? (query ? `No orders match “${query}”.` : status ? `No ${humanise(status).toLowerCase()} orders.` : "No orders yet.") : undefined}
       >
-        {orders.map((o) => {
+        {sortedOrders.map((o) => {
           const person = o.user_id ? people.get(o.user_id) : undefined;
           return (
             <tr key={o.id} className="hover:bg-surface-muted/60">

@@ -24,6 +24,12 @@ export const forgotPasswordSchema = z.object({ email: emailField });
 
 export const magicLinkSchema = z.object({ email: emailField });
 
+/** Creating an account with an email link: no password, but a name. */
+export const magicSignUpSchema = z.object({
+  email: emailField,
+  displayName: z.string().trim().min(1, "Enter your name").max(80),
+});
+
 export const resetPasswordSchema = z
   .object({
     password: passwordField,

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { AccountHeader } from "@/components/account/AccountHeader";
 import { ORDER_STATUS, StatusPill, statusOf } from "@/components/account/StatusPill";
+import { UnclaimedOrders } from "@/components/account/UnclaimedOrders";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FormMessage } from "@/components/ui/Field";
@@ -25,14 +26,23 @@ export default async function OrdersPage({ searchParams }: PageProps<"/account/o
       {params.claimed === "1" ? (
         <div className="mb-6">
           <FormMessage tone="success">
-            That purchase is now attached to your account.{" "}
+            Your purchase is now in your account.{" "}
             <Link href="/account/entitlements" className="font-medium underline underline-offset-4">
               See your access
             </Link>
             .
           </FormMessage>
         </div>
+      ) : params.claimed === "0" ? (
+        <div className="mb-6">
+          <FormMessage>
+            We couldn&apos;t add that purchase. If it was made with a different email, use the
+            link in its receipt email, or contact us and we&apos;ll add it for you.
+          </FormMessage>
+        </div>
       ) : null}
+
+      <UnclaimedOrders />
 
       {orders.length === 0 ? (
         <EmptyState icon="receipt"

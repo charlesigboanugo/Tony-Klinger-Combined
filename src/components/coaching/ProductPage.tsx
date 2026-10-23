@@ -2,9 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { OfferStatusChip } from "@/components/coaching/OfferStatusChip";
 import { Container } from "@/components/layout/Container";
 import { StoredImage } from "@/components/media/StoredImage";
 import { Reveal } from "@/components/motion/Reveal";
+import type { OfferStatus } from "@/lib/content/offer-status";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -48,7 +50,15 @@ export function ProductHero({
   cover,
   price,
   priceNote,
+  status,
+  fullScreen = false,
 }: {
+  /**
+   * Fill the whole screen below the header, with no cap (owner, 2026-10-08,
+   * for events: "stretch out more in height to cover the full screen"). The
+   * default leaves 2rem at the fold and stops at 60rem.
+   */
+  fullScreen?: boolean;
   backHref: string;
   backLabel: string;
   eyebrow?: string | null;
@@ -57,6 +67,8 @@ export function ProductHero({
   cover: HeroCover;
   price?: string | null;
   priceNote?: string | null;
+  /** When it is on, beside the price: the start date, closing soon. */
+  status?: OfferStatus | null;
 }) {
   const hasCover = Boolean(cover.path || cover.src);
   return (
@@ -68,7 +80,12 @@ export function ProductHero({
     <section
       className={cn(
         "relative isolate overflow-hidden bg-block-noir text-block-foreground",
-        hasCover ? "min-h-[min(calc(100svh-6rem),60rem)] lg:min-h-[min(calc(100svh-6.5rem),60rem)]" : "grain",
+        !hasCover
+          ? "grain"
+          : fullScreen
+            ? // The header is 4rem, 4.5rem from lg — the same sum the home hero uses.
+              "min-h-[calc(100svh-4rem)] lg:min-h-[calc(100svh-4.5rem)]"
+            : "min-h-[min(calc(100svh-6rem),60rem)] lg:min-h-[min(calc(100svh-6.5rem),60rem)]",
       )}
     >
       {hasCover ? null : (
@@ -79,11 +96,11 @@ export function ProductHero({
       )}
       <div className="absolute inset-0 -z-10">
         {cover.path ? (
-          <StoredImage path={cover.path} alt="" fill priority quality={90} sizes="100vw" className={cover.focus} />
+          <StoredImage path={cover.path} alt={cover.alt ?? ""} fill priority quality={90} sizes="100vw" className={cover.focus} />
         ) : cover.src ? (
           <Image
             src={cover.src}
-            alt=""
+            alt={cover.alt ?? ""}
             fill
             priority
             fetchPriority="high"
@@ -141,11 +158,19 @@ export function ProductHero({
               {description}
             </p>
           ) : null}
-          {price ? (
-            <p className="mt-8 inline-flex items-baseline gap-2 rounded-full bg-button px-6 py-3 text-button-foreground shadow-lift ring-1 ring-white/20">
-              <span className="font-display text-3xl leading-none font-semibold tabular-nums">{price}</span>
-              {priceNote ? <span className="text-sm font-medium opacity-85">{priceNote}</span> : null}
-            </p>
+          {/* The price and WHEN IT IS ON, side by side: the two facts a
+              visitor decides on (owner, 2026-10-09: the date "much more
+              visible"). They wrap to two lines on a phone. */}
+          {price || status ? (
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              {price ? (
+                <p className="inline-flex items-baseline gap-2 rounded-full bg-button px-6 py-3 text-button-foreground shadow-lift ring-1 ring-white/20">
+                  <span className="font-display text-3xl leading-none font-semibold tabular-nums">{price}</span>
+                  {priceNote ? <span className="text-sm font-medium">{priceNote}</span> : null}
+                </p>
+              ) : null}
+              {status ? <OfferStatusChip status={status} size="hero" /> : null}
+            </div>
           ) : null}
         </Reveal>
       </Container>
@@ -175,9 +200,11 @@ export function ProductFacts({ facts }: { facts: { label: string; value: string 
 export function ProductLayout({ children, aside }: { children: ReactNode; aside: ReactNode }) {
   return (
     <Container className="py-14 sm:py-20">
-      <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-16">
+      {/* One column on phones, held to the screen's width: left to size
+          itself, it grew to the widest thing in it and pushed the page sideways. */}
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-16">
         <div className="min-w-0 space-y-14">{children}</div>
-        <aside id="buy" className="scroll-mt-28 lg:sticky lg:top-28 lg:self-start">
+        <aside id="buy" className="min-w-0 scroll-mt-28 lg:sticky lg:top-28 lg:self-start">
           {aside}
         </aside>
       </div>
@@ -233,17 +260,19 @@ export function PurchasePanel({
 }) {
   return (
     <div className="overflow-hidden rounded-(--radius-lg) border border-border bg-surface shadow-lift">
-      <div className="p-7">
+      {/* Tighter on the smallest phones, and the note wraps under the price
+          rather than pushing the panel wider than the screen. */}
+      <div className="p-5 sm:p-7">
         {price ? (
-          <p className="flex items-baseline gap-2">
-            <span className="font-display text-5xl leading-none font-semibold tabular-nums">{price}</span>
+          <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="font-display text-4xl leading-none font-semibold tabular-nums sm:text-5xl">{price}</span>
             {priceNote ? <span className="text-sm text-muted-foreground">{priceNote}</span> : null}
           </p>
         ) : null}
         <div className={cn(price && "mt-6")}>{children}</div>
       </div>
       {footnote ? (
-        <div className="border-t border-border bg-surface-muted/60 px-7 py-5 text-sm leading-relaxed text-muted-foreground">
+        <div className="border-t border-border bg-surface-muted/60 px-5 py-5 text-sm leading-relaxed text-muted-foreground sm:px-7">
           {footnote}
         </div>
       ) : null}
@@ -272,10 +301,10 @@ export function MobileBuyBar({
     <>
       <div aria-hidden="true" className="h-20 lg:hidden" />
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/98 px-4 py-3 lg:hidden">
-        <div className="mx-auto flex max-w-xl items-center justify-between gap-4">
+        <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
           {price ? (
-            <p className="flex items-baseline gap-1.5">
-              <span className="font-display text-2xl leading-none font-semibold tabular-nums">{price}</span>
+            <p className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
+              <span className="font-display text-xl leading-none font-semibold tabular-nums sm:text-2xl">{price}</span>
               {priceNote ? <span className="text-xs text-muted-foreground">{priceNote}</span> : null}
             </p>
           ) : (
@@ -283,7 +312,7 @@ export function MobileBuyBar({
           )}
           <Link
             href={href}
-            className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-button px-6 text-[0.9375rem] font-semibold text-button-foreground shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-button px-4 text-sm font-semibold sm:px-6 sm:text-[0.9375rem] text-button-foreground shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             {label}
           </Link>

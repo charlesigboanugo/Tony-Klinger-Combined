@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { AuthCard } from "@/app/auth/AuthCard";
 import { ResetPasswordForm } from "@/app/auth/reset-password/ResetPasswordForm";
 
-export const metadata: Metadata = { title: "Set your password", robots: { index: false } };
+export const metadata: Metadata = { title: "Set a password", robots: { index: false } };
 
 /**
  * Reached from the recovery email via /auth/callback, which exchanges the code
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Set your password", robots: { index:
  * before updating anything (note 05 §9).
  *
  * ALSO WHERE AN INVITATION LANDS (note 06 §14.2), which is why the wording is
- * conditional. Telling somebody who has never had an account to set a "new"
+ * conditional, and where an invitee may skip the password altogether. Telling somebody who has never had an account to set a "new"
  * password, and offering to resend a link they never lost, reads as though they
  * have arrived at the wrong page.
  */
@@ -24,17 +24,17 @@ export default async function ResetPasswordPage({
   return (
     <AuthCard
       eyebrow={invited ? "Welcome" : "New password"}
-      title={invited ? "Set your password" : "Set a new password"}
+      title={invited ? "You're in" : "Set a new password"}
       description={
         invited
-          ? "Welcome. Choose a password you don't use anywhere else — you'll stay signed in on this device once it's saved."
+          ? "Your account is ready. Choose a password if you'd like one, or skip it and sign in with an email link or Google."
           : "Choose one you don't use anywhere else. You'll stay signed in on this device once it's saved."
       }
       altPrompt={invited ? undefined : "Link expired or already used?"}
       altHref={invited ? undefined : "/auth/forgot-password"}
       altLabel={invited ? undefined : "Send a new one"}
     >
-      <ResetPasswordForm />
+      <ResetPasswordForm invited={invited} />
     </AuthCard>
   );
 }

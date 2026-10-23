@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AccountHeader, AccountSection } from "@/components/account/AccountHeader";
+import { AccountGroup, AccountHeader, AccountSection } from "@/components/account/AccountHeader";
 import { AcademyLanding } from "@/components/academy/AcademyLanding";
 import { CohortCard } from "@/components/academy/CohortCard";
 import { CourseCard } from "@/components/academy/CourseCard";
 import { ProgressBar } from "@/components/academy/ProgressBar";
 import { DateBadge, JoinAction } from "@/components/academy/SessionParts";
+import { StaffOnly } from "@/components/academy/StaffView";
 import { StoredImage } from "@/components/media/StoredImage";
 import { Reveal } from "@/components/motion/Reveal";
 import { ButtonLink } from "@/components/ui/Button";
@@ -15,21 +16,36 @@ import { Eyebrow } from "@/components/ui/Eyebrow";
 import {
   myCohorts,
   myCourses,
-  myMembership,
   progressAcrossCourses,
   sessionCredits,
 } from "@/lib/academy";
-import { myCoaching, nextWorkshops } from "@/lib/academy/delivery";
+import { groupBy } from "@/lib/utils/group";
+import { myMembership } from "@/lib/academy/membership";
+import { academyStaffView, allCohorts, allCourses } from "@/lib/academy/staff";
+import { myCoaching, myQaSessions, nextWorkshops, sessionGroup } from "@/lib/academy/delivery";
 import { formatSlot, greetingFor } from "@/lib/academy/format";
 import { myProfile } from "@/lib/account";
 import { formatDate } from "@/lib/account/format";
 import { getAuthContext } from "@/lib/permissions";
+import { pageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
-  title: "Academy",
-  description: "Your courses, coaching and cohorts.",
-  robots: { index: false },
-};
+/**
+ * A guest gets the public landing page, which is worth finding in search, so
+ * it is indexable with a description written for newcomers. The signed-in
+ * dashboard is personal and stays out of the index.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const context = await getAuthContext();
+  if (!context) {
+    return pageMetadata({
+      title: "Academy",
+      description:
+        "Tony Klinger's courses, live cohort workshops and Group Coaching, all under one account, with your progress kept for you.",
+      path: "/academy",
+    });
+  }
+  return { title: "Academy", robots: { index: false } };
+}
 
 /**
  * Academy entry — three renderings (note 03 §18, R14):
@@ -42,7 +58,7 @@ export const metadata: Metadata = {
  *
  *   1. Carry on learning      the course under way and its next lesson, one press away
  *   2. What's coming up       booked coaching and cohort workshops, joinable in the window
- *   3. What I have            courses and cohorts, with membership and credits beside them
+ *   3. What I have            the Coaching Pass on its own line, then courses and cohorts
  *
  * No count tiles ("Courses: 2"): the owner rejects decorative counts site-wide
  * and the sections below show the things themselves (note 10, Account overview).
@@ -51,22 +67,33 @@ export default async function AcademyPage() {
   const context = await getAuthContext();
   if (!context) return <AcademyLanding />;
 
-  const [courses, progress, credits, membership, cohorts, coaching, workshops, profile] =
+  const staffView = await academyStaffView();
+  const [courses, progress, credits, membership, ownCohorts, everyCohort, coaching, workshops, profile, qa] =
     await Promise.all([
-      myCourses(),
+      // Staff view (note 06 §23.2): every course and cohort, not only their own.
+      staffView ? allCourses() : myCourses(),
       progressAcrossCourses(),
       sessionCredits(),
       myMembership(),
       myCohorts(),
+      staffView ? allCohorts() : Promise.resolve(null),
       myCoaching(),
       nextWorkshops(3),
       myProfile(),
+      // Empty for anyone whose pass does not include the Q&A (RLS).
+      myQaSessions(),
     ]);
 
   const firstName = profile?.first_name?.trim() || profile?.display_name?.trim().split(" ")[0];
   const greeting = greetingFor();
+  const cohorts = everyCohort ?? ownCohorts;
   const hasAnything =
-    courses.length > 0 || credits !== null || membership !== null || cohorts.length > 0;
+    staffView || courses.length > 0 || credits !== null || membership !== null || cohorts.length > 0;
+
+  // Joining is for people in the session. In the staff view a workshop or Q&A
+  // the staff member holds no place in is listed without its link.
+  const ownCohortSlugs = new Set(ownCohorts.map((c) => c.slug));
+  const qaViewOnly = staffView && !membership?.includesQa;
 
   const progressBySlug = new Map(progress.map((p) => [p.slug, p]));
 
@@ -75,8 +102,10 @@ export default async function AcademyPage() {
   const resumable = courses
     .map((c) => ({ course: c, p: progressBySlug.get(c.slug) }))
     .filter((x) => x.p && !x.p.done && x.p.resume);
-  const resume =
-    resumable.find((x) => x.p!.completed > 0) ?? resumable[0] ?? null;
+  // Not in the staff view: progress is kept only for people who hold a course.
+  const resume = staffView
+    ? null
+    : (resumable.find((x) => x.p!.completed > 0) ?? resumable[0] ?? null);
 
   // One timeline of what's coming: booked coaching and cohort workshops.
   const upcoming = [
@@ -85,8 +114,11 @@ export default async function AcademyPage() {
       title: s.title,
       startsAt: s.startsAt,
       endsAt: s.endsAt,
-      context: s.seriesName ?? "Group Coaching",
+      // "Producing · single session" where it is one session bought for its
+      // date, so it does not read as holding the series (owner, 2026-10-10).
+      context: sessionGroup(s),
       join: s.join,
+      viewOnly: false,
       href: "/academy/coaching",
     })),
     ...workshops.map((w) => ({
@@ -95,12 +127,32 @@ export default async function AcademyPage() {
       startsAt: w.startsAt,
       endsAt: w.endsAt,
       context: w.cohortName ?? "Cohort workshop",
-      join: w.join,
+      ...(staffView && !(w.cohortSlug && ownCohortSlugs.has(w.cohortSlug))
+        ? { join: null, viewOnly: true }
+        : { join: w.join, viewOnly: false }),
       href: w.cohortSlug ? `/academy/cohorts/${w.cohortSlug}` : "/academy/cohorts",
     })),
   ]
     .sort((a, b) => +new Date(a.startsAt) - +new Date(b.startsAt))
     .slice(0, 4);
+
+  // THE NEXT Q&A IS ALWAYS HERE (owner, 2026-10-10: "do what's best" in place
+  // of a menu section of its own). It is one date a month that nobody goes
+  // looking for, so it is put where people look for what is next, whatever
+  // else is coming, rather than competing for one of the four places above.
+  const nextQa = qa.upcoming[0];
+  if (nextQa) {
+    upcoming.push({
+      key: `q-${nextQa.id}`,
+      title: nextQa.title,
+      startsAt: nextQa.startsAt,
+      endsAt: nextQa.endsAt,
+      context: "Live Q&A with Tony",
+      join: qaViewOnly ? null : nextQa.join,
+      viewOnly: qaViewOnly,
+      href: "/academy/pass#live-q-a-with-tony",
+    });
+  }
 
   return (
     <>
@@ -109,7 +161,7 @@ export default async function AcademyPage() {
         description={
           hasAnything
             ? "Everything you're learning, and everything coming up, in one place."
-            : "You're signed in. Your Academy fills up the moment you have a course, a cohort place or coaching."
+            : "You're signed in. Your Academy fills up the moment you have a Coaching Pass, a course, a cohort place or coaching."
         }
       />
 
@@ -158,82 +210,99 @@ export default async function AcademyPage() {
             </Reveal>
           ) : null}
 
-          <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-8">
+          {/*
+            THE COACHING PASS, ON A LINE OF ITS OWN (owner, 2026-10-09). It sat
+            in a narrow column beside "Coming up", above a "Session credits"
+            tile. That tile is gone: sessions are not held as credits to spend
+            any more — a series is registered for and a single session is
+            bought for its date — so it only ever said "None".
+          */}
+          <section aria-labelledby="pass-title">
+            <div className="flex flex-col gap-4 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-6">
+              <div className="flex min-w-0 items-center gap-4">
+                <IconTile name="star" tone={membership || staffView ? "accent" : "neutral"} />
+                <div className="min-w-0">
+                  <h2 id="pass-title" className="font-sans text-sm font-normal text-muted-foreground">
+                    Coaching Pass
+                  </h2>
+                  <p className={`font-display text-2xl leading-tight font-semibold ${membership || staffView ? "" : "text-muted-foreground"}`}>
+                    {membership ? membership.tierName : staffView ? "Everything, view only" : "None"}
+                  </p>
+                  {membership?.date ? (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {membership.renews ? "Renews" : "Ends"} {formatDate(membership.date)}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <ButtonLink
+                href={membership || staffView ? "/academy/pass" : "/coaching/passes"}
+                size="sm"
+                variant={membership || staffView ? "primary" : "outline"}
+                className="shrink-0 self-start sm:self-auto"
+              >
+                {membership ? "Open your pass" : staffView ? "Open the pass" : "Compare the passes"}
+              </ButtonLink>
+            </div>
+          </section>
+
+          <div>
             <AccountSection
               title="Coming up"
               className="min-w-0"
               action={
                 upcoming.length ? (
-                  <Link href="/account/bookings" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
-                    All bookings
+                  <Link href="/academy/coaching" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+                    All sessions
                   </Link>
                 ) : null
               }
             >
               {upcoming.length ? (
-                <ul className="divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface">
-                  {upcoming.map((item) => (
-                    <li key={item.key} className="flex flex-wrap items-center gap-4 p-4">
-                      <DateBadge value={item.startsAt} />
-                      <div className="min-w-0 flex-1">
-                        <Link href={item.href} className="font-medium hover:underline hover:underline-offset-4">
-                          {item.title}
-                        </Link>
-                        <p className="text-sm text-muted-foreground">
-                          {formatSlot(item.startsAt, item.endsAt)} · {item.context}
-                        </p>
-                      </div>
-                      {item.join ? <JoinAction join={item.join} /> : null}
-                    </li>
+                // By series or cohort (owner, 2026-10-09), each in date order.
+                <div className="space-y-6">
+                  {groupBy(upcoming, (item) => item.context).map((g) => (
+                    <AccountGroup key={g.key} title={g.key} count={g.items.length}>
+                      <ul className="divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface">
+                        {g.items.map((item) => (
+                          <li key={item.key} className="flex flex-wrap items-center gap-4 p-4">
+                            <DateBadge value={item.startsAt} />
+                            <div className="min-w-0 flex-1">
+                              <Link href={item.href} className="font-medium hover:underline hover:underline-offset-4">
+                                {item.title}
+                              </Link>
+                              <p className="text-sm text-muted-foreground">{formatSlot(item.startsAt, item.endsAt)}</p>
+                            </div>
+                            {item.join ? <JoinAction join={item.join} /> : item.viewOnly ? <StaffOnly /> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </AccountGroup>
                   ))}
-                </ul>
+                </div>
               ) : credits && credits.remaining > 0 ? (
                 <div className="flex flex-col gap-4 rounded-(--radius-lg) border border-dashed border-border p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-medium">Nothing booked yet</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      You have {credits.remaining} session credit{credits.remaining === 1 ? "" : "s"} waiting to be used.
+                      You have {credits.remaining} session{credits.remaining === 1 ? "" : "s"} paid for and waiting for a date.
                     </p>
                   </div>
                   <ButtonLink href="/academy/coaching" size="sm">
-                    Book a session
+                    Choose a date
                   </ButtonLink>
                 </div>
               ) : (
                 <p className="rounded-(--radius-lg) border border-dashed border-border p-5 text-sm text-muted-foreground">
-                  Nothing scheduled. Booked coaching and cohort workshops appear here.
+                  Nothing scheduled. Your series, workshops and the next Q&amp;A appear here.
                 </p>
               )}
             </AccountSection>
 
-            <div className="space-y-5">
-              <StatusCard
-                icon="star"
-                label="Membership"
-                value={membership ? (membership.membership_tier ?? membership.status) : "None"}
-                muted={!membership}
-                note={
-                  membership?.current_period_end
-                    ? `${membership.status === "active" ? "Renews" : "Ends"} ${formatDate(membership.current_period_end)}`
-                    : undefined
-                }
-                href={membership ? "/account/memberships" : "/coaching/memberships"}
-                linkLabel={membership ? "Manage" : "Compare tiers"}
-              />
-              <StatusCard
-                icon="chat"
-                label="Session credits"
-                value={credits ? String(credits.remaining) : "None"}
-                muted={!credits || credits.remaining === 0}
-                note={credits ? (credits.remaining > 0 ? "Ready to book" : "All used") : undefined}
-                href={credits && credits.remaining > 0 ? "/academy/coaching" : "/coaching/group-coaching"}
-                linkLabel={credits && credits.remaining > 0 ? "Book a session" : "Get coaching"}
-              />
-            </div>
           </div>
 
           <AccountSection
-            title="Your courses"
+            title={staffView ? "Courses" : "Your courses"}
             action={
               <Link
                 href={courses.length ? "/academy/courses" : "/coaching/courses"}
@@ -247,20 +316,20 @@ export default async function AcademyPage() {
               <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {courses.map((course, index) => (
                   <Reveal as="li" key={course.id} delay={index * 60}>
-                    <CourseCard course={course} progress={progressBySlug.get(course.slug) ?? null} />
+                    <CourseCard course={course} progress={staffView ? null : (progressBySlug.get(course.slug) ?? null)} />
                   </Reveal>
                 ))}
               </ul>
             ) : (
               <p className="rounded-(--radius-lg) border border-dashed border-border p-5 text-sm text-muted-foreground">
-                No courses yet. Courses you buy, or that come with a membership, appear here.
+                No courses yet. Courses you buy, or that come with a Coaching Pass, appear here.
               </p>
             )}
           </AccountSection>
 
           {cohorts.length ? (
             <AccountSection
-              title="Your cohorts"
+              title={staffView ? "Cohorts" : "Your cohorts"}
               action={
                 <Link href="/academy/cohorts" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
                   All cohorts
@@ -279,43 +348,6 @@ export default async function AcademyPage() {
         </div>
       )}
     </>
-  );
-}
-
-function StatusCard({
-  icon,
-  label,
-  value,
-  note,
-  href,
-  linkLabel,
-  muted = false,
-}: {
-  icon: IconName;
-  label: string;
-  value: string;
-  note?: string;
-  href: string;
-  linkLabel: string;
-  muted?: boolean;
-}) {
-  return (
-    <div className="rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card">
-      <div className="flex items-center gap-3">
-        <IconTile name={icon} tone={muted ? "neutral" : "accent"} size="sm" />
-        <p className="text-sm text-muted-foreground">{label}</p>
-      </div>
-      {/* Aligned with the label's text, not the tile beside it. */}
-      <div className="pl-11">
-      <p className={`mt-1 font-display text-2xl font-semibold capitalize ${muted ? "text-muted-foreground" : ""}`}>
-        {value}
-      </p>
-      {note ? <p className="mt-1 text-sm text-muted-foreground">{note}</p> : null}
-      <Link href={href} className="mt-2 inline-block text-sm font-medium text-accent underline-offset-4 hover:underline">
-        {linkLabel}
-      </Link>
-      </div>
-    </div>
   );
 }
 
@@ -365,11 +397,11 @@ function ExploreAreas() {
       </ul>
       <div className="flex flex-col gap-4 rounded-(--radius-lg) bg-block-noir p-6 text-block-foreground sm:flex-row sm:items-center sm:justify-between sm:p-8">
         <div>
-          <p className="font-display text-2xl font-semibold">Everything in one membership</p>
-          <p className="mt-1 text-block-foreground/80">Courses, coaching and more, from Silver to Ultimate.</p>
+          <p className="font-display text-2xl font-semibold">Coaching, every month</p>
+          <p className="mt-1 text-block-foreground/80">Group Coaching, a growing video library and a monthly Q&amp;A with Tony.</p>
         </div>
-        <ButtonLink href="/coaching/memberships" variant="onBlock">
-          Compare memberships
+        <ButtonLink href="/coaching/passes" variant="onBlock">
+          Compare the passes
         </ButtonLink>
       </div>
     </div>

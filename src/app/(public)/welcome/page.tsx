@@ -79,14 +79,14 @@ export default async function WelcomePage({
     {
       icon: <CalendarIcon />,
       title: "Your sessions",
-      body: "Coaching is booked, not just bought. Pick a date when you're ready, and move it later if you need to.",
-      href: "/bookings",
-      cta: "See the schedule",
+      body: "One-to-one sessions are booked at a time that suits you. Everything else keeps your place as you pay.",
+      href: "/book",
+      cta: "Book a session",
     },
     {
       icon: <AccountIcon />,
       title: "Your account",
-      body: "Orders, memberships and your sign-in and security settings, all in one place.",
+      body: "Orders, your Coaching Pass and your sign-in and security settings, all in one place.",
       href: "/account",
       cta: "Go to your account",
     },

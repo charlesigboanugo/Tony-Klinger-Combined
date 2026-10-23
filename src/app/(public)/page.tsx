@@ -12,8 +12,10 @@ import { Carousel } from "@/components/motion/Carousel";
 import { LoopingStrip } from "@/components/motion/LoopingStrip";
 import { Marquee } from "@/components/motion/Marquee";
 import { Reveal } from "@/components/motion/Reveal";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { ButtonArrow, ButtonLink } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/commerce/pricing";
+import { leadPrice } from "@/lib/commerce/billing";
 import {
   CATALOGUE_CATEGORIES,
   listCatalogue,
@@ -28,15 +30,19 @@ import {
   type ProductPrice,
 } from "@/lib/content/coaching";
 import { listTestimonials } from "@/lib/content/testimonials";
+import { pageMetadata } from "@/lib/seo/metadata";
+import { tonyPerson, websiteData } from "@/lib/seo/structured-data";
 import { designPhotos } from "@/lib/site/design-photos";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { cn } from "@/lib/utils/cn";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Tony Klinger — Film producer, author and coach",
   description:
     "Six decades in film and television. Courses, coaching, cohorts and retreats for filmmakers, writers and producers.",
-};
+  path: "/",
+  absoluteTitle: true,
+});
 
 /** The headline, one entry per line — three lines (owner, 2026-09-24) — so
  *  each can rise on its own beat. The first line runs long over the photo's
@@ -129,7 +135,7 @@ const milestones: {
   {
     when: "Now",
     title: "The coaching programme",
-    note: "Memberships, courses, cohorts and one-to-one sessions — the experience above, passed on.",
+    note: "Coaching Passes, courses, cohorts and one-to-one sessions — the experience above, passed on.",
     href: "/coaching",
   },
 ];
@@ -192,22 +198,25 @@ export default async function HomePage() {
     the home page only points at them (owner, 2026-09-26).
   */
   const price = (p: ProductPrice | null) => (p ? formatPrice(p.amount, p.currency) : null);
-  const fromMonthly = lowest(tiers.flatMap((t) => t.prices), "recurring");
+  // Membership leads with whatever it is sold as: one payment for a year
+  // (owner, 2026-10-09), or a month where a monthly price is on sale.
+  const tierLeads = tiers.map((t) => leadPrice(t.prices)).filter((l) => l !== null);
+  const fromMembership = tierLeads.length > 0 ? tierLeads.reduce((a, b) => (b.price.amount < a.price.amount ? b : a)) : null;
 
   const offers: { title: string; href: string; summary: string; price: string | null; priceNote: string }[] = [
     {
-      title: "Membership",
-      href: "/coaching/memberships",
-      summary: "Monthly access that grows with each tier.",
-      price: price(fromMonthly),
-      priceNote: "a month",
+      title: "Coaching Pass",
+      href: "/coaching/passes",
+      summary: "A year of coaching, at three levels.",
+      price: price(fromMembership?.price ?? null),
+      priceNote: fromMembership?.note ?? "a year",
     },
     {
       title: "Group Coaching",
       href: "/coaching/group-coaching",
       summary: "Eight live sessions, up to eight people.",
       price: null,
-      priceNote: "Included with membership",
+      priceNote: "Included with a Coaching Pass",
     },
     {
       title: "Courses",
@@ -240,7 +249,8 @@ export default async function HomePage() {
   ];
 
   const silver = tiers.find((t) => t.rank === 1);
-  const silverMonthly = silver ? price(lowest(silver.prices, "recurring")) : null;
+  const silverLead = silver ? leadPrice(silver.prices) : null;
+  const silverMonthly = silverLead ? price(silverLead.price) : null;
 
   const nextSteps = [
     {
@@ -250,15 +260,15 @@ export default async function HomePage() {
       cta: "Browse the catalogue",
     },
     {
-      title: silver ? `Join ${silver.name} membership` : "Join as a member",
+      title: silver ? `Get the ${silver.name}` : "Get a Coaching Pass",
       line:
         silver && silverMonthly
-          ? `${silverMonthly} a month: ${silver.benefits
+          ? `${silverMonthly} ${silverLead?.note}: ${silver.benefits
               .map((b) => b[0].toLowerCase() + b.slice(1))
               .join(", and ")}.`
-          : "Every tier includes everything below it.",
-      href: "/coaching/memberships",
-      cta: "Compare membership",
+          : "Silver, Gold or Platinum, for twelve months.",
+      href: "/coaching/passes",
+      cta: "Compare the passes",
     },
     {
       title: "Ask Tony a question",
@@ -270,6 +280,8 @@ export default async function HomePage() {
 
   return (
     <>
+      <JsonLd data={websiteData()} />
+      <JsonLd data={tonyPerson()} />
       {/*
         HERO — a title card, not a card grid (note 01 §22, note 10 §5).
 

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AccessCard } from "@/components/account/AccessCard";
-import { AccountHeader, AccountSection } from "@/components/account/AccountHeader";
+import { AccessRow } from "@/components/account/AccessRow";
+import { AccountGroup, AccountHeader, AccountSection } from "@/components/account/AccountHeader";
 import { ButtonLink } from "@/components/ui/Button";
+import { groupBy } from "@/lib/utils/group";
 import { myAccess } from "@/lib/account/access";
 import { requireUser } from "@/lib/permissions";
 
@@ -52,25 +53,37 @@ export default async function EntitlementsPage() {
           </div>
         ) : (
           <AccountSection title="Ready to use">
-            <ul className="grid gap-5 md:grid-cols-2">
-              {live.map((item) => (
-                <li key={item.id}>
-                  <AccessCard item={item} />
-                </li>
+            <div className="space-y-14 sm:space-y-16">
+              {groupBy(live, (item) => item.kind).map((g) => (
+                <AccountGroup key={g.key} title={g.key} count={g.items.length}>
+                  <ul className="space-y-4">
+                    {g.items.map((item) => (
+                      <li key={item.id}>
+                        <AccessRow item={item} showKind={false} />
+                      </li>
+                    ))}
+                  </ul>
+                </AccountGroup>
               ))}
-            </ul>
+            </div>
           </AccountSection>
         )}
 
         {ended.length > 0 ? (
           <AccountSection title="Finished">
-            <ul className="grid gap-5 md:grid-cols-2">
-              {ended.map((item) => (
-                <li key={item.id}>
-                  <AccessCard item={item} />
-                </li>
+            <div className="space-y-14 sm:space-y-16">
+              {groupBy(ended, (item) => item.kind).map((g) => (
+                <AccountGroup key={g.key} title={g.key} count={g.items.length}>
+                  <ul className="space-y-4">
+                    {g.items.map((item) => (
+                      <li key={item.id}>
+                        <AccessRow item={item} showKind={false} />
+                      </li>
+                    ))}
+                  </ul>
+                </AccountGroup>
               ))}
-            </ul>
+            </div>
           </AccountSection>
         ) : null}
 
@@ -78,26 +91,40 @@ export default async function EntitlementsPage() {
           <dl className="grid gap-px overflow-hidden rounded-(--radius-lg) border border-border bg-border sm:grid-cols-2">
             {[
               {
-                q: "A membership",
+                q: "A Coaching Pass",
                 a: (
                   <>
-                    Memberships are shown under{" "}
-                    <Link href="/account/memberships" className="font-medium text-primary underline-offset-4 hover:underline">
-                      Memberships
+                    Your pass is shown under{" "}
+                    <Link href="/account/pass" className="font-medium text-primary underline-offset-4 hover:underline">
+                      Coaching Pass
                     </Link>
-                    , with when they renew.
+                    , with the date it ends.
                   </>
                 ),
               },
               {
-                q: "Private coaching",
+                q: "One-to-one coaching",
                 a: (
                   <>
-                    Private sessions are arranged with you directly and appear under{" "}
+                    A session you have paid for shows here with &ldquo;Choose a time&rdquo; until you book it. Once
+                    booked it is under{" "}
                     <Link href="/account/bookings" className="font-medium text-primary underline-offset-4 hover:underline">
                       Bookings
-                    </Link>{" "}
-                    once they&apos;re scheduled.
+                    </Link>
+                    , where you can also cancel it.
+                  </>
+                ),
+              },
+              {
+                q: "A Group Coaching series or session",
+                a: (
+                  <>
+                    Neither is booked: your place is kept when you pay, or when you register with your pass. Both are
+                    in your{" "}
+                    <Link href="/academy/coaching" className="font-medium text-primary underline-offset-4 hover:underline">
+                      Academy
+                    </Link>
+                    , with their dates and joining links.
                   </>
                 ),
               },
@@ -122,7 +149,9 @@ export default async function EntitlementsPage() {
                 ),
               },
             ].map(({ q, a }) => (
-              <div key={q} className="bg-surface p-5">
+              // An odd one out at the end takes the whole row, not half of it
+              // beside an empty cell.
+              <div key={q} className="bg-surface p-5 sm:last:odd:col-span-2">
                 <div>
                   <dt className="text-sm font-semibold">{q}</dt>
                   <dd className="mt-1 text-sm text-muted-foreground">{a}</dd>

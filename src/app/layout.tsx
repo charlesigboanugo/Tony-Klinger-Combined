@@ -1,7 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Poppins } from "next/font/google";
 
+import { FieldValidation } from "@/components/forms/FieldValidation";
 import { NavigationProgress } from "@/components/navigation/NavigationProgress";
+import { DEFAULT_SHARE_IMAGE, SITE_NAME } from "@/lib/seo/metadata";
+import { siteUrl } from "@/lib/urls";
 
 import "./globals.css";
 
@@ -55,13 +58,31 @@ const body = Poppins({
   display: "swap",
 });
 
+/*
+  `metadataBase` turns every relative canonical and share-image address into a
+  full one on this deployment's own domain. Without it Next guesses, and a
+  canonical can point at the wrong host. Public pages set the rest through
+  `pageMetadata`; the share card here covers anything that does not.
+*/
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: {
-    default: "Tony Klinger",
-    template: "%s | Tony Klinger",
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
   },
   description:
     "Film producer, author and coach. Courses, coaching, cohorts and retreats for filmmakers and writers.",
+  applicationName: SITE_NAME,
+  openGraph: { type: "website", siteName: SITE_NAME, locale: "en_GB", images: [DEFAULT_SHARE_IMAGE] },
+  twitter: { card: "summary_large_image", images: [DEFAULT_SHARE_IMAGE] },
+};
+
+/** The browser's own chrome takes the page background, in either theme. */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f4ef" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0f1f" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -82,6 +103,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         <NavigationProgress />
+        <FieldValidation />
         {children}
       </body>
     </html>

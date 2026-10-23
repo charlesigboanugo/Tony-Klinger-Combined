@@ -50,6 +50,17 @@ export function ViewerOwnedState(props: Omit<ComponentProps<typeof OwnedState>, 
   return <OwnedState {...props} entitlement={useContext(Ownership)} />;
 }
 
+/**
+ * The "you already have access" notice alone — for a page whose purchase
+ * controls are its own (a pack chooser), where `OwnedState`'s buy button would
+ * be a second one. Renders nothing for a visitor who holds nothing.
+ */
+export function ViewerOwnedNotice(props: Pick<ComponentProps<typeof OwnedState>, "deliveryHref">) {
+  const entitlement = useContext(Ownership);
+  if (entitlement.state !== "active") return null;
+  return <OwnedState entitlement={entitlement} buyLabel="" deliveryHref={props.deliveryHref} />;
+}
+
 /** Rendered only while the visitor does NOT already hold the product. */
 export function UnlessOwned({ children }: { children: ReactNode }) {
   return useOwned() ? null : <>{children}</>;

@@ -73,16 +73,19 @@ export const getAuthContext = cache(async (): Promise<AuthContext | null> => {
 
   if (!user) return null;
 
-  const [{ data: permissionRows }, { data: roleRows }] = await Promise.all([
+  const [{ data: permissionRows }, { data: roleRows }, { data: staffRole }] = await Promise.all([
     supabase.rpc("my_permissions"),
     supabase.rpc("my_roles"),
+    // Staff is holding a STAFF role, not any role: an Academy viewer holds one
+    // that is not (migration 0019), and needs no key and no Admin.
+    supabase.rpc("is_staff"),
   ]);
 
   const permissions = new Set<string>(
     ((permissionRows as string[] | null) ?? []).filter(Boolean),
   );
   const roles = ((roleRows as string[] | null) ?? []).filter(Boolean);
-  const isStaff = roles.length > 0;
+  const isStaff = staffRole === true;
 
   // Computed for EVERYONE, not just staff. It is read from the `getUser()` call
   // this request already makes (note 05 §11.1), so it costs nothing — and while

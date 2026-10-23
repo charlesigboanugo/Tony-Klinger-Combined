@@ -8,16 +8,18 @@ import { PhotoCredit } from "@/components/media/PhotoCredit";
 import { Reveal } from "@/components/motion/Reveal";
 import { ButtonArrow, ButtonLink } from "@/components/ui/Button";
 import { ChannelIcon } from "@/components/ui/ChannelIcon";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { designPhotos } from "@/lib/site/design-photos";
 import { socialLinks, substack, type ChannelLink } from "@/lib/site/links";
 import { cn } from "@/lib/utils/cn";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Contact",
   description:
     "Write to Tony Klinger about coaching, talks and events, press, or anything else.",
-};
+  path: "/contact",
+});
 
 const eyebrow = "text-xs font-semibold tracking-[0.2em] uppercase";
 

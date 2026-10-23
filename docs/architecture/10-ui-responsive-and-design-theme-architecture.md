@@ -436,6 +436,7 @@ The widths live in `components/layout/Container.tsx`:
 
 ```text
 narrow    48rem (768px)    long-form reading, centred calls to action
+medium    64rem (1024px)   a form beside a summary: checkout (2026-10-15)
 default   76rem (1216px)   the content column of every page
 wide      90rem (1440px)   header, footer and the catalogue's wall of work
 ```
@@ -739,6 +740,30 @@ Form architecture should support:
 
 Client-side validation may improve UX, but server-side validation remains authoritative.
 
+### Messages for incomplete fields
+
+The browser's own validation bubble ("Please fill out this field") is never shown (owner,
+2026-10-23). Forms keep their native `required`, `type`, `minLength` and similar attributes,
+so the browser still stops an incomplete form, but one site-wide listener,
+`FieldValidation` in the root layout, cancels the bubble and writes a plain message under
+the field instead, naming it ("Enter your email address.", "Enter your password.",
+"Choose a product."). The message uses the same style as the server's field errors, is
+announced (`role="alert"`, linked by `aria-describedby`), marks the field `aria-invalid`,
+and clears or updates as soon as the field is changed. The first problem field takes
+focus. New forms get this automatically. A wrapper whose contents are positioned against
+the field (the password reveal button) carries `data-field-anchor` so the message lands
+after it. Forms with `noValidate` (contact, newsletter) validate on the server only and
+are unaffected.
+
+### Dropdowns start on nothing chosen
+
+A dropdown that picks something new opens on a placeholder ("Choose a role…", "Choose a
+series…"), never on its first option, which reads as a choice already made (owner,
+2026-10-23). Where a button acts on that one pick (Add role, Link to this account), it stays
+disabled until something is chosen; in a longer form the select is `required` and an empty
+pick gets the field message above. A select that changes an existing record still opens on
+that record's current value.
+
 ---
 
 ## 26. Buttons
@@ -767,6 +792,28 @@ work than colour alone, and it survives forced-colours mode and greyscale.
 
 The pill applies to every variant, including the outline and on-block variants, so a row of
 mixed buttons reads as one control family rather than two.
+
+### States
+
+Every button answers the pointer the same way (owner, 2026-10-13), so it is plain that it is
+a button:
+
+```text
+hover     filled:  brightens, with a soft halo of its own colour around it and a glow beneath.
+          outline: fills solid, the text inverting, with a faint halo.
+          ghost:   a faint tint.
+pressed   presses in (shrinks a little); the glow drops.
+focus     the ring (§36).
+disabled  muted, still readable; no pointer.
+```
+
+Nothing travels on hover: no lift, and no sheen sweeping across (both disliked by the owner;
+a plain darken was tried the same day and found too dull). The states live in
+`components/ui/Button` and are exported (`FILLED_STATES`, `OUTLINE_STATES`,
+`ON_BLOCK_FILLED_STATES`) for the few buttons styled by hand. The "Continue with Google"
+button keeps Google's own surface and takes the same hover in its own colours. Drop-down
+selects share one look from the base stylesheet: the site's chevron, and a border that firms
+up under the pointer.
 
 
 ---
@@ -897,6 +944,107 @@ It may use denser layouts than public pages without becoming a separate visual s
 
 ---
 
+### 32.0 Admin says "Coaching Pass", whatever the database says
+
+**2026-10-13 (owner).** The product is sold as a Coaching Pass and its holders are pass
+holders, but the tables, types and permissions behind it keep the older word
+(`membership_tiers`, resource type `membership`, `memberships.read`). Admin must not show that
+word. Written labels and hints in `resources.ts` use the site's terms, and every stored code
+shown as words goes through `codeLabel` (`src/lib/admin/labels.ts`, which `humanise` calls),
+where `membership` reads "Coaching Pass". The stored values are unchanged.
+
+**A person is shown by email, never by account id (owner, 2026-10-13).** Wherever an admin
+list or form held an account's id (Series registrations, Cohort places, Retreat applications,
+Playlist choices, Grant access by hand), it now shows and accepts the person's email: unique
+like the id, and something staff recognise. The column is headed "Customer", links to the
+person's page, and is searched and sorted by the email. Forms take an email and the save
+turns it into the account (`resolveCustomers` in `crud.ts`, `userIdForEmail`), refusing an
+address that has no account; an id is still accepted. The tables still store the id. The
+lookup uses the service role, so each path checks the operator's permission before it runs.
+
+**No yearly-only retreat switch on Coaching Passes (owner, 2026-10-14).** The edit form for a
+pass tier no longer shows "Retreat for yearly passes only". It dated from monthly memberships;
+a pass is one payment for twelve months, so it could not tell anyone apart. The database
+column `retreats_require_yearly` stays (on), and the retreat rule that reads it is unchanged,
+which has no effect while no pass has a monthly price.
+
+**Pass tiers and cohorts: a new one is a new code (owner, 2026-10-14).** New Coaching Pass
+tiers and new cohorts can be created from admin. Each takes a **code** (Tier code, Level code)
+that no other uses, typed once and locked after ("Fixed once created."), tidied to lower case
+with spaces made "-". The **Display name** is the wording customers see and changes freely.
+**Rank** orders them and, for passes, decides "this tier and above". A playlist's "Lowest
+tier" lists the tiers that exist, so a new tier appears there. A pass tier's form also links
+its **Product**; a new tier cannot be sold until it has one with a price. Note 07 §16.1 records
+the database change behind this.
+
+**What a record IS is fixed once it exists (owner, 2026-10-14).** A field marked
+`fixedOnceCreated` is chosen on the create form, then shown on the edit form but locked, with
+"Fixed once created." in front of its hint; the save ignores it even if a value is sent. Used
+for a product's type, a price's currency and billing type, a cohort's level, a catalogue
+work's category and a media item's type: changing any of them would turn the row into
+something else under everything already pointing at it. Settings of a row (status, provider,
+which tier may see a playlist) stay editable. A pass tier's code is `readOnly` outright, since
+pass tiers are never created from admin.
+
+**A form shows only what the record's kind needs (owner, 2026-10-14).** A field with
+`shownFor` appears only while another field holds one of the listed values, and changes as
+that choice changes on the create form. Products: Group Coaching series only for Group
+Coaching; Sessions granted and Use within for Group Coaching and private coaching; Pack of
+for private coaching; the option switch (group, label, order) for those two and retreats. A
+hidden field is not sent, so saving leaves what it holds alone.
+
+**No internal references in anything a person reads (owner, 2026-10-14).** Architecture
+note and section numbers ("note 07 §R29", "§31"), reconciliation items ("R17"), migration
+numbers and similar internal shorthand belong in code comments and in these notes, never in
+page text, hints, descriptions, messages or emails, on the public site or in admin. Five were
+found and rewritten in plain words: four field hints and descriptions in `resources.ts` and
+the note under Roles. A scan of every string outside comments now finds none.
+
+### 32.1 Admin forms share one layout
+
+**2026-10-13 (owner).** The forms on admin inner pages were bare stacks of inputs in a narrow
+column at the left edge, each styled where it was written. They are now built from one set of
+parts (`src/components/admin/AdminForm.tsx`):
+
+- **`AdminCard`**: the surface a form sits on, with an optional title and a footer bar. A
+  warning or danger tone borders a destructive step.
+- **`FormGrid` and `Wide`**: fields on two columns from `sm`, so a form uses the page's width.
+  Long fields (text areas, the image picker, a reason) take both columns.
+- **`FormFooter`**: the card's foot, with the small print on the left and the action on the
+  right; stacked on phones.
+- **`Segmented`**: a choice between a few options as one control over real radio inputs.
+- **`Toggle`**: every on/off setting in admin (owner, 2026-10-14: the small tick boxes were
+  "not that clear or beautiful"). A bordered row whose name says what the setting is, a line
+  under it says what "on" does, and a switch with "On" / "Off" beside it shows the state; the
+  row tints teal when on. A real checkbox with `role="switch"`, so it submits and takes the
+  keyboard. Every yes/no field on the generic edit forms and the Team listing's publish
+  setting use it; it replaced `CheckRow`.
+- **`Select`** (`components/ui/Field.tsx`): a select matching `Input`; its arrow comes from
+  the global `select` rule.
+
+Used by the user page (Roles, Security keys, Team listing), the generic create and edit form
+(`ResourceForm`: first field and long fields full width, the rest paired, Save in the footer)
+and its delete block, Grant access by hand, and Create a run. New admin forms use the same
+parts. Visible copy no longer cites architecture note numbers.
+
+**A button in a form never submits it unless it says so (2026-10-14).** The shared `Button`
+defaults to `type="button"`; only `SubmitButton` (and anything given `type="submit"`) submits.
+The browser default is "submit", so a Cancel, Close or Remove inside a form used to submit it:
+Cancel on "clear security keys" cleared them if a reason had been typed.
+
+**A choice about an existing record opens on its current value (owner, 2026-10-14).** On an
+inner page, a select or switch that changes something a record already has shows what it has
+now, never a default that could be mistaken for it. The role form on a person's page opens on
+the role they hold ("No staff role (customer)" when none), and Grant / Revoke follows the role
+chosen: Revoke for one they hold, Grant for one they do not. Generic edit forms already open
+on the row's values. Forms that create something new have no current value and are unaffected.
+
+**An admin page opens on its list (owner, 2026-10-13).** A form that creates or grants
+something is not left open above the list, where it pushes what people came for down the page.
+It is one button that opens the form as a card, with Close to put it away (`AdminReveal`).
+Applied to Grant access by hand on Entitlements and Create a run on Series runs; the Invite
+form on Users already worked this way. New admin pages follow the same rule.
+
 ## 33. Tables
 
 Tables should support responsive behaviour.
@@ -912,7 +1060,269 @@ Reduced columns
 
 Do not force wide desktop tables into unreadable mobile layouts.
 
+**The count beside an admin page's title is teal (owner, 2026-10-14).** The figure next to
+every admin page title ("49 accounts", "3 shown", "12 of 40") is set in the teal accent at
+semibold, so it is read at a glance. This is a deliberate exception to teal being reserved
+for action and state (§5); it applies to that count only (`AdminPageHeader`'s `meta`).
+
+**Finished records are kept apart and read-only (owner, 2026-10-14).** In an admin area whose
+rows finish (a resource with `past` in `resources.ts`), the list opens on **Current** rows with
+a **Past** tab beside it, each with its count; search, sort and filters work within the tab.
+A row has finished once its end (or, failing that, its start) has passed. Its edit page says
+so, shows everything locked, offers no Save and no Delete, and the save and delete refuse it on
+the server too. What is meant to change afterwards stays editable: the **recording** of a Group
+Coaching session, a cohort workshop or a Q&A. **Cohort workshops and Group Coaching sessions list current
+ones only** (owner, 2026-10-14: each run or intake has many, and past ones pile up), with no
+Past tab (`past.currentOnly`); a finished one opened by its
+address is still read-only apart from its recording. **Cohort places and Series registrations** have no
+dates of their own: they finish with their intake or run (`past.embed`), so a finished batch's
+places and registrations sit under Past and are read-only too, and a finished intake or run
+with nobody on it is not shown as an empty heading under Current. Under their Past tab every
+intake or run starts folded (`past.foldPast`), so years of finished batches read as a list of
+headings to open one at a time. A finished row's status reads **Completed** in the Past list and on its page. Since 2026-10-14 (owner) the status shown for a dated row is worked out from
+its dates (`lifecycleOf`), each with its own look, and no two alike (owner: no two colours
+so close they could be mixed up): **Draft** (amber, dashed), **Scheduled** (green; still to
+come), **Running** (solid indigo; started, not yet over), **Completed** (grey outline; over)
+and **Cancelled** (red). The teal accent is not used for a status, being too near the green. "Published" is kept for things that are not dated
+(courses, blog posts, products). The list's Status filter and sort use the same words. Display
+only: the stored status is unchanged. Applied to Series runs, Cohort intakes, Group
+Coaching sessions, Cohort workshops, Q&A sessions, Events, Retreats and One-to-one coaching
+times. Other areas have no end date and are unchanged.
+
+### 33.0 Admin pages never scroll sideways; what is too wide scrolls in its own frame
+
+**2026-10-13 (owner).** Every admin page fits the screen it is on. Content that cannot (a
+table with more columns than a phone has room for) scrolls sideways inside its own frame, and
+the page around it stays still.
+
+- **Tables.** `AdminTable` keeps a width its columns can be read at (about 8.5rem a column,
+  36rem at least) and its frame scrolls sideways when the screen is narrower. The frame can be
+  focused, so the keyboard scrolls it too. Columns are no longer squeezed until text stacks.
+- **Toolbars.** Search, Sort, the filters and an `AdminReveal` button wrap onto further lines;
+  the search box fills the row on phones.
+- **Menus.** A Sort or filter menu opens from its button's left edge, or from the right edge
+  when that would run off the screen, and is never wider than the screen.
+- **Unbroken text.** A string with no spaces in it (a file name used as a page title, a
+  storage path, a long id) breaks onto the next line. The admin `<main>` sets
+  `overflow-wrap: anywhere`, which every page under it inherits, lists and inner pages alike;
+  tables opt back out because they scroll.
+- **Filter tabs** already scrolled sideways in their own strip. **Forms** drop to one column
+  below `sm` (§32.1).
+
+A new admin page must hold to this: nothing wider than the screen except inside a frame that
+scrolls.
+
+### 33.1 Admin lists sort by their column headings
+
+**2026-10-13 (owner).** Every admin list that has several rows to find among can be sorted by
+its column headings, alongside search where a list has it. A sortable heading is a link:
+clicking it sorts by that column, clicking it again reverses the order. The current column
+shows a teal arrow; other sortable headings show a faint arrow on hover.
+
+- **In the URL.** The sort is `?sort=<column>&dir=asc|desc`, like the filter tabs and the
+  search box, so a sorted list can be shared, bookmarked and reloaded, and works before the
+  page's scripts load. Search, filter tabs and sort carry each other along.
+- **One mechanism.** `readSort` and `sortRows` (`src/lib/admin/sort.ts`) and `AdminTable`'s
+  `headers` and `sort` props. A page names its sortable columns and how to read each one's
+  value; a `?sort=` naming anything else is ignored.
+- **Sensible directions.** Text starts A to Z; dates, amounts and counts start newest or
+  largest. Rows with nothing in the sorted column go last in both directions. A reference
+  column sorts by the name shown, not its id.
+- **Where.** The generic resource lists (every listed column; rows stay inside their group
+  where a list is grouped), Users (opens on latest sign-in), Orders, Payments, Bookings,
+  Entitlements, Emails and the Audit log. Columns that are free text or a mix of things
+  (Reason, Detail, provider reference) are not sortable. The short tables on the dashboard,
+  check-in and the order and user detail pages are not sortable.
+- **Limit.** A sort arranges the rows the page loaded (one bounded page of 100 to 200), not
+  the whole table.
+
+- **A Sort menu beside search (owner, same day).** Headings only help somebody who thinks to
+  click one, so each of these lists also has a "Sort" button (`AdminSort`) next to its search
+  box, or above the table where there is no search. It names the orderings people reach for
+  ("Newest first", "Name A to Z", "Highest total") and shows which one the list is in. Its
+  choices are links to the same URLs the headings use, so the two always agree. On the
+  generic lists the choices are read off the columns.
+- **Search finds what the list shows, best match first.** Search runs over the text a row
+  displays: the name a reference points at, a choice as its words, and on Users the email,
+  role and status as well as the name. Every word typed must appear somewhere in the row.
+  When no sort has been chosen the matches come closest first (`searchRows`): an exact match,
+  then one that starts with the word, then one where a word starts with it, then one that
+  merely contains it, with a match on the row's name outranking the same match in another
+  column. The Sort menu shows this as "Best match".
+- **Every list has search (owner, 2026-10-13).** Besides Users and the generic lists: Orders
+  (customer name or email, order number, status), Payments (who paid, the provider's
+  reference, order number), Bookings (who, what, ticket reference), Entitlements (who, the
+  resource, the source, the reason), Emails (recipient, email type, failure reason) and the
+  Audit log (who, action, what it touched, reason). A person is found by name or email
+  wherever a list shows one. While a search is active the list reads its latest 1,000 rows
+  (`SEARCH_DEPTH`) where it normally reads 200, because a search is usually for something
+  older; it does not reach further back than that. Payments reads each payment's customer
+  from its order.
+- **Show only one value of a column (owner, same day).** Beside Sort, each list has a button
+  per column worth narrowing by ("Status: Any", "Role: Any"). Its menu lists the values that
+  column actually holds, each with how many rows have it; choosing one shows only those rows
+  and fills the button in teal ("Status: Paid"); "Any" clears it. Several can be combined, and
+  each menu's counts reflect the other filters already chosen, so no choice leads to an empty
+  list. The choice is a URL (`?is_<column>=<value>`) and travels with search, sort and the
+  filter tabs. `applyFilters` (`src/lib/admin/sort.ts`) and `AdminFilter`.
+  - Users: Role (staff roles, and Customer), Status. Orders: Customer (has an account, guest
+    checkout). Payments: Status. Entitlements: Resource, Source, Status. Emails: Email type.
+    Audit log: Who, Action, Affected. Bookings already narrows by type and status with its
+    tabs, as Orders and Emails do by status.
+  - Generic lists: offered automatically for a status, a choice, a yes/no or a reference
+    column that holds between two and fifteen different values.
+  - Like the sort, it narrows the rows the page loaded.
+
+New admin lists should use the same mechanism.
+
 ---
+
+**Images view and pages (owner, 2026-10-13).** A resource that names a `gallery` column (the
+column holding an image's storage path; Media is the first) gets a List / Images switch above
+its toolbar (`FilterTabs`, `?view=images`). Images shows the same rows as thumbnails, each
+opening the row. Such a list is read in full (up to 1,000 rows) instead of its first 200, and
+both views show 60 rows a page with First, Previous, Next and Last (`AdminPager`, `?page=`); the view is
+kept across search, sort and filter, and each of those starts again at page one.
+
+**Tiles only, switched by type (owner, 2026-10-15; supersedes the List / Images switch).** A
+list with a `gallery` column is shown as tiles only, never as a table. Where the resource also
+names a `galleryKind` (a `select` field; Media's `resource_type`), the switch above the toolbar
+picks the kind instead — Images, Videos, Audio, Documents, Links, each with its count — opening
+on the first (`?type=`, kept across search, sort and filter like the rest). That column is not
+offered again as a filter. Only images have a picture; other kinds are tiles naming the type.
+
+On the kinds whose files can be either (`galleryPrivacy`; Media: Audio, Documents) a second
+switch, All / Public / Private with counts (`?access=`), sits under the type switch, and
+private tiles carry a "Private" label. Public means a file in a public bucket, the test the
+site itself uses. A resource can limit its Sort menu (`sortColumns`) and open in a set order
+(`defaultSort`, used when nothing is chosen or searched): Media sorts by title or by
+`created_at` — read "Newest first" / "Oldest first" — and opens newest first.
+
+**Back to the list as it was left (owner, 2026-10-15).** Every admin list passes its own state
+(type tab, search, sort, filters, Current/Past, page) to a row it opens, and to its New page, as
+`?from=`. The row's Back link, and the redirect after a save or a delete, return there instead
+of to the list's default (`src/lib/admin/back.ts`: `listHref`, `withFrom`; forms carry it as a
+hidden `__from`). Only the query string is kept; the path is always the resource's own list.
+
+The image picker on admin forms (`MediaPicker`) opens the library in a dialog that takes most
+of the screen, 48 thumbnails a page with the same four steps, so every image can be reached
+without searching. It replaces a small inline box capped at the first 60.
+
+**Each picker shows only what its field takes (owner, 2026-10-15).** A `media` field names the
+Media types it accepts (`mediaKinds`; images when not given). Covers and photos see images
+only, and only those in a public bucket. The three recording fields (cohort workshops, Group
+Coaching sessions, Q&A sessions) take videos and audio, private files included. They were
+plain dropdowns of every Media item (`reference`) and are now `media` fields too. Every picker
+shows cards, never a list, newest first. A non-image card names its type, and private files
+are labelled. Where a field takes more than one kind, an All / Videos / Audio switch with
+counts sits in the dialog. The form loads the library once, holding only the kinds its fields
+take (`listMedia(mediaKindsFor(resource))`).
+
+### 33.2 A list fed by several products opens on the products
+
+**2026-10-13 (owner; marked as possibly to be reversed, see `REVERSE.md`).** Bookings come
+from events, Group Coaching series, one-to-one services, cohorts and retreats; entitlements
+from courses, passes, cohorts, events and more. One list of all of them mixed things staff
+never look at together. So each of these two areas now has three screens:
+
+1. **The products** (`/admin/bookings`, `/admin/entitlements`). What can be booked, or what
+   access is for, under a heading per kind, each with its counts (upcoming and all bookings;
+   holders now and ever granted). Search, Sort and a Kind filter as on any list. Bookings lists
+   every bookable product, booked or not; Entitlements lists what has been granted.
+2. **One product** (`/admin/bookings/<kind>/<id>`, `/admin/entitlements/<type>/<id>`). Its
+   bookings or holders alone, with search, sort and filters. On Bookings the filters pick the
+   batch: a series' **run** then **session**, a cohort's **intake** then **workshop**, a
+   one-to-one service's **month**; events and retreats have none. Each lists only what that
+   product has, with counts.
+3. **Everything** (`/admin/bookings/all`). The flat list Bookings used to open on, for finding
+   one customer across every product. Entitlements had one too (`/admin/entitlements/all`); it
+   was deleted on 2026-10-15 (below).
+
+`adminBookingDirectory` (`src/lib/admin/booking-products.ts`) places each booking under its
+product, batch and item; `adminEntitlementDirectory` (`entitlement-products.ts`) does the same
+for access. Two entitlement kinds point somewhere their name does not suggest: a
+`group_coaching_session` credit and a `series_pass` both name the series. Access with no
+resource id covers everything of its kind and is listed as "All …". Both read up to 5,000
+rows so the counts are true counts. Orders, Payments, Emails and the Audit log stay flat: a
+row there does not belong to one product.
+
+**Bookings covers events and one-to-one coaching only (owner, 2026-10-14).** Those are the two
+where a person holds a booked place or time. Series, cohort and retreat places are followed in
+their own areas (Series registrations, Cohort places, Retreats), so Bookings no longer lists
+them, on its products screen or under "All bookings" (`PRODUCT_KINDS`, `BOOKINGS_TYPES`).
+"Check-in" is named **Event check-in** throughout admin, since only events use it. The Bookings page has no "All bookings" button (owner: the sections
+are the best display); the flat list still exists at `/admin/bookings/all` but nothing links to
+it.
+
+The Entitlements page has no "All entitlements" button either (owner, 2026-10-15: the
+by-product display is the right one), and the flat list `/admin/entitlements/all` is deleted
+(owner, 2026-10-15). One customer's access across everything is on their page under Users,
+where it can also be revoked or adjusted (note 06 §23.1).
+
+### 33.2.1 Everything is listed, even with nothing in it
+
+**2026-10-14 (owner: "whether it has zero stuff on it so I can see it exists").** A grouped
+admin list shows a heading for every group that exists, not only those with rows: a series
+with no sessions, a course with no modules, a run nobody has registered for, each with
+"Nothing here yet" under it. Empty groups are shown while the list shows everything (no search
+or filter, the Current tab) and come from the group's reference options. Series runs lists
+every series, saying when one has no run to come. Bookings already listed every bookable
+product; Entitlements now lists every course, pass tier, cohort, event, retreat, playlist,
+one-to-one service and series, held or not ("None yet").
+
+A group whose PARENT has no group yet shows too (owner, 2026-10-14): lists grouped by batch,
+run or intake also show each retreat with no batch, series with no run and cohort with no
+intake as a heading of its own, saying "No batch yet. Create one under Retreat batches" (or
+the run/intake equivalent). Retreat applications only shows retreats entered by interview.
+Set per list by `emptyParents` in `resources.ts`.
+
+### 33.2.2 Intakes and runs carry their cohort or series in brackets
+
+**2026-10-14 (owner).** Intake and run names repeat ("Spring intake" for every cohort and every
+year, "Tuesdays, 4pm" for several series), so wherever admin names one, in a group heading or
+a picker, the cohort or series follows in brackets: "Spring intake (Gold Cohort)",
+"Tuesdays, 4pm (Producing)". A reference can name a `parent` for this (`resources.ts`).
+**Cohort workshops are listed by intake**, since each batch has its own; a workshop's cohort is
+no longer chosen but filled in from its intake on save (`derive`), so the two cannot disagree.
+Cohort places and Series registrations were already listed by intake and by run. **Coaching
+sessions are listed by run** in the same way ("Tuesdays, 4pm (Producing)"), with one-off
+sessions under their own heading, and a session's series is filled in from its run whenever it
+has one.
+
+**Series runs is built like the other lists (owner, 2026-10-14).** `/admin/schedule` was a
+hand-made page, each run one line of grey text. It is now a table under a band per series
+(every series, even with nothing to come), with columns for the run, its dates, its
+registration window, places taken ("3 of 8", Full) and its status coloured as everywhere else,
+plus search, sort, Current/Past tabs, and Edit and Who (its registrations) on each run.
+Creating a run is still the button beside the search.
+
+### 33.3 A section heading inside a list must look like a new section
+
+**2026-10-13 (owner).** Wherever a list is split into sections (bookable products by kind,
+sessions by series, runs by series), each section opens with a band in a colour entirely its
+own (Admin's indigo since 2026-10-14; see below). It carries the section's name in bold at a step above the rows and its count in a pill.
+Inside a table it is a full-width row; above a list of cards it is the same band, with more
+space between sections than within them. A first version the same day (a tinted row with a bar and a
+firm rule) was not different enough.
+
+**Indigo, with space between sections (owner, 2026-10-14).** The reversed band was a bright
+white bar on the dark theme, which shouted over the rows. It is now Admin's own indigo (the
+strip along the top of every admin page, `--block-indigo`, the same in both themes) lettered in
+the light block foreground: a different hue from the rows in either theme, but not the
+brightest thing on screen. Inside a table, every section after the first has a strip of the
+page's ground above it, so the sections read as separate blocks.
+
+**The band opens and closes its section (owner, same day).** It is a button: pressing it folds
+that section's rows away or brings them back, with a chevron and "Hide" / "Show" at its right.
+Sections are independent, any number can be open, and all start open, so nothing is hidden
+until somebody hides it. Folded rows stay in the page. The components are now
+`AdminGroupSection` (a `<tbody>` inside an `AdminTable` marked `sectioned`) and
+`AdminGroupBlock` (above a list of cards), in `components/admin/AdminGroupSection.tsx`; they
+replace `AdminGroupRow` and `AdminGroupHeading`.
+
+It replaced a faintly tinted row in the rows' own small type, the same tint as the column
+headings, which read as one more row. Used by the generic grouped lists, Bookings,
+Entitlements and Series runs. A new grouped list uses these and does not style its own.
 
 ## 34. Accessibility
 
@@ -1101,6 +1511,15 @@ closing panel leaves the tab order and stops accepting clicks only once it has a
 finished fading, never before. Each usage adds a Tailwind `origin-*` utility so the menu
 scales from the corner nearest its trigger rather than always dead centre.
 
+**2026-10-15 — a hover-opened menu stays open when its trigger is clicked.** `NavDropdown`
+and `UserMenu` open on mouse hover and also toggle on click, so a mouse user who hovered
+and then clicked the trigger (the usual gesture) shut the menu they had just opened. A
+click now keeps the menu open when the trigger was pressed with a mouse; moving away still
+closes it. Touch and the keyboard still toggle. `NavDropdown` also moved from mouse events
+to pointer events (mouse only), because a tap on a touch screen fired the emulated
+`mouseenter` and then the click toggled the menu shut. Any new hover-opened menu follows
+the same rule.
+
 No animation library is involved — this is exactly the class of effect the reveal/parallax
 row above already argues should stay CSS-only.
 `prefers-reduced-motion` needs no separate handling here: the base-layer rule already
@@ -1113,6 +1532,11 @@ out rather than snapping: `--ease-in-out-menu` (`cubic-bezier(0.45, 0, 0.2, 1)`)
 header menus (`NavDropdown`) now use `origin-center` and grow outward from their middle, at
 the owner's request. The account menu keeps `origin-top-right`. The `visibility` delay
 follows the close duration. It is still compositor-only and still the one shared utility.
+
+**2026-10-15 — off-canvas variants.** Two modifiers swap the scale for a slide, keeping the
+same timing, easing and `visibility` delay: `dropdown-from-top` (the lesson's course
+contents, note 07 §34) and `dropdown-from-left` (the workspace menu below `lg`, note 04
+§32.4). Both sit over `.dropdown-scrim`, a dimmed page that fades with them.
 
 ---
 
@@ -1341,7 +1765,10 @@ The header and footer frame every public page in the same studio language as the
   hung off the cream header as a separate black box on every light page. The panel shows
   the section name in the display face (never wrapping at a hyphen), the section's
   `description` (a `NavItem` field) with a divider beside it, and its links, in two columns
-  when there are more than five. Placement: the trigger is centred in the 4.5rem bar, so
+  when there are more than five. A link marked `lead` (the section's own page) takes a
+  line of its own above the others, with a rule under it; Coaching uses it, so its six
+  ways of working sit as three even rows beneath "Coaching Overview" (owner, 2026-10-10).
+  Placement: the trigger is centred in the 4.5rem bar, so
   the panel sits at `top: 50% + 2.25rem` from the trigger, and a `before:` strip bridges the
   gap so the pointer can travel down without closing the menu. It follows the theme, and
   matches the account menu, which was already light. The panels keep `.dropdown-panel`
@@ -1566,17 +1993,27 @@ only a long quote makes the section taller.
 
 **Auth screens (2026-09-25).** Every `/auth/*` page is a split screen (`src/app/auth/layout.tsx`).
 On the left is the noir **stage** (`AuthStage`), in the home title card's vocabulary: grain,
-the drifting oxblood light leak, and the photo settling in. It uses Tony laughing against a
-vignetted blue backdrop (`tk-dc-0-8`, previously unplaced; it replaced the car-park portrait
-`extra-d64ac0c2`, now unplaced, on 2026-09-26), with noir gradients at the head for the wordmark
-and at the foot for the site line ("Six decades in film, / *put to work* / for you.")
-and three career figures stated in the About copy. The stage is sticky, and it sits in the
-layout, so moving between sign-in, sign-up and reset changes only the form. On phones and
-tablets it collapses to a short band holding the wordmark, so the form starts above the fold.
+the drifting oxblood light leak, and the photo settling in. From `lg` the photo fills the
+whole panel, with a noir fade at the head for the wordmark and at the foot for the site line
+("Six decades in film, / *put to work* / for you.") and three career figures stated in the
+About copy. **The words never sit on Tony's face (owner, 2026-10-13).** The photo is chosen
+and cropped so his head is in the upper half of the panel and the line falls across his shirt
+and folded arms; the earlier frame had his face mid-panel, so the line ran across his mouth.
+He is deliberately off-centre, set in the right of the panel, and the line sits higher than
+the panel's foot, on the left beside him.
+It is the yellow hand-on-chin portrait `tk-dc-0-33` (previously unplaced; it replaced the
+blue-backdrop laugh `tk-dc-0-8`, now unplaced, which had replaced the car-park portrait
+`extra-d64ac0c2` on 2026-09-26). That makes two yellow heroes site-wide, with Give-Get-Go,
+which is the ration's limit. The stage is sticky, and it sits in the layout, so moving between
+sign-in, sign-up and reset changes only the form. Below `lg` the stage is the wordmark on noir
+with a short photo band under it, so nothing overlaps and the form starts above the fold; on
+tablets the band would be too wide and shallow to hold his head, so the photo narrows to a
+centred frame whose sides dissolve into the noir. On short desktop screens the figures step
+aside so the line stays clear of his face.
 The form column carries nothing else: a plain eyebrow label per screen ("Sign in",
 "Reset"…) led by a small clapperboard mark, the title at the auth size (§9.1), the form, and the alternate action as a
 full-width link panel. Password fields use `PasswordInput`, which has a reveal toggle
-(`aria-pressed`) and a Caps Lock warning. The sign-in method switch is a WAI-ARIA tablist
+(`aria-pressed`) and a Caps Lock warning. The sign-in method switch (Email link first and open on arrival, then Password; owner, 2026-10-13) is a WAI-ARIA tablist
 with arrow-key support and a sliding thumb. "Check your inbox" outcomes are an
 `AuthNotice` panel (`role="status"`), not a one-line alert.
 
@@ -1760,7 +2197,9 @@ Scrolling was already ~60 fps everywhere; the cost was images, JavaScript and se
    2,200px, 250 KB file for a 112px thumbnail. Sources are now WebP (quality 90, full size);
    the optimizer resizes per request and serves AVIF/WebP to the browser (250 KB → 4 KB at
    384px). `import-images.mjs` converts AVIF to WebP on upload; `convert-stored-avif.mjs`
-   converted existing storage in place (same `resources` rows, old AVIF files kept).
+   converted existing storage in place (same `resources` rows). The old AVIF files it left
+   behind were deleted from local storage on 2026-10-13 (432 files, 31 MB) once nothing
+   referenced them; a project converted later still holds its own until they are removed.
    Design photos in `public/images/` are `.webp`.
 2. **Decorative walls take a bounded set.** `PosterWall` rendered the whole catalogue in
    each of four rows, twice (~1,200 images, 4.4 MB). It now takes 12 per row.
@@ -1876,6 +2315,22 @@ The visual system must remain independent from the application's business rules 
 | Date | Amendment |
 |------|-----------|
 | 2026-09-24 | **§8 body face trial: Manrope → Poppins.** At the user's request, to evaluate the look. `--font-body` unchanged; five static weights loaded (Poppins is not variable). Revert = restore Manrope in `layout.tsx`. |
+| 2026-10-10 | **§42.2: Coaching dropdown rearranged** (owner). Its seven links ran as two uneven columns with the overview mixed in among the offers. `NavItem` gains `lead`; the masthead panel sets a lead link on its own line above the rest, with a rule. Only "Coaching Overview" is marked; the other dropdowns and the mobile menu are unchanged. |
+| 2026-10-13 | **§26: button states made standard** (owner: disliked the hover effects; a button must plainly read as one). The hover sheen and lift are removed from the shared `Button`; filled buttons brighten with a halo and glow of their own colour, outline buttons fill solid with inverted text, and all press in when clicked (a plain darken was tried first and found too dull). The Google sign-in button, the hand-styled pass, cart and check-in buttons follow. Selects get one look (own chevron, hover border) in `globals.css`. Supersedes the 2026-09-05 sheen and lift. |
+| 2026-10-13 | **§42.3: auth stage words kept off Tony's face** (owner). New photo `tk-dc-0-33` (yellow, hand on chin, previously unplaced), full-panel from `lg` and cropped so his head is in the upper half and the line falls on his shirt; he sits right of centre and the line is lifted from the foot; `tk-dc-0-8` is unplaced. Sign-in opens on the Email link tab, now first. Second yellow hero (the limit). Below `lg`: wordmark on noir, photo band under it; tablets get a narrower, side-dissolved frame; short desktop screens drop the figures. |
+| 2026-10-13 | §33.0 (new): admin pages never scroll sideways; a table wider than the screen scrolls in its own frame, toolbars wrap, menus stay on screen. |
+| 2026-10-13 | §33.1 (new): admin lists sort by their column headings and by a Sort menu beside search (`AdminSort`), with the sort in the URL (`readSort`/`sortRows`, `AdminTable` `headers` + `sort`); search covers what a row shows and comes best match first (`searchRows`); a filter per column shows only one of its values (`AdminFilter`, `applyFilters`); search on every list, reading 1,000 rows while searching. |
+| 2026-10-13 | §33.2 (new): Bookings and Entitlements open on their products, then one product's rows (with run/intake/session pickers on Bookings), with the flat list kept at `/all`. Possibly to be reversed (`REVERSE.md`). |
+| 2026-10-13 | §33.3 (new): listing section headings share one band (`AdminGroupSection`, `AdminGroupBlock`), in Admin's indigo since 2026-10-14, with a bold name and a count pill; pressing it folds or unfolds the section; a gap separates sections. |
+| 2026-10-13 | §33.1: lists with a `gallery` column (Media) gain a List / Images switch and pages of 60 (`AdminPager`), read in full; the image picker opens in a near-full-screen dialog with pages of 48 in place of a box capped at 60. Search boxes get one larger clear cross with a pointer (`globals.css`). |
+| 2026-10-15 | §33.1: tiled lists (Media) show tiles only; the List / Images switch becomes a type switch (Images, Videos, Audio, Documents, Links, with counts; `galleryKind`, `?type=`). |
+| 2026-10-15 | §33.1: Media gains an All / Public / Private switch on Audio and Documents (`galleryPrivacy`, `?access=`); Sort menu limited to title and Newest/Oldest first, opening newest first (`sortColumns`, `defaultSort`). |
+| 2026-10-15 | §33.1: media pickers show only their field's kinds (`mediaKinds`), as cards, newest first; recording fields move from a dropdown to the picker (videos and audio). |
+| 2026-10-15 | §33.1: a row opened from a list returns to that list's tab, search, sort and page (Back link, save, delete) via `?from=` (`back.ts`). |
+| 2026-10-15 | §33.2: the Entitlements page loses its "All entitlements" button, as Bookings did; `/admin/entitlements/all` is left unlinked. |
+| 2026-10-15 | §33.2: `/admin/entitlements/all` deleted (owner); its loader `adminEntitlements` removed. A person's access is on their Users page. |
+| 2026-10-13 | §32.1 (new): admin forms share one card-and-grid layout (`AdminForm.tsx`, `Select`), applied to the user page forms, the generic create/edit form, Grant access and Create a run. |
+| 2026-10-14 | Site icons: the TK monogram disc (noir, cream italic display type) replaces the default Next.js favicon — `favicon.ico`, `icon.png`, `apple-icon.png`, manifest icons in `public/icons/`. Share card `public/og-default.jpg` (1200×630, name and trades beside the home-hero photo). Browser theme colour follows the page background in each theme. |
 | 2026-09-24 | **§42.2: footer made compact.** The owner found the end-credits footer too long, with its closing slogan and "Stay in touch" block reading as generic. It's now one band: the mark, a line and a single-field newsletter, beside three curated columns, then a smaller signature and the legal line. About 540px tall at desktop width. |
 | 2026-09-24 | **§42.2 (new): masthead and end credits.** The header and footer had read as generic. The header is now a monogram and wordmark, navigation in tracked capitals, ink dropdown panels with section descriptions, a cart icon and Sign in as the one filled button (a Book coaching CTA was tried and removed at the owner's direction), with separate phone, tablet and desktop arrangements. The mobile menu is a full-screen ink takeover with numbered display-face sections. The footer is an "end credits" ink band with a closing line and CTAs, the newsletter, credit columns and the name set across the full width. There's a new `.on-ink` token scope. |
 | 2026-09-24 | **§42.1: shape decides layout.** Landscape artwork no longer loses 40–64% to the portrait frame. On the wall it is a two-column background-image "still" with the text over it. A landscape spotlight becomes a banner. Work pages show artwork uncropped at its true ratio. Needs `resources.width/height` (note 08, migration 0011). |
@@ -1979,4 +2434,4 @@ heading's TEXT starts, never under the icon: the body is padded by tile + gap (`
 large tile, `pl-11` small, `pl-13` medium). Where a phone has no room to indent, the tile sits
 ABOVE the heading instead. The same holds in navigation trees: a group's pages start at the
 group name's text (Admin nav).
-
+| 2026-10-15 | Responsive sweep at 320px over every reachable visitor (140), customer (120) and admin (160) page; all fit. Fixes: product-page and blog grids held to the screen (`grid-cols-1` below their breakpoints: an implicit column grew to its widest child); purchase panel and phone buy bar wrap/shrink; Notifications button short label on phones; admin filter/sort menus anchor right by default (a closed panel off the right edge widened the page); admin header on phones shows the spare-key chip as a dot and drops the logo under 24rem (owner). |

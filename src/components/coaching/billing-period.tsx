@@ -156,7 +156,7 @@ export function BillingToggle({
         {(
           [
             ["monthly", "Monthly"],
-            ["yearly", "One year"],
+            ["yearly", "Yearly"],
           ] as const
         ).map(([value, label]) => (
           <button
@@ -211,8 +211,8 @@ export function TierPrice({ prices }: { prices: ProductPrice[] }) {
     );
   }
 
-  const isMonthly =
-    price.billing_type === "recurring" && price.interval === "month";
+  const oneOff = price.billing_type !== "recurring";
+  const isMonthly = !oneOff && price.interval === "month";
 
   return (
     <div className="mt-4">
@@ -225,7 +225,7 @@ export function TierPrice({ prices }: { prices: ProductPrice[] }) {
           {formatPrice(price.amount, price.currency)}
         </span>
         <span className="text-sm text-muted-foreground">
-          {isMonthly ? "/ month" : "/ year"}
+          {oneOff ? "for a year" : isMonthly ? "/ month" : "/ year"}
         </span>
       </p>
 

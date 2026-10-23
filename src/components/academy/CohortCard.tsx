@@ -1,14 +1,6 @@
 import { GeneratedCover } from "@/components/media/GeneratedCover";
 import { StoredImage } from "@/components/media/StoredImage";
-import {
-  Card,
-  CardBody,
-  CardEyebrow,
-  CardLink,
-  CardMedia,
-  CardText,
-  CardTitle,
-} from "@/components/ui/Card";
+import { Card, CardBody, CardLink, CardMedia, CardTitle } from "@/components/ui/Card";
 import type { EnrolledCohort } from "@/lib/academy";
 import { formatShortDate } from "@/lib/account/format";
 
@@ -35,18 +27,25 @@ export function CohortCard({ cohort }: { cohort: EnrolledCohort }) {
           <GeneratedCover title={cohort.name} seed={cohort.slug} showTitle={false} />
         )}
       </CardMedia>
+      {/* THE TITLE AND THE DATES, as a course card is its title and its
+          progress (owner, 2026-10-09: "not congested… just show titles only,
+          like courses, and dates"). The level line and the description are on
+          the cohort's own page; here they only crowded the card. */}
       <CardBody>
-        <CardEyebrow className="capitalize">{cohort.cohortLevel} cohort</CardEyebrow>
-        <CardTitle className="mt-1.5 text-lg">
+        <CardTitle className="text-lg">
           <CardLink href={`/academy/cohorts/${cohort.slug}`}>{cohort.name}</CardLink>
         </CardTitle>
-        {cohort.description ? (
-          <CardText className="mt-2 line-clamp-2">{cohort.description}</CardText>
-        ) : null}
-        <div className="mt-4 flex flex-1 items-end justify-between gap-3 pt-1">
-          <p className="text-xs text-muted-foreground">
-            {cohort.startsAt ? `Starts ${formatShortDate(cohort.startsAt)}` : "Dates to be announced"}
-          </p>
+        <p className="mt-3 text-sm text-muted-foreground">
+          {cohort.intakeLabel ? <span className="block">{cohort.intakeLabel}</span> : null}
+          <span className="block">
+            {cohort.inProgress && cohort.endsAt
+              ? `In progress · until ${formatShortDate(cohort.endsAt)}`
+              : cohort.startsAt
+                ? `Starts ${formatShortDate(cohort.startsAt)}`
+                : "Dates to be announced"}
+          </span>
+        </p>
+        <div className="mt-4 flex flex-1 items-end justify-end">
           <span
             aria-hidden="true"
             className="text-sm font-medium text-accent transition-transform duration-(--dur-base) ease-expo group-hover:translate-x-1 motion-reduce:transform-none"

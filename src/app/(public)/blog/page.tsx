@@ -25,15 +25,16 @@ import {
   readingMinutes,
   type BlogPostSummary,
 } from "@/lib/content/blog";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { designPhotos } from "@/lib/site/design-photos";
 import { cn } from "@/lib/utils/cn";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Blog",
   description:
     "Essays by Tony Klinger on filmmaking, producing, the industry and the world around it.",
-  alternates: { canonical: "/blog" },
-};
+  path: "/blog",
+});
 
 export const revalidate = 3600;
 
@@ -98,7 +99,7 @@ export default async function BlogPage({ params }: { params: Promise<{ page?: st
                   pages are 24 cards, 8 full rows. */}
               <ul
                 aria-labelledby="essays-heading"
-                className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-7"
+                className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-7"
               >
                 {lead ? (
                   <Reveal as="li" className="h-full sm:col-span-2 lg:row-span-2">

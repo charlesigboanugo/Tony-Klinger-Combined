@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 
 import { inviteUserAction, type AdminState } from "@/app/admin/actions";
+import { AdminCard, FormFooter, FormGrid, Wide } from "@/components/admin/AdminForm";
 import { Button } from "@/components/ui/Button";
 import { Field, FormMessage, Input } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
@@ -19,8 +20,13 @@ const initialState: AdminState = {};
 export function InviteForm() {
   const [open, setOpen] = useState(false);
   const [state, action] = useActionState(inviteUserAction, initialState);
+  // The result Close was pressed on. A sent or failed invitation reopens the
+  // form to show its message; once closed, that message stays dismissed (it
+  // used to hold the form open, so Close did nothing after sending).
+  const [dismissed, setDismissed] = useState<AdminState | null>(null);
+  const message = state !== dismissed ? state : initialState;
 
-  if (!open && !state.success && !state.error) {
+  if (!open && !message.success && !message.error) {
     return (
       <Button variant="outline" onClick={() => setOpen(true)}>
         Invite someone
@@ -28,55 +34,51 @@ export function InviteForm() {
     );
   }
 
+  // Full width, so in the toolbar's wrapping row it drops onto a line of its
+  // own under the search instead of squeezing in beside it.
   return (
-    <form
-      action={action}
-      className="max-w-lg space-y-5 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card"
-    >
-      <div>
-        <h2 className="font-display text-lg font-semibold">Invite someone</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          They receive a link and choose their own password. You never set it,
-          so the account stays provably theirs.
-        </p>
-      </div>
-
-      {state.error ? <FormMessage>{state.error}</FormMessage> : null}
-      {state.success ? (
-        <FormMessage tone="success">{state.success}</FormMessage>
-      ) : null}
-
-      <Field label="Email address" name="email">
-        <Input name="email" type="email" required placeholder="name@example.com" />
-      </Field>
-
-      <Field
-        label="Name"
-        name="displayName"
-        hint="Optional. They can change it themselves later."
+    <form action={action} className="w-full max-w-3xl">
+      <AdminCard
+        title="Invite someone"
+        description="They receive a link to accept. They can choose a password, or sign in with an email link or Google instead. You never set a password for them."
+        footer={
+          <FormFooter note="An invitation creates a plain account. Give it a role afterwards from that person's own page.">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setOpen(false);
+                setDismissed(state);
+              }}
+            >
+              Close
+            </Button>
+            <SubmitButton pendingLabel="Sending…">Send invitation</SubmitButton>
+          </FormFooter>
+        }
       >
-        <Input name="displayName" placeholder="Jane Smith" />
-      </Field>
+        <FormGrid>
+          {message.error || message.success ? (
+            <Wide>
+              {message.error ? <FormMessage>{message.error}</FormMessage> : null}
+              {message.success ? <FormMessage tone="success">{message.success}</FormMessage> : null}
+            </Wide>
+          ) : null}
 
-      <Field
-        label="Reason"
-        name="reason"
-        hint="Recorded in the audit log against your account. Required."
-      >
-        <Input name="reason" required placeholder="Joining as a course tutor" />
-      </Field>
+          <Field label="Email address" name="email">
+            <Input name="email" type="email" required placeholder="name@example.com" />
+          </Field>
 
-      <div className="flex flex-wrap gap-3">
-        <SubmitButton pendingLabel="Sending…">Send invitation</SubmitButton>
-        <Button variant="ghost" onClick={() => setOpen(false)}>
-          Close
-        </Button>
-      </div>
+          <Field label="Name" name="displayName" hint="Optional. They can change it themselves later.">
+            <Input name="displayName" placeholder="Jane Smith" />
+          </Field>
 
-      <p className="text-sm text-muted-foreground">
-        An invitation creates a plain account. Give it a role afterwards from
-        that person&apos;s own page.
-      </p>
+          <Wide>
+            <Field label="Reason" name="reason" hint="Filled in for you; change it if you like. Recorded in the audit log against your account.">
+              <Input name="reason" required defaultValue="Invited from Admin" />
+            </Field>
+          </Wide>
+        </FormGrid>
+      </AdminCard>
     </form>
   );
 }

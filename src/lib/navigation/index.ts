@@ -30,6 +30,13 @@ export type NavItem = {
    * behind a word like "Give-Get-Go" before choosing a link inside it.
    */
   description?: string;
+  /**
+   * The section's own landing page, inside its dropdown. The masthead panel
+   * sets it on a line of its own above the other links (note 10 §42.2), so an
+   * odd count does not leave a hole in the two-column list and the overview
+   * does not read as one more product.
+   */
+  lead?: boolean;
 };
 
 /** Public site — note 04 §3, §38. */
@@ -96,8 +103,8 @@ export const publicNavigation: NavItem[] = [
       // The trigger is a BUTTON that toggles the menu, so it cannot navigate.
       // Without an entry pointing at the section's own landing page, that page
       // is unreachable from the desktop nav entirely (note 04 §21).
-      { label: "Coaching Overview", href: "/coaching" },
-      { label: "Memberships", href: "/coaching/memberships" },
+      { label: "Coaching Overview", href: "/coaching", lead: true },
+      { label: "Coaching Passes", href: "/coaching/passes" },
       { label: "Courses", href: "/coaching/courses" },
       { label: "Group Coaching", href: "/coaching/group-coaching" },
       { label: "Cohorts", href: "/coaching/cohorts" },
@@ -151,7 +158,7 @@ export const footerColumns: { title: string; links: NavItem[] }[] = [
     title: "Coaching",
     links: [
       { label: "Overview", href: "/coaching" },
-      { label: "Memberships", href: "/coaching/memberships" },
+      { label: "Coaching Passes", href: "/coaching/passes" },
       { label: "Courses", href: "/coaching/courses" },
       { label: "Private coaching", href: "/coaching/private-coaching" },
     ],
@@ -196,9 +203,15 @@ export const legalNavigation: NavItem[] = [
  */
 export const academyNavigation: NavItem[] = [
   { label: "Dashboard", href: "/academy" },
+  // The order is the owner's (2026-10-10): the pass, then what it is used
+  // for — coaching — then courses, cohorts and the playlists.
+  { label: "Your pass", href: "/academy/pass" },
+  { label: "Coaching", href: "/academy/coaching" },
   { label: "Courses", href: "/academy/courses" },
   { label: "Cohorts", href: "/academy/cohorts" },
-  { label: "Coaching", href: "/academy/coaching" },
+  // Its own destination (owner, 2026-10-10): the playlists were a section of
+  // the pass page, a scroll down from the series and above the Q&A.
+  { label: "Playlists", href: "/academy/playlists" },
 ];
 
 /**
@@ -213,7 +226,7 @@ export const accountNavigation: NavItem[] = [
   { label: "Overview", href: "/account" },
   { label: "Your access", href: "/account/entitlements" },
   { label: "Bookings", href: "/account/bookings" },
-  { label: "Memberships", href: "/account/memberships" },
+  { label: "Coaching Pass", href: "/account/pass" },
   { label: "Orders", href: "/account/orders" },
   { label: "Billing", href: "/account/billing" },
   { label: "Profile", href: "/account/profile" },
@@ -247,7 +260,7 @@ export const adminNavigation: NavGroup[] = [
     items: [
       { label: "Products", href: "/admin/products", permission: "products.read" },
       { label: "Prices", href: "/admin/prices", permission: "products.read" },
-      { label: "Memberships", href: "/admin/memberships", permission: "memberships.read" },
+      { label: "Coaching Passes", href: "/admin/passes", permission: "memberships.read" },
       { label: "Entitlements", href: "/admin/entitlements", permission: "entitlements.read" },
       { label: "Orders", href: "/admin/orders", permission: "orders.read" },
       { label: "Payments", href: "/admin/payments", permission: "payments.read" },
@@ -274,10 +287,26 @@ export const adminNavigation: NavGroup[] = [
       { label: "Modules", href: "/admin/modules", permission: "courses.read" },
       { label: "Lessons", href: "/admin/lessons", permission: "courses.read" },
       { label: "Cohorts", href: "/admin/cohorts", permission: "cohorts.read" },
+      // One running of a cohort: its dates, registration and places (migration 0017).
+      { label: "Cohort intakes", href: "/admin/intakes", permission: "cohorts.read" },
       { label: "Workshops", href: "/admin/workshops", permission: "cohorts.read" },
+      { label: "Cohort intake places", href: "/admin/cohort-places", permission: "cohorts.read" },
       { label: "Group Coaching", href: "/admin/group-coaching", permission: "coaching.read" },
+      // A run of a series: its dates, registration and eight sessions (migration 0016).
+      { label: "Series runs", href: "/admin/schedule", permission: "coaching.manage" },
+      { label: "Series run registrations", href: "/admin/registrations", permission: "coaching.read" },
       { label: "Sessions", href: "/admin/sessions", permission: "coaching.read" },
-      { label: "Masterclasses", href: "/admin/masterclasses", permission: "masterclasses.read" },
+    ],
+  },
+  {
+    // What a Coaching Pass delivers (migration 0012). The tiers themselves — what
+    // each includes and costs — stay under Commerce → Coaching Passes.
+    label: "Pass holders",
+    items: [
+      { label: "Playlists", href: "/admin/playlists", permission: "memberships.read" },
+      { label: "Playlist videos", href: "/admin/playlist-videos", permission: "memberships.read" },
+      { label: "Q&A sessions", href: "/admin/qa-sessions", permission: "memberships.read" },
+      { label: "Playlist choices", href: "/admin/playlist-choices", permission: "memberships.read" },
     ],
   },
   {
@@ -286,10 +315,13 @@ export const adminNavigation: NavGroup[] = [
       { label: "Private Coaching", href: "/admin/private-coaching", permission: "coaching.read" },
       { label: "Coaching times", href: "/admin/coaching-slots", permission: "coaching.read" },
       { label: "Retreats", href: "/admin/retreats", permission: "retreats.read" },
+      { label: "Retreat batches", href: "/admin/retreat-batches", permission: "retreats.read" },
+      { label: "Retreat batch places", href: "/admin/retreat-places", permission: "retreats.read" },
+      { label: "Retreat applications", href: "/admin/retreat-applications", permission: "retreats.read" },
       { label: "Events", href: "/admin/events", permission: "events.read" },
       { label: "Event photos", href: "/admin/event-photos", permission: "events.read" },
       // Event day: attendee lists, the door scan and the online joining link.
-      { label: "Check-in", href: "/admin/check-in", permission: "events.read" },
+      { label: "Event check-in", href: "/admin/check-in", permission: "events.read" },
       { label: "Bookings", href: "/admin/bookings", permission: "bookings.read" },
     ],
   },

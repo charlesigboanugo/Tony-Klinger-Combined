@@ -22,14 +22,40 @@ import { cn } from "@/lib/utils/cn";
  * mouse: on touch, the synthetic enter would open it and the tap's click would
  * immediately toggle it shut again, so touch keeps the click toggle.
  *
+ * `admin` adds the Admin link, for an account that holds a staff role (owner,
+ * 2026-10-13), first in the list (owner, 2026-10-15). Like the rest of the list it only saves a click; `/admin`
+ * authorizes itself.
+ *
+ * `backToSite` puts "Back to site" at the end of the list, before Sign out, for the workspace
+ * headers (Academy, Account, Admin, Book): the way out lives here rather than
+ * as a button beside the menu (owner, 2026-10-15). The public masthead omits
+ * it — it is the site.
+ *
  * Sign-out is a POST form invoking a Server Action, never a link. A GET-able
  * sign-out URL can be fired by any third-party image tag (note 05 §8).
  */
-export function UserMenu({ email }: { email: string }) {
+export function UserMenu({
+  email,
+  admin = false,
+  backToSite = false,
+  iconOnPhones = false,
+}: {
+  email: string;
+  admin?: boolean;
+  backToSite?: boolean;
+  /**
+   * Below `sm` the button is a round icon (owner, 2026-10-15): three bars of
+   * staggered length, set apart from the workspace's left-hand menu button,
+   * which is three equal bars with no outline. The menu it opens is the same.
+   */
+  iconOnPhones?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  // How the trigger was last pressed: see its onClick.
+  const pressedWith = useRef<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -65,23 +91,39 @@ export function UserMenu({ email }: { email: string }) {
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onPointerDown={(event) => {
+          pressedWith.current = event.pointerType;
+        }}
+        onClick={() => {
+          // A mouse has already opened the menu by hovering, so its click must
+          // not toggle it shut again; moving away closes it. Touch and the
+          // keyboard (a click with no pointer) toggle as usual.
+          const mouse = pressedWith.current === "mouse";
+          pressedWith.current = null;
+          setOpen((v) => (mouse ? true : !v));
+        }}
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={menuId}
         className={cn(
           "flex items-center gap-1.5 rounded-full border border-input-border px-4 py-2 text-sm font-medium transition-colors",
+          iconOnPhones && "max-sm:size-10 max-sm:justify-center max-sm:px-0 tiny:size-8",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
           open
             ? "border-primary bg-primary/8 text-primary"
             : "hover:border-primary hover:text-primary",
         )}
       >
-        Account
+        {iconOnPhones ? (
+          <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5 tiny:size-4 sm:hidden" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M5 7h14M9 12h10M12 17h7" />
+          </svg>
+        ) : null}
+        <span className={cn(iconOnPhones && "max-sm:sr-only")}>Account</span>
         <svg
           viewBox="0 0 12 12"
           aria-hidden="true"
-          className={cn("h-2.5 w-2.5 transition-transform duration-200", open && "rotate-180")}
+          className={cn("h-2.5 w-2.5 transition-transform duration-200", iconOnPhones && "max-sm:hidden", open && "rotate-180")}
         >
           <path
             d="M2 4.5 6 8.5 10 4.5"
@@ -109,11 +151,13 @@ export function UserMenu({ email }: { email: string }) {
         <div className="overflow-hidden rounded-(--radius-lg) border border-border bg-surface p-1.5 shadow-lift">
           <p className="truncate px-3 py-2 text-xs text-muted-foreground">{email}</p>
           {[
+            ...(admin ? [{ href: "/admin", label: "Admin" }] : []),
             { href: "/account", label: "My account" },
             { href: "/academy", label: "Academy" },
             { href: "/account/orders", label: "Orders" },
             { href: "/account/bookings", label: "Bookings" },
             { href: "/account/entitlements", label: "Your access" },
+            ...(backToSite ? [{ href: "/", label: "Back to site" }] : []),
           ].map((item) => (
             <Link
               key={item.href}

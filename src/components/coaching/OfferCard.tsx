@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 
+import { OfferStatusChip } from "@/components/coaching/OfferStatusChip";
 import { GeneratedCover } from "@/components/media/GeneratedCover";
 import { StoredImage } from "@/components/media/StoredImage";
 import { CardLink } from "@/components/ui/Card";
 import { formatPrice } from "@/lib/commerce/pricing";
 import type { ProductPrice } from "@/lib/content/coaching";
+import type { OfferStatus } from "@/lib/content/offer-status";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -39,6 +41,7 @@ export function OfferCard({
   description,
   eyebrow,
   meta,
+  status,
   prices,
   priceLabel,
   priceNote,
@@ -57,6 +60,8 @@ export function OfferCard({
   eyebrow?: string;
   /** A fact worth stating on the card: duration, capacity, date. */
   meta?: string | null;
+  /** When it is on, as a chip on the photograph: the start date, closing soon. */
+  status?: OfferStatus | null;
   prices?: ProductPrice[];
   /** A price stated directly, for offers priced by another product (group series). */
   priceLabel?: string | null;
@@ -119,13 +124,21 @@ export function OfferCard({
         {shownPrice ? (
           <p className="absolute top-4 right-4 flex items-baseline gap-1.5 rounded-full bg-button px-5 py-2.5 text-button-foreground shadow-lift ring-1 ring-white/20">
             {shownNote === "from" ? (
-              <span className="text-xs font-semibold tracking-wide uppercase opacity-85">from</span>
+              <span className="text-xs font-semibold tracking-wide uppercase">from</span>
             ) : null}
             <span className="font-display text-2xl leading-none font-semibold tabular-nums sm:text-[1.75rem]">{shownPrice}</span>
             {shownNote && shownNote !== "from" ? (
-              <span className="text-xs font-medium opacity-85">{shownNote}</span>
+              <span className="text-xs font-medium">{shownNote}</span>
             ) : null}
           </p>
+        ) : null}
+
+        {/* WHEN IT IS ON, at the foot of the picture where the eye lands
+            after the price (owner, 2026-10-09: the date "much more visible"). */}
+        {status ? (
+          <div className="absolute right-4 bottom-4 left-4 flex">
+            <OfferStatusChip status={status} />
+          </div>
         ) : null}
       </div>
 
@@ -137,14 +150,14 @@ export function OfferCard({
           </p>
         ) : null}
 
-        <h3
+        <h2
           className={cn(
-            "mt-3 line-clamp-2 font-display text-2xl leading-tight font-semibold text-balance",
+            "mt-3 line-clamp-2 font-display text-2xl leading-tight font-semibold text-balance tracking-normal",
             feature && "md:text-4xl",
           )}
         >
           <CardLink href={href}>{title}</CardLink>
-        </h3>
+        </h2>
 
         {description ? (
           <p

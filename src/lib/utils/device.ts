@@ -149,11 +149,20 @@ export function describeAuthenticator(aaguid: string | null | undefined): string
   return AAGUIDS[aaguid.toLowerCase()] ?? null;
 }
 
-/** "5 minutes ago", "3 days ago" — for last-used and last-active times. */
-export function timeAgo(iso: string | null | undefined, now: number): string | null {
+/**
+ * "5 minutes ago", "3 days ago" — for last-used and last-active times.
+ *
+ * `numeric: "always"` keeps the count for a single unit too ("1 day ago", not
+ * "yesterday"), for a column of times that should all read the same way.
+ */
+export function timeAgo(
+  iso: string | null | undefined,
+  now: number,
+  numeric: "auto" | "always" = "auto",
+): string | null {
   if (!iso) return null;
   const seconds = Math.round((new Date(iso).getTime() - now) / 1000);
-  const format = new Intl.RelativeTimeFormat("en-GB", { numeric: "auto" });
+  const format = new Intl.RelativeTimeFormat("en-GB", { numeric });
   const steps: Array<[Intl.RelativeTimeFormatUnit, number]> = [
     ["year", 31_536_000], ["month", 2_592_000], ["week", 604_800],
     ["day", 86_400], ["hour", 3_600], ["minute", 60],

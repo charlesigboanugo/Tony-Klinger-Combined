@@ -173,12 +173,14 @@ export async function myNotifications() {
 export const RESOURCE_LABELS: Record<string, string> = {
   course: "Course",
   group_coaching_series: "Group Coaching series",
-  group_coaching_session: "Group Coaching sessions",
-  private_coaching: "Private coaching",
+  group_coaching_session: "Single Group Coaching session",
+  series_pass: "Group Coaching series",
+  private_coaching: "One-to-one coaching",
+  membership: "Coaching Pass",
+  playlist: "Video playlist",
   cohort: "Interactive Cohort",
   retreat: "Retreat",
   event: "Event",
-  masterclass: "Masterclass",
   resource: "Resource",
   release: "New release",
   partner_discount: "Partner discount",
@@ -194,7 +196,7 @@ export function orderTitle(order: Pick<OrderSummary, "order_items">): string {
 
 export const SOURCE_LABELS: Record<string, string> = {
   purchase: "Bought directly",
-  membership: "Included with membership",
+  membership: "Included with your Coaching Pass",
   bundle: "Part of a bundle",
   promotion: "Promotion",
   admin_grant: "Granted by us",

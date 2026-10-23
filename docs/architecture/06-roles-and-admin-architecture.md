@@ -201,6 +201,10 @@ Permissions should represent actions rather than merely screens.
 
 Examples:
 
+> **Owner, 2026-10-09 (migration 0020):** the `masterclasses.*` permissions below are
+> removed with the `masterclasses` table and the Admin → Masterclasses screen (note 08 §27).
+> Wherever this note lists them, or Masterclasses as an admin area, read them as withdrawn.
+
 ```text
 users.read
 users.update
@@ -455,7 +459,78 @@ Authorized administrators should eventually be able to:
 
 Sensitive operations should require appropriate permissions.
 
+**Last sign-in (owner, 2026-10-13).** The Users list has a "Last sign-in" column: how long ago
+each account last signed in, in words ("2 days ago"), with the exact time on hover, and "Never"
+for an account that has not. It is Supabase Auth's `last_sign_in_at`, and records the last
+sign-in, not the last visit. With no search the list opens on it, latest first.
+
+**The whole directory, searched by what the page shows (owner, 2026-10-13).** Search finds
+people by name, email address, role ("admin", "customer", "staff") and status; every word
+typed must match, and the closest matches come first. It used to search names only, because
+emails and sign-in times live in `auth.users`, which PostgREST cannot join, and the page read
+each account's email with its own request (a hundred a page). `adminUserDirectory`
+(`src/lib/admin/index.ts`) now reads every account in three requests: Supabase's admin account
+list (a thousand per call), the profiles, and the role assignments. Search, the Role and Status
+filters and every sort therefore run across all accounts, not the newest hundred, and the page
+is quicker (measured locally: about 70ms for the directory against about 700ms for the per-row
+lookups it replaced). The first 200 matches are drawn. It reads up to 5,000 accounts; past that
+the page says the oldest are not searched, and the search should move into the database.
+`peopleByIds`, which the other admin lists use for names and emails, makes the same single
+account-list call when it is asked for more than a handful of people.
+
 ---
+
+## 14.3.1 Roles are edited as a list and saved once
+
+*Recorded 2026-10-14 (owner).* A person's admin page lists the roles they hold, each with its
+description. "Add a role" puts another on the list, "Remove" takes one off; nothing changes
+until **Save roles**, which needs one reason and makes every change through `admin_set_role`
+(still permission-checked, second-factor-checked and audited per change). Until then a new
+role is marked "To add" and a removed one stays on the list, struck through, as "To remove",
+with an undo, and the footer says what Save will do. `saveRolesAction` compares the list with
+what the person holds in the database at the moment of saving, and stops at the first refusal,
+saying what was already done. A person can hold several roles. It replaced one role at a time
+with a Grant / Revoke switch.
+
+## 14.4 Deleting an account
+
+*Recorded 2026-10-14 (owner: it should be possible, "but with precaution not to delete one
+with something/running purchases").*
+
+A person's admin page ends with **Delete account**, shown only to someone holding
+`users.delete` (owners and, since migration 0028 on 2026-10-14 at the owner's request, admins)
+and never on their own page. An admin cannot reach an owner's account this way: an account
+holding any staff role is refused, and only an owner can revoke the owner role (§34). It is refused, with the reasons listed in place of a button, while the account has any
+of the following (`accountDeletionBlockers`, `src/lib/admin/operations.ts`):
+
+- a staff role (revoke it first);
+- access in force (active and not past its end date);
+- a booking still to come (pending or confirmed, in the future);
+- a subscription still running;
+- **any order at all, of any status.**
+
+The last is both the owner's precaution and a database fact: every order must keep either its
+account or an email (`orders_have_an_owner_or_an_email`), a signed-in order carries no email of
+its own, so deleting an account that has ordered fails in the database (verified locally:
+"Database error deleting user"). Accounts that have bought anything are therefore kept, and
+their purchase records stay whole. Deletion is for accounts that never bought: abandoned
+sign-ups, test accounts, staff who leave without purchases.
+
+**Access a staff member gave outlives their account** (migration 0021, 2026-10-23). Deleting
+anyone who had ever given access used to fail in the database: `granted_by` is set null on
+delete, but a check required it on every admin grant. The check now requires only the reason;
+a trigger requires `granted_by` when a grant is made. The grant stays, with its reason, and the
+audit log keeps who gave it and when.
+
+`deleteUserAction` checks the permission and the blockers again on submit, takes a required
+reason, and asks for confirmation (`ConfirmSubmit`). It writes the audit entry FIRST, with the
+email, because the deletion removes the only other record of who it was, then deletes through
+Supabase's admin API; the person's profile, roles, bookings, registrations and expired access
+go with it by cascade.
+
+Erasure on request for someone who HAS ordered (a data-protection request) is not covered: it
+would mean removing the person while keeping the orders, which needs a decision on what the
+orders keep (for example the email, or nothing). Open.
 
 ## 14.1 Team membership is a presentation choice, not a role
 
@@ -502,8 +577,14 @@ signed up for themselves — and staff are exactly the people who never do that.
 up as a customer in order to be given the support role.
 
 ```text
-/admin/users   →  Invite someone  →  email  →  set your own password
+/admin/users   →  Invite someone  →  email  →  accept  →  password, or skip it
 ```
+
+**A password is optional** (owner, 2026-10-23). Accepting the invitation confirms the
+address, so the account can be signed in to with an email link, or with Google where it uses
+the same address. The landing page ("You're in") offers **Save password** or **Skip for
+now** (`skipPasswordAction`); both give the first-sign-in welcome. A password can be added
+later in Account → Security. Staff still register a security key whichever way they sign in.
 
 **An invitation, not an account with a password an operator chose.** An administrator who
 types somebody's first password knows their credential, and the account stops being
@@ -811,6 +892,79 @@ Required behaviour:
   are retained for reporting, support and reconciliation.
 - **Granting is a server-side operation** behind the trusted boundary (§30), never driven by
   a client-supplied user identifier.
+- **What is granted is picked by name (owner, 2026-10-15).** The admin form offers one list of
+  every course, Coaching Pass, cohort, Group Coaching series (whole series, or a number of its
+  sessions), one-to-one service, retreat, event and playlist, grouped by kind; the server
+  accepts only those kinds and an id. A number of sessions is asked only for one-to-one and
+  Group Coaching sessions; everything else is plain access. Grants covering a whole kind (no
+  id, e.g. "all playlists") and series taken on a pass are no longer granted by hand: the
+  first is what a pass gives, the second follows from the pass.
+- **Revoke and adjust are on each access row (owner, 2026-10-15).** Until then the database
+  functions `admin_revoke_entitlement` and `admin_adjust_entitlement` existed with nothing in
+  admin calling them, so access could be granted but never ended. Each row of a product's
+  holders (`/admin/entitlements/<type>/<id>`) and of a person's Access section
+  (`/admin/users/<id>`) now has a **Change** button for staff holding `entitlements.adjust` or
+  `entitlements.revoke`. It opens a dialog: **Adjust** (sessions in total, never below those
+  used; end date, which can be moved but not removed) and **Revoke** (ends it now, asks first
+  through `ConfirmSubmit`). Both take a required reason, run in the operator's own session and
+  are audited by the functions. Ended rows (revoked, expired) offer nothing; a used-up row can
+  be adjusted, which turns it back on when sessions are added. A person's Access rows name what
+  the access is to ("Gold Coaching Pass"), with the kind underneath (`accessNames`). Covered by
+  pgTAP (support adjusts but cannot revoke; a revoke needs a reason; the row is kept; both are
+  audited) and by `scripts/entitlement-change-check.mjs` (admin, support manager and finance
+  manager in the browser).
+- **What comes with a Coaching Pass is changed through the pass.** Series, playlist and
+  retreat rows derived from a pass are rewritten by `sync_membership_entitlements` whenever the
+  pass changes, so a hand-made change to one would be quietly undone; they show "With their
+  pass" and the server refuses them. Revoking or re-dating the pass itself re-derives them (the
+  `entitlements_sync_membership` trigger). A pass paid by subscription comes back on its next
+  payment, which the revoke confirmation says.
+- **Revoking leaves bookings alone.** Bookings already made with the entitlement are not
+  cancelled; the confirmation points staff to Bookings.
+
+## 23.2 Academy Staff View
+
+*Recorded 2026-10-23 (owner).* Some staff need to see everything the Academy delivers without
+buying it, and must not be able to do what a customer does with it.
+
+**Seeing is a permission; doing still needs a purchase.** `academy.view_all` (migration 0018)
+lets its holders read every course, lesson, cohort workshop, Group Coaching session, members'
+Q&A, playlist video and retreat batch, through one read policy per table. The helpers that
+decide access for actions (`has_active_entitlement`, `has_booking`, `in_cohort`,
+`can_view_playlist`, `has_member_benefit`, `has_retreat_batch_access`, the run and intake
+functions) are untouched, so booking, registering for a run, taking an intake place, choosing a
+playlist, recording lesson progress and spending a session are refused by the database for a
+staff member who has not bought the thing, exactly as for anyone else. No entitlements are made
+for staff, so reports, reminder emails and seat counts never include them.
+
+| Role | Holds `academy.view_all` |
+|------|--------------------------|
+| owner, admin | yes |
+| course_manager, coaching_manager | yes (they build and run what is delivered) |
+| support_manager | yes (to see what a customer sees when helping them) |
+| academy_viewer | yes, and nothing else (see below) |
+| content, booking, finance and communications managers | no |
+
+Being listed on the public team page grants nothing (§11).
+
+**The Academy viewer is not staff** (migration 0019). For people Tony works with who should see
+the Academy and nothing of Admin. A role now says whether it makes its holder staff
+(`roles.is_staff`); `academy_viewer` is the only one that does not. Staff means holding a
+STAFF role, everywhere it is decided: `is_staff()` (every staff read policy and signed
+storage), `getAuthContext().isStaff` and `/api/session` (Admin in the account menu, the
+security key requirement), the key-reset rule and the minimum number of keys. So a viewer
+signs in like a customer, needs no security key, is not offered Admin and is refused it, and
+is found as "customer" in the Users search. Recordings reach a viewer through their own policy
+on `resources`, limited to recordings of workshops, sessions and the Q&A. It is granted like any
+role, from the person's admin page.
+
+**In the Academy** (`src/lib/academy/staff.ts`): a "Staff view" banner heads every page;
+Courses, Cohorts and the dashboard list everything published; Your pass and Playlists show the
+top tier; Coaching lists every scheduled session and retreat. Each book, register, choose or
+join control is replaced by a quiet "Staff view" mark, and a lesson shows "Progress is kept for
+customers" instead of the complete button. A cohort shows one intake's schedule (the one under
+way, else the next, else the last). Where the staff member has bought something themselves,
+that item behaves as it does for any customer. Buying for themselves is not blocked.
 
 ---
 
@@ -1132,6 +1286,19 @@ The exact mechanism can include:
 - Audit logging
 - Additional authentication where appropriate
 
+**Reasons come filled in** (owner, 2026-10-23). Every admin action that records a reason
+(grant, adjust and revoke access, roles, invite, clear keys, delete an account) still requires
+one, but the field starts with a sensible default the operator can keep or edit: "Access given
+from Admin", "Invited from Admin", and for roles what is changing ("Added Academy viewer").
+The audit log keeps whatever is submitted.
+
+**Admins manage every role but owner** (owner, 2026-10-23, migration 0020). The `admin` role
+holds `roles.manage`, so an admin can grant and revoke any role, including admin and the
+Academy viewer, from a person's admin page. Only an owner can grant or remove the `owner`
+role: `admin_set_role` refuses it to anyone else, and the Roles form neither offers owner to a
+non-owner nor lets them remove it ("Only an owner can remove this"). Every change still needs a
+reason, the operator's second factor, and is audited. `settings.update` stays owner-only.
+
 ---
 
 # 35. Authorization and Entitlements
@@ -1217,6 +1384,14 @@ experience.
 When a user is not authenticated, redirect to authentication where appropriate.
 
 Do not reveal sensitive information about protected resources through error messages.
+
+**Staff on a page their role doesn't cover** (2026-10-23, found in the end-to-end test). Each
+page's `requirePermission` refuses, but its refusal surfaced as the generic "Something went
+wrong". The admin layout now reads the permission named by the menu entry for the requested
+address (longest match in `adminNavigation`, via the proxy's `x-pathname`) and shows
+`AccessDenied` inside the Admin frame instead of the page. The page's own check stays the
+boundary; this only words it. Next's `forbidden()` would also do it, but needs the experimental
+`authInterrupts` flag (note 01 §26).
 
 ---
 
@@ -1312,3 +1487,14 @@ No user should gain privileged access merely by manipulating the browser, URL, c
 | 2026-09-05 | §14.2 (new): user invitations recorded — a new `users.invite` permission (migration 0035) held by owner and admin, an invitation rather than an operator-chosen password, a narrow `admin_record_user_invite` audit function, and the account withdrawn if the audit entry cannot be written. The invite email must use `{{ .TokenHash }}`: GoTrue's default returns the session in a URL fragment the server can never read. Name search recorded, with its documented limit that email addresses are not searchable. |
 | 2026-09-05 | §14.1: the admin control implemented — create, link or unlink a public team entry from the person's page, with linking never inferred and unlinking never deleting content. |
 | 2026-09-05 | §14.3 (new): `users.reset_mfa` and `admin_record_mfa_reset` (migration 0036) — the recovery lever note 05 §11.1 always described but which did not exist. Needed now that customers are challenged for keys they registered, since a lost key otherwise means a permanently unreachable account. |
+| 2026-10-13 | §14: the Users list shows "Last sign-in" as a relative time and opens sorted by it. Search covers name, email, role and status across every account (`adminUserDirectory`: three requests in place of one per row). |
+| 2026-10-14 | §14.3.1 (new): roles on a person's page are an editable list (add, remove, undo) saved once with one reason (`saveRolesAction`). |
+| 2026-10-14 | §14.4 (new): owners can delete an account from its admin page, refused while it has a staff role, access in force, a booking to come, a running subscription, or any order; reason required, confirmed, audited first. Erasure for customers who have ordered is open. |
+| 2026-10-14 | §14.4: admins may delete accounts too (migration 0028 grants `users.delete` to `admin`; `roles.manage` and `settings.update` stay owner-only). pgTAP asserts it; 155 tests. |
+| 2026-10-15 | §23.1: manual grants pick what to give by name from one grouped list; sessions asked only for one-to-one and Group Coaching sessions; whole-kind grants and series-on-a-pass are no longer granted by hand. |
+| 2026-10-15 | §23.1: revoke and adjust on each access row (holders page and a person's Access section) via a Change dialog; pass-derived rows changed only through the pass; revoking leaves bookings alone; Access rows named by product. pgTAP 173 tests, plus `entitlement-change-check.mjs`. |
+| 2026-10-23 | §23.2 (new): Academy staff view. `academy.view_all` (migration 0018) for owner, admin, course, coaching and support managers: read everything delivered, act on nothing not bought. pgTAP 183 tests. |
+| 2026-10-23 | §23.2: `academy_viewer`, the first role that is not staff (migration 0019, `roles.is_staff`). Staff now means holding a staff role in `is_staff()`, the auth context, `/api/session` and the key rules. pgTAP 185 tests. |
+| 2026-10-23 | §34: admins hold `roles.manage` (migration 0020) and manage every role except owner; owner stays owner-only in `admin_set_role` and the Roles form. pgTAP 186 tests. |
+| 2026-10-23 | §14.2: accepting an invitation no longer requires a password; "Skip for now" signs the invitee in, who uses an email link or Google afterwards. Invite email and form wording updated. |
+| 2026-10-23 | §14.4, §38: former staff who gave access can be deleted (migration 0021); staff opening an admin page their role doesn't cover see Access denied inside Admin, not an error page. pgTAP 187. |

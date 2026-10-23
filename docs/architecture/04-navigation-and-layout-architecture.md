@@ -283,10 +283,16 @@ Baseline Academy navigation:
 ```text
 Academy
 ├── Dashboard
+├── Membership
 ├── Courses
 ├── Cohorts
 └── Coaching
 ```
+
+**Membership added 2026-10-08 (migration 0012).** It is where a member chooses their series
+and playlist, watches the playlists and joins the Q&A — a destination with its own content,
+unlike the four removed below, each of which restated something shown elsewhere. It is listed
+for everyone; someone who is not a member finds the way to the tiers there.
 
 **Four items, at the user's direction (2026-09-05), reversing a seven-item baseline built up
 over two rounds the same day:**
@@ -366,6 +372,8 @@ bar §27 rules out. The signed-in Academy header now carries "Back to site" and 
 `UserMenu` (hover-open, note 10 §37) in place of a bare Account link and Sign out button.
 The guest `/academy` landing now actually receives the public masthead and footer, as §9
 already required; it had been rendered in a bare wrapper with no navigation at all.
+**Superseded below `lg` on 2026-10-15:** the section button gave way to a hamburger in the
+header opening a sheet from the left — see §32.4.
 
 ---
 
@@ -436,6 +444,12 @@ below `sm`), a hairline, the workspace name in tracked small capitals, "← Back
 plain-text name beside a filled pill badge. **No main site menu:** Account was briefly moved
 under the public masthead the same day and the owner withdrew that; the masthead is for the
 public site only. Admin keeps its own header for now.
+
+**2026-10-15 (owner): the right side is the account menu alone.** "Back to site" and the
+Admin link no longer sit in the header as buttons; "Back to site" is the last item (before
+Sign out) of the account menu in every workspace (`UserMenu backToSite`), and Admin was already in it for
+staff. The checkout header, which guests use and which has no account menu, keeps "Back to
+site" on the header (§21). See §32.4.
 
 ---
 
@@ -542,6 +556,11 @@ A **"Find a page"** box (shortcut `/`) above the tree filters every page by name
 Enter opens the first match. Exactly one item is active, by longest matching href — `/admin`
 previously lit up Dashboard on every page. Below `lg` the finder and tree sit behind one
 section button ("Admin · People / Users"), the same pattern as Account and Academy (§27).
+**Superseded 2026-10-15:** below `lg` they sit in the hamburger sheet of §32.4.
+
+**2026-10-08.** A **Members** group holds what a membership delivers: Playlists, Playlist
+videos, Q&A sessions and Member choices. The tiers themselves stay under Commerce →
+Memberships. Experiences gains Retreat links and Retreat applications.
 
 ---
 
@@ -560,11 +579,20 @@ It should provide:
 
 Do not make the Admin interface visually indistinguishable from the public site.
 
-**As built (2026-09-27).** Indigo identity strip; the brand column (same width as the
-sidebar, 19rem) carries the site `Wordmark`, a hairline and "ADMIN" in tracked small
+**As built (2026-09-27; narrowed 2026-10-13).** Indigo identity strip; the brand column (same
+width as the sidebar, 15rem since 2026-10-13, was 19rem) carries the site's TK disc (the name
+is dropped at this width), a hairline and "ADMIN" in tracked small
 capitals — the `WorkspaceHeader` treatment — replacing plain text beside a filled pill.
 Right side: "← Back to site" and the shared account menu (which holds Your account and
 Sign out), replacing a bare email, an "Account" link and a sign-out button.
+**2026-10-15:** "Back to site" moved into the account menu; the header's right side is the
+account menu alone (§32.4).
+
+**The sidebar gives its width to the pages (owner, 2026-10-13).** Admin pages are tables and
+forms, so from `lg` the sidebar is 15rem with type a step smaller (0.8125rem) and tighter
+rows; the content pane gains about 5rem. Its two-level design is unchanged. A page name too
+long for one line at this width is shortened, the column is not widened. The spare-key prompt
+also left the content pane for the header the same day (note 05 §11.1).
 
 ---
 
@@ -614,9 +642,13 @@ The customer should still have an appropriate way to recover from an error or re
 
 **Implemented 2026-09-27.** Checkout uses the shared `WorkspaceHeader` (§13) labelled
 "Checkout", on a noir strip, with **no account menu** — guests check out too — so its
-"← Back to site" stays visible at every width. There is no main site menu. The page opens
-with a `BackLink` (§32.3): "Back to your cart", or "Keep browsing" (to `/coaching`) for a
-single-product checkout. A task footer carries Need help? / Terms / Privacy only.
+"← Back to site" stays visible at every width. There is no main site menu. A task footer
+carries Need help? / Terms / Privacy only.
+
+**No `BackLink` on checkout (owner, 2026-10-08), reversing the line this replaced.** "Keep
+browsing" and "Back to your cart" above the heading were a third way out on a page whose job
+is paying. The header's "Back to site" and, for a cart checkout, the summary's "Edit your
+cart" remain.
 
 ---
 
@@ -677,29 +709,31 @@ After completion, provide clear routes to:
 - Public site
 
 **Implemented 2026-09-27 — booking gets the workspace header, not the public masthead.**
-Every `/bookings` page is signed-in only, and booking is a single task, so the layout uses
+Every `/book` page is signed-in only, and booking is a single task, so the layout uses
 the shared `WorkspaceHeader` (§13): site wordmark, "Booking", "← Back to site", "Your
 bookings" (`/account/bookings`) and the account menu, on Account's oxblood strip, since
 what a booking produces is managed under Account. No main site menu. Content uses the
 `.workspace` type scale. The same task footer as checkout (Need help? / Terms / Privacy).
+**2026-10-15:** "Back to site" and "Your bookings" left the header; both are in the account
+menu (Back to site, Bookings), as in the other workspaces (§32.4).
 
 The flow and its ways back:
 
 ```text
-/bookings                          ← Your bookings (/account/bookings)
-   Private coaching still to book  → /bookings/private/[serviceSlug]
-   Group sessions the access covers → /bookings/[bookableId]
+/book                              ← Your bookings (/account/bookings)
+   Private coaching still to book  → /book/private/[serviceSlug]
+   Group sessions the access covers → /book/[bookableId]
 
-/bookings/[bookableId]             ← Book a session
+/book/[bookableId]                 ← Book a session
    after booking: View your bookings · Academy coaching · Book another
 
-/bookings/private/[serviceSlug]    ← Book a session (holding a session to book)
-                                   ← the service page (paying — came from "Check availability")
-   after booking with a credit: /academy/coaching?booked=private
-   after paying: /checkout/success
+/book/private/[serviceSlug]        ← Book a session (holding a session to book)
+                                   ← the service page
+   after booking: /academy/coaching?booked=private
+   holding none: buy a session or pack → /checkout (pay first, then book)
 ```
 
-`/bookings` now lists unspent private coaching sessions as well as group sessions, so a
+`/book` now lists unspent private coaching sessions as well as group sessions, so a
 paid-for session that was never scheduled, or was returned by a cancellation, is one click
 from choosing a time.
 
@@ -759,6 +793,15 @@ Admin
 ```
 
 The menu should not expose destinations the user is unauthorized to access.
+
+**Implemented 2026-10-13 (owner).** `UserMenu` shows **Admin** for an account that holds any
+staff role, the same test as the admin layout's `isStaff`, wherever the menu appears: the
+public masthead, the Account, Academy and Book workspace headers, and Admin itself. The phone
+menu's foot gains an Admin button on the same condition. The workspace layouts pass it from
+the request's auth context; the pre-built public masthead cannot know the visitor, so
+`/api/session` now answers `admin` alongside the email (one `my_roles` call, signed-in
+visitors only). It is a shortcut and nothing more: `/admin` authorizes itself and still asks
+for the second factor (§23).
 
 ---
 
@@ -1090,6 +1133,13 @@ screen someone is actually looking at while using the workspace, not just the he
 
 ## 32.3 A way back at every depth
 
+**Narrowed 2026-10-08 (owner: "that back button can be confusing, only put it where
+needed").** The button belongs on a page that is a CHILD OF A LIST — an order, a ticket, a
+course, a cohort, a playlist, an admin record — where it names that list, and on the steps of
+a booking. It does not belong where another way back is already on the page: checkout (§20),
+`/book` (its header links "Your bookings") and `/account/claim` (the account sidebar).
+Those three were removed. The rule below stands for the pages that keep it.
+
 **2026-09-05.** Every page reached by drilling into a workspace — not just the top level a
 sidebar item names — must offer an obvious, one-click way back to where it was reached
 from. The sidebar covers this for any page it links to directly; it does not cover a page
@@ -1118,8 +1168,16 @@ Two rules behind it:
   chain — the lesson page's two-crumb trail was replaced by a single button back to the
   course, since that is what "back" means from inside a lesson.
 
+**2026-10-15 — every "← text" back link is the button (owner).** The last plain-text ones
+became `BackLink`: the lesson bar's way back to its course, the cart's "Continue shopping",
+check-in's "All events", the sign-in/sign-up card's "Back to tonyklinger.com", and "Back to
+site" in the Admin and workspace (Account, Academy) headers and the Academy phone menu.
+`BackLink` gained `inline` (no space below, for rows) and shortens a long label with an
+ellipsis. Previous/next pagers (blog, catalogue, lessons) are not ways back and stay as
+they are.
+
 **2026-09-27 — pages with no sidebar item of their own.** `BackLink` extended to the pages
-reached only by a link, an email or a redirect: `/bookings` (→ Your bookings) and its
+reached only by a link, an email or a redirect: `/book` (→ Your bookings) and its
 steps (§20), `/checkout` (§18), `/account/security/mfa` (→ Security; → Admin for an owner
 sent there by the two-key rule; **none** for a staff account held at the second-factor
 gate, where every other account page would only send it back — the header's "Back to
@@ -1127,6 +1185,37 @@ site" is the exit), `/account/claim` (→ Your orders, including its no-token st
 `/admin/[resource]/[id]` and `/admin/[resource]/new` (→ All <resource>), and
 `/admin/check-in/[reference]` (its muted text link replaced). Auth pages keep their own
 exits (§17, `AuthCard`), which already satisfy this.
+
+## 32.4 Workspace menu below `lg`: a hamburger and a sheet from the left
+
+**2026-10-15 (owner).** Below `lg`, Academy, Account and Admin no longer show a full-width
+section button ("Academy / Courses") above the page — it took a card's height of a phone
+screen before any content. Instead:
+
+- A **hamburger** sits at the far left of the workspace header, before the TK mark. It is
+  hidden from `lg`, where the sidebar shows the same navigation.
+- It opens a **sheet sliding in from the left edge** (`WorkspaceDrawer`, max 20rem / 85% of
+  the width) over a dimmed page. The sheet carries the workspace's identity strip along its
+  top, the workspace name and a close button, the workspace's own navigation (the Admin
+  finder and tree; the Academy and Account lists with their footer links), and "Back to site"
+  at the foot.
+- Modal contract as the public mobile menu (§27): Escape closes, focus is trapped in the
+  sheet, the page behind is scroll-locked, focus returns to the hamburger. Choosing a link
+  or any route change closes it; widening past `lg` closes it.
+- Motion is the shared `.dropdown-panel` with the `dropdown-from-left` slide and
+  `.dropdown-scrim` (note 10 §37.1), so it animates in and out.
+
+Below `lg` the sidebar `<aside>` is not rendered visibly at all; the page starts directly
+under the header. Each nav component takes `variant="sidebar" | "drawer"`; only the sidebar
+Admin finder owns the `/` shortcut.
+
+This is not the secondary link strip §27 rules out: nothing sits under the masthead.
+
+**Same day, the header's right side.** In every signed-in workspace (Academy, Account, Admin,
+Book) the right of the header holds the account menu and nothing else. "Back to site" is
+the menu's last item before Sign out; Admin is its first item for staff; Bookings stands in for Book's former "Your
+bookings" link. The checkout header (guests, no account menu) is the one exception and keeps
+"Back to site" visible (§21).
 
 
 ---
@@ -1369,3 +1458,19 @@ Use Next.js layouts and contextual navigation to achieve those boundaries within
 | 2026-09-27 | §32.2: Academy sidebar uses `overflow-y-scroll` so its scroll track always shows as the menu/content separator, matching Account (owner). |
 | 2026-09-27 | §18, §20, §32.3: Booking and Checkout move to the shared `WorkspaceHeader` (booking with the account menu and "Your bookings"; checkout without an account menu, links visible at every width) plus a shared task footer; no main site menu in either. `/bookings` lists private coaching still to book. `BackLink` added to every link-only page that lacked one (booking steps, checkout, security keys, claim, admin resource edit/new, ticket check-in). |
 | 2026-09-27 | §15, §16, §32: Admin navigation rebuilt as a two-level disclosure tree with icons, a page finder and a phone section switcher; "Customers" renamed People; Enquiries and Audit log added; longest-match active state. Admin header uses the site wordmark and the account menu. |
+| 2026-10-08 | §9: Academy navigation gains Membership. §15: Admin gains a Members group (Playlists, Playlist videos, Q&A sessions, Member choices); Experiences gains Retreat links and Retreat applications. |
+| 2026-10-08 | §32.3: back buttons only where a page is a child of a list (owner: "can be confusing, only put it where needed"). Removed from checkout (the header's "Back to site" and the summary's "Edit your cart" remain), from `/bookings` (the header already links "Your bookings") and from `/account/claim` (the account sidebar is there). Kept on detail pages under a list, on the booking steps, and on Security keys. |
+| 2026-10-08 | §15: Admin → Learning gains Coaching terms and Schedule a series. |
+| 2026-10-09 | §20: the task-focused booking area is at `/book` (was `/bookings`); layout, header and "Your bookings" link unchanged. |
+| 2026-10-10 | §9: the Academy menu gains **Playlists** (`/academy/playlists`) and is reordered (owner): Dashboard, Your pass, Coaching, Courses, Cohorts, Playlists. The earlier rule that a pass benefit is reached through the pass page is set aside for playlists: they are a place people return to, as Courses is. |
+| 2026-10-09 | §15: Masterclasses removed from Admin → Learning with the table (migration 0020). |
+| 2026-10-09 | Labels: "Memberships" reads "Coaching Passes" in the public menu and footer, "Coaching Pass" in Account, "Your pass" in the Academy; in Admin, "Coaching Passes", "Pass holders" and "Playlist choices" (owner; reversible, see `REVERSE.md`). Positions and addresses unchanged except the public `/coaching/passes`. |
+| 2026-10-09 | §15: Coaching terms removed from Admin → Learning (terms withdrawn, note 07 §12.1). |
+| 2026-10-09 | §15: Admin → Learning: "Schedule a series" becomes "Series runs"; "Series registrations" added. |
+| 2026-10-09 | §15: Admin → Learning gains Cohort intakes and Cohort places. |
+| 2026-10-13 | §22: the account menu shows Admin for staff accounts, on the public masthead, the workspace headers and the phone menu. `/api/session` answers `admin` for the pre-built masthead. |
+| 2026-10-13 | §16: Admin sidebar and brand column narrowed from 19rem to 15rem, with smaller type and tighter rows, so admin pages get the width; the brand column shows the TK disc only. |
+| 2026-10-15 | §32.3: remaining text "←" back links converted to `BackLink` (lesson bar, cart, check-in, auth card, Admin/workspace headers, Academy phone menu); `BackLink` gains `inline` and label truncation. |
+| 2026-10-15 | Workspace and Admin headers on phones (below `sm`): the Account menu button is a round outlined icon of three staggered bars, distinct from the left-hand menu button (three equal bars, no outline); same menu. The Admin spare-key chip is a dot on phones. The TK monogram stays at every size (owner). |
+| 2026-10-15 | Headers under 300px (`tiny:` variant, globals.css): the menu button, TK monogram, divider, workspace label, spare-key dot and Account icon shrink so the Admin, Account and Academy headers fit (owner). The spare-key explainer card sits under the header at screen width on phones, so none of it falls off the screen. |
+| 2026-10-15 | Admin spare-key chip on phones shows words again, not a bare dot: "Key" under 360px, "Spare key" to `sm`, the full sentence above ("2nd key" / "Second key" for the owner); its dot blinks (opacity, `key-blink`, still under reduced motion) (owner). |

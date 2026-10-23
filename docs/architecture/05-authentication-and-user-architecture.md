@@ -207,6 +207,20 @@ established, sign-in is refused rather than a duplicate account created.
 
 Magic link and OAuth both complete through `/auth/callback` (§11).
 
+**Both pages offer all three** (owner, 2026-10-23). Sign in and Create account show Google,
+then the same two email tabs (`EmailMethods`), Email link first. On Create account the email
+link asks for a name too (`magicSignUpAction`), which the profile trigger stores; clicking the
+link creates the account and is the proof of the inbox. For an address that already has an
+account, the same link just signs them in, and the page answers identically either way.
+
+**Creating an account with an address that already has one** (owner, 2026-10-23). The page
+never says so, because it would let anyone test whether a person has an account. With the
+email link, the link simply signs them in. With a password, Supabase reports it (as an error,
+or a success with no identities, depending on settings); `signUpAction` then shows the usual
+"check your email" message and queues `account_exists`, an email to that address saying they
+already have an account, with links to sign in and reset the password. At most one per
+address per hour.
+
 ---
 
 # 7.2 Sign-In Process
@@ -491,6 +505,12 @@ owner loses their only key   -> nobody can help. aal2 is required by the RLS
 The spare key exists to prevent lockout. Refusing an operator entry until they hold one
 would therefore penalise them at exactly the moment it is meant to protect them — so staff
 are **prompted** for a second key, not blocked by it.
+
+The prompt is a single pill in the Admin header (`SpareKeyBanner`, owner 2026-10-13), linking
+to key management. Pointing at it or tabbing to it opens a card that makes the case: what
+happens if the one key is lost, and what a second one changes (the shared `.dropdown-panel`
+motion; on touch the tap goes straight to key management). It was a three-line panel above every admin
+page, which pushed each page's content down for as long as the key was missing.
 
 The owner account is the exception, because it is the one that cannot be recovered from
 inside the application. It must hold two verified keys before performing any privileged
@@ -1039,10 +1059,62 @@ records are all created by the Stripe webhook exactly as they are for a signed-i
 An unclaimed order is a real order. It is not provisional and must not expire or be cleaned
 up as though it were an abandoned cart.
 
+### 29.2.1 An email that already has an account (owner, 2026-10-15)
+
+Checkout offers every signed-out customer "Have an account? Sign in", returning them to the
+same checkout. **An email that belongs to an account cannot check out as a guest** (owner,
+same day, replacing a first version that only offered sign-in): checkout says the email
+has an account and asks the customer to sign in ("Email me a sign-in link", or sign in
+another way). This fixes two things. The sale checks then see what the account already
+holds, so nobody pays twice for a course they have. And a mistyped email can never put a
+purchase within reach of someone else's account. Someone paying for the account holder
+cannot use a gift either: a gift goes only to an email with no account (§29.2.2).
+
+What it does not fix: a mistyped email that belongs to no account still takes the order to
+that address.
+
+- The question is asked last, once the sale is otherwise allowed, by the checkout action
+  through `email_has_account()` (service role only, migration 0016).
+- Telling a caller that an email has an account is a disclosure, so it is rate-limited per
+  caller (`checkout-account`, 20 per 10 minutes). Past the limit checkout asks them to wait,
+  rather than skipping the check and reopening the guest route. This is a deliberate
+  exception to the sign-in and password-reset forms, which never say whether an account
+  exists.
+
+### 29.2.2 Gifts (owner, 2026-10-15)
+
+Anything that can wait in somebody's account can be bought for someone else: checkout in
+gift mode (`/checkout?…&gift=1`, linked as "Give it as a gift" from the cart and the
+course, private coaching and Coaching Pass pages, and from checkout's opening line: "Have
+an account? Sign in … Otherwise, enter your email to buy as a guest, or buy it as a gift") asks for the
+recipient's email.
+
+- **A gift goes only to an email with no account** (owner, 2026-10-15). Checkout refuses
+  an email that has one ("They can buy it themselves, signed in"). This prevents a gift
+  duplicating something the person already owns, and prevents a mistyped email reaching a
+  stranger's account. The gift email therefore asks the recipient to set up an account.
+
+- A gift is a guest order made out to the recipient (`guest_email`, `orders.is_gift`),
+  whoever pays, signed in or not. The recipient adds it to their account by §29.3 like any
+  guest purchase; the claim email is worded as a gift.
+- The payer's receipt goes to the payer, never the recipient: a signed-in payer's own Stripe
+  customer, otherwise the email they give Stripe. The claim email always goes to the
+  order's `guest_email`, not to whoever Stripe recorded as paying.
+- A gift is priced and checked as for a signed-out visitor: the payer's own pass never
+  makes it an upgrade, and what the payer owns never stops them giving it.
+- Not giftable (`src/lib/commerce/gift.ts`): event tickets and sessions for a set date
+  (issued in a name at sale), subscriptions (bill the account they belong to), cohort and
+  retreat places (depend on the person's level or application). A signed-in buyer cannot
+  gift to their own email.
+
 ## 29.3 Claiming a Guest Purchase
 
 Entitlements require a user identity (§22), so a guest purchase must be linked to an account
 before its access can be delivered.
+
+A gift's claim link carries `gift=1`, which only words the page for a recipient ("Add your
+gift — Someone has bought this for you"); the token alone decides what is claimed
+(2026-10-23).
 
 The claim process is:
 
@@ -1086,6 +1158,15 @@ The rules that make this safe:
   establishing ownership by other trusted evidence. It is a manual, audited operation — not
   a self-service endpoint — and it must not become a way to claim an order by quoting an
   order ID or an email address.
+
+**Adding from the account (owner, 2026-10-15; migration 0016).** A signed-in customer whose
+account email is CONFIRMED sees, on Account and Orders, the paid guest orders made with that
+email, with one "Add to my account" button (`my_unclaimed_orders()`, `claim_my_orders()`).
+This covers a claim link that expired or was never opened. It is consistent with the rules
+above: a confirmed account email is the same proof as the emailed token (the token is sent
+to that inbox), the order is attached to `auth.uid()`, and nothing is attached until the
+account holder presses the button. It never runs on sign-in by itself. Any outstanding claim
+token for the order is spent at the same time. An unconfirmed email sees nothing.
 
 An order that is never claimed remains in the system as a paid, unclaimed order. It is a
 customer-service and reconciliation concern, not a record to be deleted. Note 08 §58
@@ -1182,7 +1263,7 @@ stamped into a page that is rendered for that request. Public pages are now pre-
 | `/`, `/about*`, `/blog*`, `/catalogue*`, `/coaching*`, `/events` (index), `/give-get-go`, `/privacy`, `/terms`, `/cookies`, `/contact` | pre-built (SSG/ISR) | `'self' 'unsafe-inline'`, no nonce |
 | `/events/<slug>` | per request | `'self' 'unsafe-inline'`, no nonce (public area) |
 | any unknown URL (the pre-built 404 page) | pre-built | `'self' 'unsafe-inline'`, no nonce |
-| `/account`, `/academy`, `/admin`, `/auth`, `/checkout`, `/bookings`, `/cart`, `/welcome` | per request (auth and checkout layouts force it) | nonce + `'strict-dynamic'` |
+| `/account`, `/academy`, `/admin`, `/auth`, `/checkout`, `/book`, `/cart`, `/welcome` | per request (auth and checkout layouts force it) | nonce + `'strict-dynamic'` |
 
 The nonce is applied by an allow-list of these sensitive prefixes (`NONCE_PREFIXES` in
 `proxy.ts`), not by excluding public ones: an unknown URL is answered by the pre-built 404
@@ -1326,6 +1407,42 @@ by this change since `next` takes priority whenever it is present. Applies unifo
 `DEFAULT_REDIRECT`/`safeRedirect`'s fallback is used: password sign-in, magic link, Google
 OAuth, `/auth/callback`, the post-2FA return, and password-reset completion.
 
+## 37.2 Signed-in visitors do not see the signed-out pages
+
+**2026-10-13 (owner).** Somebody who is already signed in has nothing to do on a sign-in
+form. The proxy (`SIGNED_OUT_ONLY` in `src/proxy.ts`) redirects a signed-in GET of
+`/auth/sign-in`, `/auth/sign-up`, `/auth/forgot-password` or `/auth/verify` onward: to `next`
+when one is present, validated by `safeRedirect` exactly as after a sign-in (§36), otherwise
+to `DEFAULT_REDIRECT` (home, §37.1). The redirect carries any session cookies refreshed on
+that request.
+
+Three `/auth` routes are deliberately left out, because each needs a session:
+`/auth/2fa` (the second-factor step, §11.1), `/auth/reset-password` (where a recovery link or
+an invitation lands) and `/auth/callback` (which exchanges a code and may replace the
+session). A signed-in customer who wants a new password changes it under Account → Security.
+
+Like every proxy rule this is a convenience, not a security control (§15).
+
+## 37.3 A tab left open catches up when the visitor returns to it
+
+**2026-10-13 (owner).** The session is shared by every tab, but a tab left open keeps showing
+what it was rendered with, so signing in or out in one tab left the others wrong until they
+were refreshed. Each tab now re-checks who is signed in when the visitor comes back to it
+(`onReturnToTab` in `src/components/navigation/useVisitor.ts`: window focus, the tab becoming
+visible, or a page restored by Back), by asking `/api/session`.
+
+- **Public pages.** The masthead already re-read the visitor on window focus; it now uses the
+  same three events, and when the answer changes `PublicHeader` also re-renders the route, for
+  the public pages that read the visitor on the server (the cart, an event's ticket).
+- **Server-rendered areas.** `SessionSync` sits in the Account, Academy, Book, Admin, Checkout
+  and Auth layouts, holding the email the page was rendered for. If the answer differs it
+  re-renders the route and the server does what it would on a fresh load: a sign-in form sends
+  a signed-in visitor on (§37.2), an account page sends a signed-out one to sign in.
+
+No open connection and no cross-tab messaging: a background tab is not updated until it is
+looked at. Supabase Realtime was considered and rejected as the wrong tool, since nothing here
+is a database change. Display only; every request is still authorized on the server (§15).
+
 ---
 
 # 38. Authentication UX
@@ -1459,3 +1576,7 @@ The architecture must be secure by design and must not rely on client-side check
 | 2026-09-05 | §11.1: the second factor moved into the SIGN-IN step and extended to customers who have set one up. The customer rule is clarified — MFA is optional to have, not optional to use — because a key that is never asked for is decorative. Enforcement moved into `requireUser()`, with `/auth/2fa` and `/account/security/mfa` deliberately using `requireSession()` so neither becomes a closed loop. MFA state is now derived from the `getUser()` call each request already makes rather than from two further round trips, which is what had made computing it for customers look expensive. Recovery recorded with the rule now in the database (migration 0036): a customer's keys may be cleared by anyone holding `users.reset_mfa`, a staff member's only by an owner, an owner's not at all, and never one's own. |
 | 2026-09-26 | Security headers (§35): `Permissions-Policy` stays `camera=()` site-wide, except `/admin/check-in` and its sub-paths, which allow `camera=(self)` so staff can scan tickets in the page. It is a staff-only area behind `events.read` (and `events.update` to check in). |
 | 2026-09-27 | §11.2 (new): self-service key list (device type via AAGUID, added, last used) and removal gated in the database (recent key use within 10 minutes, owner 2 / staff 1 minimum, audit entry, notification email); `/auth/2fa?confirm=1` re-confirmation; signed-in devices with per-session and "all others" sign-out; visitor User-Agent/IP forwarded to Supabase Auth. Migration 0022. |
+| 2026-10-13 | §37.2 (new): the proxy sends signed-in visitors away from `/auth/sign-in`, `/auth/sign-up`, `/auth/forgot-password` and `/auth/verify`, to `next` or home. `/auth/2fa`, `/auth/reset-password` and `/auth/callback` are exempt because they need a session. |
+| 2026-10-13 | §37.3 (new): tabs re-check the session when the visitor returns to them (`onReturnToTab`, `SessionSync` in the Account, Academy, Book, Admin, Checkout and Auth layouts; `PublicHeader` on public pages) and re-render if who is signed in has changed. No Realtime, no cross-tab messaging. |
+| 2026-10-13 | §11.1: the spare-key prompt moved from a panel above every admin page into the Admin header, as a pill. |
+| 2026-10-23 | §29.3: a gift's claim page is worded for the recipient (`gift=1` on the link, wording only). |

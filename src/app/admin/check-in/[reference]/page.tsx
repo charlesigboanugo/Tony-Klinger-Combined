@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { FILLED_STATES, OUTLINE_STATES } from "@/components/ui/Button";
 import { BackLink } from "@/components/ui/BackLink";
 import { requirePermission } from "@/lib/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -10,7 +11,7 @@ import { cn } from "@/lib/utils/cn";
 
 import { checkInAction } from "../actions";
 
-export const metadata: Metadata = { title: "Ticket · Check-in", robots: { index: false } };
+export const metadata: Metadata = { title: "Ticket · Event check-in", robots: { index: false } };
 
 /**
  * What the door sees after scanning a ticket's QR code (or typing its code).
@@ -62,7 +63,7 @@ export default async function TicketCheckPage({
   return (
     <div className="mx-auto max-w-md">
       <BackLink href={event ? `/admin/check-in?event=${event.id}` : "/admin/check-in"}>
-        {event ? "Attendee list" : "Check-in"}
+        {event ? "Attendee list" : "Event check-in"}
       </BackLink>
 
       <div
@@ -102,8 +103,10 @@ export default async function TicketCheckPage({
           <button
             type="submit"
             className={cn(
-              "h-14 w-full rounded-full text-lg font-semibold",
-              booking.checked_in_at ? "border border-border text-muted-foreground" : "bg-button text-button-foreground",
+              "h-14 w-full rounded-full text-lg font-semibold transition-[filter,transform,box-shadow,background-color,border-color,color] duration-200 ease-out active:scale-96",
+              booking.checked_in_at
+                ? `border border-border text-muted-foreground ${OUTLINE_STATES}`
+                : `bg-button text-button-foreground ${FILLED_STATES}`,
             )}
           >
             {booking.checked_in_at ? "Undo check-in" : "Check in"}

@@ -2,6 +2,15 @@ import type { MetadataRoute } from "next";
 
 import { CATALOGUE_CATEGORIES, listCatalogue, workHref } from "@/lib/content/catalogue";
 import { listPosts } from "@/lib/content/blog";
+import {
+  listCoachingServices,
+  listCohorts,
+  listCourses,
+  listMembershipTiers,
+  listRetreats,
+  listSeries,
+} from "@/lib/content/coaching";
+import { listEvents } from "@/lib/content/events";
 import { absoluteUrl } from "@/lib/urls";
 
 /**
@@ -25,8 +34,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = [
     "/",
     "/about",
+    "/about/testimonials",
     "/coaching",
-    "/coaching/memberships",
+    "/coaching/passes",
     "/coaching/courses",
     "/coaching/group-coaching",
     "/coaching/cohorts",
@@ -57,9 +67,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // A database outage must not fail the build or return a 500 for a crawler.
   // A sitemap missing its dynamic entries is recoverable; a broken one is not.
-  const [posts, items] = await Promise.all([
+  const [posts, items, tiers, courses, series, cohorts, services, retreats, events] = await Promise.all([
     listPosts().catch(() => []),
     listCatalogue().catch(() => []),
+    listMembershipTiers().catch(() => []),
+    listCourses().catch(() => []),
+    listSeries().catch(() => []),
+    listCohorts().catch(() => []),
+    listCoachingServices().catch(() => []),
+    listRetreats().catch(() => []),
+    listEvents().catch(() => []),
   ]);
 
   const postRoutes = posts.map((post) => ({
@@ -77,9 +94,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
+  // One page per published offer and event. None of these rows carries an
+  // edit date, so they share the static pages' "now".
+  const detailRoutes = [
+    ...tiers.map((t) => `/coaching/passes/${t.slug}`),
+    ...courses.map((c) => `/coaching/courses/${c.slug}`),
+    ...series.map((s) => `/coaching/group-coaching/${s.slug}`),
+    ...cohorts.map((c) => `/coaching/cohorts/${c.slug}`),
+    ...services.map((s) => `/coaching/private-coaching/${s.slug}`),
+    ...retreats.map((r) => `/coaching/retreats/${r.slug}`),
+    ...events.map((e) => `/events/${e.slug}`),
+  ].map((path) => ({
+    url: absoluteUrl(path),
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.6,
+  }));
+
   return [
     ...staticRoutes,
     ...categoryRoutes,
+    ...detailRoutes,
     ...postRoutes,
     ...itemRoutes,
   ];

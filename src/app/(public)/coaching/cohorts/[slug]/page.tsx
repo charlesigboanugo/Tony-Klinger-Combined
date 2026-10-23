@@ -2,55 +2,92 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { ProductFacts, ProductHero, ProductLayout, ProductSection } from "@/components/coaching/ProductPage";
-import {
-  OwnershipProvider,
-  ViewerMobileBuyBar,
-  ViewerOwnedState,
-  ViewerPurchasePanel,
-} from "@/components/coaching/ViewerOwnership";
+import { CohortPurchase } from "@/app/(public)/coaching/cohorts/[slug]/CohortPurchase";
+import { MobileBuyBar, ProductFacts, ProductHero, ProductLayout, ProductSection, PurchasePanel } from "@/components/coaching/ProductPage";
+import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
+import { phaseStatus } from "@/lib/content/offer-status";
 import { formatPrice } from "@/lib/commerce/pricing";
-import { getCohort } from "@/lib/content/coaching";
+import type { SaleStatus } from "@/lib/commerce/sale-status";
+import { getCohort, listIntakes } from "@/lib/content/coaching";
+import { pageMetadata } from "@/lib/seo/metadata";
+import { cn } from "@/lib/utils/cn";
 
 export async function generateMetadata({
   params,
 }: PageProps<"/coaching/cohorts/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const cohort = await getCohort(slug);
-  return cohort ? { title: cohort.name } : { title: "Not found" };
+  return cohort
+    ? pageMetadata({
+        title: cohort.name,
+        description: cohort.description,
+        path: `/coaching/cohorts/${cohort.slug}`,
+        image: { storagePath: cohort.storagePath, alt: cohort.name },
+      })
+    : { title: "Not found" };
 }
 
 /**
- * Cohort detail — note 07 §37.1, the shared product page (ProductPage.tsx).
+ * Cohort detail — note 07 §16.2, §37.1; the shared product page.
  *
- * The listing card states level, price and start date. This page must say
- * more, not less: what the eight workshops actually deliver, which is the
- * outcome copy recovered from the predecessor platform's own pricing page.
+ * THE COHORT IS FIXED, ITS INTAKES COME AND GO (owner, 2026-10-09; migration
+ * 0017). This page is the cohort — what the level delivers and what it costs —
+ * and stays up all year. Each running of it is an INTAKE with its own dates,
+ * places and registration period, listed here; whether the cohort can be
+ * joined is decided by them:
+ *
+ *   an intake open for registration   the price buys a place on it
+ *   an intake coming                  "Registration opens …"
+ *   an intake under way               "In progress", closed
+ *   none                              "Dates to be announced"
+ *
  * Always labelled a COHORT level, never a bare "Gold" — a cohort level is not
  * a membership tier (note 07 §16.1).
  */
-export default async function CohortPage({
-  params,
-}: PageProps<"/coaching/cohorts/[slug]">) {
+export default async function CohortPage({ params }: PageProps<"/coaching/cohorts/[slug]">) {
   const { slug } = await params;
   const cohort = await getCohort(slug);
   if (!cohort) notFound();
 
-  const cheapest = cohort.prices.length
-    ? cohort.prices.reduce((a, b) => (a.amount <= b.amount ? a : b))
-    : null;
+  const intakes = await listIntakes([cohort.id]);
+
+  const cheapest = cohort.prices.length ? cohort.prices.reduce((a, b) => (a.amount <= b.amount ? a : b)) : null;
   const shown = cheapest ? formatPrice(cheapest.amount, cheapest.currency) : null;
   const level = cohort.cohort_level.charAt(0).toUpperCase() + cohort.cohort_level.slice(1);
-  const starts = cohort.starts_at
-    ? new Date(cohort.starts_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
-    : "To be announced";
-  const buyHref = `/checkout?cohort=${cohort.slug}`;
+
+  const day = (value: string) =>
+    new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/London" });
+
+  // What the public facts say. The purchase component refines it for the
+  // visitor after load, and checkout asks the database before taking anything.
+  const open = intakes.find((i) => i.state === "open");
+  const upcoming = intakes.find((i) => i.state === "upcoming");
+  const initial: SaleStatus = !cohort.productSlug
+    ? "unavailable"
+    : open
+      ? "ok"
+      : intakes.some((i) => i.state === "full")
+        ? "full"
+        : upcoming
+          ? "closed"
+          : intakes.some((i) => i.state === "in_progress")
+            ? "past"
+            : "unscheduled";
+
+  const lead = open ?? upcoming ?? intakes[0] ?? null;
   // The format line ("Eight x 3 hour live Zoom workshops") is already in the
   // facts row; the section reads from the outcome onwards.
   const outcomes = cohort.benefits.filter((b) => !/^eight\s*x/i.test(b.trim()));
 
   return (
-    <OwnershipProvider resourceType="cohort" resourceId={cohort.id}>
+    <>
+      <BreadcrumbJsonLd
+        trail={[
+          { name: "Coaching", path: "/coaching" },
+          { name: "Cohorts", path: "/coaching/cohorts" },
+          { name: cohort.name, path: `/coaching/cohorts/${cohort.slug}` },
+        ]}
+      />
       <ProductHero
         backHref="/coaching/cohorts"
         backLabel="All cohorts"
@@ -60,43 +97,71 @@ export default async function CohortPage({
         cover={{ path: cohort.storagePath }}
         price={shown}
         priceNote={shown ? "one payment" : null}
+        status={phaseStatus(intakes)}
       />
 
       <ProductLayout
         aside={
-          <ViewerPurchasePanel
+          <PurchasePanel
             price={shown}
             priceNote="one payment"
             footnote={
               <>
-                Ultimate Membership includes cohort access.{" "}
-                <Link href="/coaching/memberships/ultimate" className="font-medium text-foreground underline underline-offset-4 hover:text-accent">
-                  See Ultimate
+                One payment for a place on one intake: all eight workshops, and their recordings afterwards. Cohorts
+                are separate from{" "}
+                <Link href="/coaching/passes" className="font-medium text-foreground underline underline-offset-4 hover:text-accent">
+                  membership
                 </Link>
+                .
               </>
             }
           >
-            <ViewerOwnedState
-              plain
-              buyHref={buyHref}
-              buyLabel={`Join the ${level} cohort`}
-              deliveryHref="/academy/cohorts"
+            <CohortPurchase
+              productSlug={cohort.productSlug}
+              level={level}
+              initial={initial}
+              opensOn={upcoming ? day(upcoming.registrationOpensAt) : null}
             />
-            <p className="mt-4 text-center text-sm text-muted-foreground">
-              Starts: {starts}
-              {cohort.capacity ? ` · ${cohort.capacity} places` : ""}
-            </p>
-          </ViewerPurchasePanel>
+          </PurchasePanel>
         }
       >
         <ProductFacts
           facts={[
             { label: "Workshops", value: "Eight, three hours each" },
             { label: "Format", value: "Live on Zoom" },
-            { label: "Group", value: cohort.capacity ? `${cohort.capacity} people` : "The same group throughout" },
-            { label: "Starts", value: starts },
+            { label: "Group", value: "The same group throughout" },
+            { label: "Next intake", value: lead ? day(lead.startsAt) : "To be announced" },
           ]}
         />
+
+        {/* The intakes: when the cohort runs, and whether it can be joined. */}
+        {intakes.length > 0 ? (
+          <ProductSection title="Intakes">
+            <ul className="max-w-2xl divide-y divide-border border-y border-border">
+              {intakes.map((intake) => (
+                <li key={intake.id} className="flex flex-col gap-1 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
+                  <div>
+                    <p className="font-semibold">{intake.label}</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      {day(intake.startsAt)} to {day(intake.endsAt)}
+                    </p>
+                  </div>
+                  <p className={cn("shrink-0 text-sm font-medium", intake.state === "open" ? "text-accent" : "text-muted-foreground")}>
+                    {intake.state === "open"
+                      ? intake.placesLeft == null
+                        ? "Registration open"
+                        : `Registration open · ${intake.placesLeft} place${intake.placesLeft === 1 ? "" : "s"} left`
+                      : intake.state === "full"
+                        ? "Fully booked"
+                        : intake.state === "in_progress"
+                          ? "In progress · closed to new people"
+                          : `Registration opens ${day(intake.registrationOpensAt)}`}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </ProductSection>
+        ) : null}
 
         {outcomes.length > 0 ? (
           <ProductSection title="What this level delivers">
@@ -112,8 +177,8 @@ export default async function CohortPage({
         ) : null}
       </ProductLayout>
 
-      <ViewerMobileBuyBar price={shown} priceNote="one payment" href={buyHref} label="Join cohort" />
-    </OwnershipProvider>
+      <MobileBuyBar price={shown} priceNote="one payment" href="#buy" label={open ? "Join cohort" : "See intakes"} />
+    </>
   );
 }
 

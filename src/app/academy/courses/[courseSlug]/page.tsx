@@ -10,6 +10,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { completedLessonIds, courseProgress, courseWithContent } from "@/lib/academy";
 import { formatDuration } from "@/lib/academy/format";
+import { academyStaffView, viewOnly } from "@/lib/academy/staff";
 import { entitlementFor } from "@/lib/commerce/entitlements";
 import { requireUser } from "@/lib/permissions";
 import { cn } from "@/lib/utils/cn";
@@ -41,13 +42,16 @@ export default async function AcademyCoursePage({
   const course = await courseWithContent(courseSlug);
   if (!course) notFound();
 
-  const entitlement = await entitlementFor("course", course.id);
+  const [entitlement, staffView] = await Promise.all([entitlementFor("course", course.id), academyStaffView()]);
   const lessonCount = course.modules.reduce((n, m) => n + m.lessons.length, 0);
+  // Seen through the staff view (note 06 §23.2): the lessons, but no progress,
+  // which is kept only for people who hold the course.
+  const staffOnly = viewOnly(staffView, entitlement.state === "active");
 
   // A customer without entitlement gets an explanation and a way to obtain
   // access — never a bare 404 (note 03 §14). RLS has already withheld the
   // lessons, so there is nothing to leak either way.
-  if (entitlement.state !== "active" || lessonCount === 0) {
+  if ((entitlement.state !== "active" && !staffOnly) || lessonCount === 0) {
     const expired = entitlement.state === "expired";
     return (
       <>
@@ -59,14 +63,14 @@ export default async function AcademyCoursePage({
           <p className="measure mt-4 text-lg text-block-foreground/80 text-pretty">
             {expired
               ? "Your access to this course has ended. Renew to pick up where you left off — your progress is kept."
-              : "This course is available to buy, or through a membership that includes it."}
+              : "This course is available to buy, or through a Coaching Pass that includes it."}
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <ButtonLink href={`/coaching/courses/${course.slug}`} variant="onBlock">
               {expired ? "Renew access" : "See this course"}
             </ButtonLink>
-            <ButtonLink href="/coaching/memberships" variant="onBlockOutline">
-              Compare memberships
+            <ButtonLink href="/coaching/passes" variant="onBlockOutline">
+              Compare the passes
             </ButtonLink>
           </div>
         </div>
@@ -88,7 +92,7 @@ export default async function AcademyCoursePage({
 
       <section className="relative isolate overflow-hidden rounded-(--radius-lg) bg-block-noir p-6 text-block-foreground shadow-lift sm:p-10">
         <CoverBackdrop path={course.storagePath} />
-        <Eyebrow>{progress.done ? "Course complete" : progress.completed > 0 ? "In progress" : "Course"}</Eyebrow>
+        <Eyebrow>{staffOnly ? "Course" : progress.done ? "Course complete" : progress.completed > 0 ? "In progress" : "Course"}</Eyebrow>
         <h1 className="mt-4 max-w-3xl font-display text-balance">{course.title}</h1>
         {course.description ? (
           <p className="measure mt-4 text-lg leading-relaxed text-block-foreground/80 text-pretty">
@@ -104,19 +108,21 @@ export default async function AcademyCoursePage({
 
         {/* Counted, not estimated: "11 of 19" is a fact somebody can act on;
             a percentage is the same number made vaguer (note 07 §34.2). */}
-        <div className="mt-8 max-w-xl">
-          <p className="mb-2 text-sm font-medium">
-            {progress.done
-              ? "Every lesson done"
-              : `${progress.completed} of ${progress.total} lessons done`}
-          </p>
-          <ProgressBar completed={progress.completed} total={progress.total} onBlock />
-        </div>
+        {staffOnly ? null : (
+          <div className="mt-8 max-w-xl">
+            <p className="mb-2 text-sm font-medium">
+              {progress.done
+                ? "Every lesson done"
+                : `${progress.completed} of ${progress.total} lessons done`}
+            </p>
+            <ProgressBar completed={progress.completed} total={progress.total} onBlock />
+          </div>
+        )}
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
           {progress.resume ? (
             <ButtonLink href={lessonHref(progress.resume.slug)} variant="onBlock" size="lg">
-              {progress.completed === 0 ? "Start the course" : "Continue"}
+              {staffOnly ? "Open the first lesson" : progress.completed === 0 ? "Start the course" : "Continue"}
               <span aria-hidden="true">&rarr;</span>
             </ButtonLink>
           ) : (
@@ -161,12 +167,18 @@ export default async function AcademyCoursePage({
                 <div className="min-w-0 flex-1">
                   <p className="font-display text-lg font-semibold">{module.title}</p>
                   <p className="mt-0.5 text-sm text-muted-foreground">
-                    {done === module.lessons.length ? "Complete" : `${done} of ${module.lessons.length} done`}
+                    {staffOnly
+                      ? `${module.lessons.length} lesson${module.lessons.length === 1 ? "" : "s"}`
+                      : done === module.lessons.length
+                        ? "Complete"
+                        : `${done} of ${module.lessons.length} done`}
                   </p>
                 </div>
-                <div className="hidden w-32 sm:block">
-                  <ProgressBar completed={done} total={module.lessons.length} size="sm" />
-                </div>
+                {staffOnly ? null : (
+                  <div className="hidden w-32 sm:block">
+                    <ProgressBar completed={done} total={module.lessons.length} size="sm" />
+                  </div>
+                )}
                 <svg viewBox="0 0 12 12" aria-hidden="true" className="h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180">
                   <path d="M2 4.5 6 8.5 10 4.5" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>

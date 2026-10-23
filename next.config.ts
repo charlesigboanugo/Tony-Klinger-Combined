@@ -119,6 +119,11 @@ const nextConfig: NextConfig = {
     // Smallest first. AVIF is ~20% smaller than WebP but slower to encode;
     // Next falls back automatically for browsers that accept neither.
     formats: ["image/avif", "image/webp"],
+    // Shown, not downloaded (owner, 2026-10-23): "Open image in new tab" saved
+    // an .avif file, because Next sends optimised images as attachments by
+    // default. That default guards against SVGs carrying script; SVGs are not
+    // optimised here (dangerouslyAllowSVG is off), so inline is safe.
+    contentDispositionType: "inline",
     // Widths actually used by the layouts, so a request cannot ask Vercel for
     // an arbitrary size and bill a transformation for it.
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
@@ -195,6 +200,16 @@ const nextConfig: NextConfig = {
   */
   async redirects() {
     return [
+      // Playlists are an Academy section of their own (owner, 2026-10-10).
+      { source: "/academy/pass/playlists/:path*", destination: "/academy/playlists/:path*", permanent: false },
+      { source: "/admin/member-choices/:path*", destination: "/admin/playlist-choices/:path*", permanent: false },
+      {
+        // Making a booking moved from /bookings to /book (owner, 2026-10-09),
+        // so it no longer reads like /account/bookings, the list of those made.
+        source: "/bookings/:path*",
+        destination: "/book/:path*",
+        permanent: true,
+      },
       {
         // "How it works" is a section of the coaching overview (2026-09-26).
         source: "/coaching/about",

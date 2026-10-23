@@ -8,9 +8,9 @@ import type { DesignImage } from "@/components/media/DesignPhoto";
  * and pages import their photo by that name. Adding a placement means picking
  * a file not already listed below.
  *
- * YELLOW IS RATIONED (owner's rule). Eight photos share the yellow backdrop
+ * YELLOW IS RATIONED (owner's rule). Nine photos share the yellow backdrop
  * (tagged `yellow` below). At most two page heroes use one — Give-Get-Go
- * only since the About hero moved to a blue-backdrop portrait (2026-09-25) —
+ * and, since 2026-10-13, the sign-in stage —
  * and no two neighbouring sections on a page are both yellow. The rest sit
  * mid-page, between sections that carry no photo or a different backdrop.
  *
@@ -74,7 +74,7 @@ export const designPhotos = {
   aboutHero: {
     src: "/images/extra-fe79e111.webp",
     alt: `${tony} in a cap, against a dark blue wall`,
-    focus: "object-[65%_center] lg:object-[62%_center]",
+    focus: "object-[65%_center] lg:object-[52%_center] xl:object-[44%_center]",
   },
   aboutBanner: {
     src: "/images/extra-8b67cc2b.webp",
@@ -96,7 +96,7 @@ export const designPhotos = {
   // a photo not used anywhere before). From the old main site, uncredited
   // like the other talk photos. Shown whole in the noir "screening room"
   // header, its edges dissolved, so no crop focus is needed. Replaced
-  // `tk-dc-0-8`, now the auth stage.
+  // `tk-dc-0-8`, the auth stage until 2026-10-13 and now unplaced.
   testimonials: {
     src: "/images/tyneside-qa.webp",
     alt: `${tony} on stage at a Q&A at Tyneside Cinema, seen from the audience`,
@@ -126,12 +126,17 @@ export const designPhotos = {
     alt: `${tony}, looking up and smiling`,
     focus: "object-[50%_14%]",
   }, // yellow
-  // Memberships — pricing (no photo), then this banner (yellow).
+  // The cover of every Coaching Pass page; no tier has artwork of its own.
+  // Tony outdoors in a brown jacket (owner, 2026-10-13: a photo not used
+  // anywhere else). Replaced the yellow studio portrait `tk-dc-0-27`, a near
+  // twin of the sign-in stage's frame at the time and now unplaced. He stands right of
+  // centre, so the crop is pulled to him; on phones it stops a little short,
+  // which keeps his face to the right of the title.
   memberships: {
-    src: "/images/tk-dc-0-27.webp",
-    alt: `${tony}, smiling`,
-    focus: "object-[50%_5%]",
-  }, // yellow
+    src: "/images/extra-84c22937.webp",
+    alt: `${tony}, arms folded`,
+    focus: "object-[62%_22%] sm:object-[68%_22%]",
+  },
   courses: {
     src: "/images/extra-a3f3b1e6.webp",
     alt: `${tony} reading at his desk`,
@@ -140,11 +145,6 @@ export const designPhotos = {
   cohorts: {
     src: "/images/extra-a791c80e.webp",
     alt: `${tony} in a warehouse, arms folded`,
-  },
-  groupCoaching: {
-    src: "/images/extra-84c22937.webp",
-    alt: `${tony}, arms folded`,
-    focus: "object-[60%_center]",
   },
   privateCoaching: {
     src: "/images/tk-dc-0-32.webp",
@@ -190,16 +190,18 @@ export const designPhotos = {
     alt: `${tony}, black and white portrait in a cap`,
     focus: "object-top",
   },
-  // Auth — the stage panel beside every sign-in form. Tony laughing against
-  // a blue backdrop (owner, 2026-09-26: a photo not used anywhere else),
-  // replacing the car-park deck (`extra-d64ac0c2`, now unplaced). The studio
-  // vignette darkens the corners, so the frame sinks into the noir stage;
-  // not yellow, so the ration is untouched. His face sits just above centre:
-  // the tall desktop crop keeps it clear of the line at the foot, and the
-  // short phone band pulls up to it.
+  // Auth — the stage panel beside every sign-in form. Tony smiling, hand on
+  // chin, arms folded, on the yellow backdrop (owner, 2026-10-13: a photo not
+  // used anywhere else), replacing the blue-backdrop laugh (`tk-dc-0-8`, now
+  // unplaced). Chosen for where he sits in the frame: his head is in the top
+  // half, so when the photo fills the tall desktop panel the line at the foot
+  // falls across his shirt and arms, never his face. He is NOT centred in
+  // the panel (owner, 2026-10-13): from `lg` the crop sets him in the right
+  // of it, leaning in from the edge, so the line has the left to itself. A second yellow hero beside Give-Get-Go,
+  // which is the ration's limit.
   auth: {
-    src: "/images/tk-dc-0-8.webp",
-    alt: `${tony}, laughing`,
-    focus: "object-[50%_18%] lg:object-[48%_center]",
-  },
+    src: "/images/tk-dc-0-33.webp",
+    alt: `${tony}, smiling, hand on chin`,
+    focus: "object-[58%_12%] lg:object-[52%_center] xl:object-[44%_center]",
+  }, // yellow
 } satisfies Record<string, DesignImage | DesignImage[]>;

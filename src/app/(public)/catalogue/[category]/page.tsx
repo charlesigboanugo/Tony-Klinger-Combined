@@ -13,6 +13,7 @@ import {
   isCatalogueCategory,
   listCatalogue,
 } from "@/lib/content/catalogue";
+import { pageMetadata } from "@/lib/seo/metadata";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -27,7 +28,11 @@ export async function generateMetadata({
   params,
 }: PageProps<"/catalogue/[category]">): Promise<Metadata> {
   const { category } = await params;
-  return { title: categoryLabel(category) };
+  return pageMetadata({
+    title: categoryLabel(category),
+    description: BLURB[category],
+    path: `/catalogue/${category}`,
+  });
 }
 
 /** Copy that says what a category actually contains, rather than repeating its name. */

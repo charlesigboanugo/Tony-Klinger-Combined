@@ -28,8 +28,13 @@ import { cn } from "@/lib/utils/cn";
  * and Enter goes to the first match — ~35 destinations should never need
  * hunting for.
  *
- * Below lg the same content sits behind ONE button naming the current page,
- * as Account and the Academy do (note 04 §27: no link strips).
+ * COMPACT FROM `lg` (owner, 2026-10-13). The sidebar is 15rem and its type a
+ * step smaller than the phone panel's, so the admin pages beside it get the
+ * width. The longest page name still fits on one line; anything added that
+ * does not should be shortened rather than the column widened.
+ *
+ * Below lg the same content is in the header's hamburger menu, a sheet sliding
+ * in from the left, as Account and the Academy do (note 04 §32.4).
  *
  * Exactly ONE item lights up, by longest matching href: "/admin" is a prefix
  * of every other item purely as a side effect of routing.
@@ -68,6 +73,9 @@ const GROUP_ICONS: Record<string, ReactNode> = {
       <path d="m3 9 9-4.5L21 9l-9 4.5z" />
       <path d="M7 11v4.5c1.5 1.3 3 2 5 2s3.5-.7 5-2V11M21 9v5" />
     </>
+  ),
+  "Pass holders": (
+    <path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z" />
   ),
   Experiences: (
     <>
@@ -130,19 +138,24 @@ function activeFor(pathname: string, groups: NavGroup[]): Located | undefined {
     .sort((a, b) => b.item.href.length - a.item.href.length)[0];
 }
 
-export function AdminNav({ groups }: { groups: NavGroup[] }) {
+/**
+ * `sidebar` is the lg-and-up column and owns the "/" shortcut; `drawer` is the
+ * same finder and tree inside the header's `WorkspaceDrawer` below lg.
+ */
+export function AdminNav({
+  groups,
+  variant = "sidebar",
+}: {
+  groups: NavGroup[];
+  variant?: "sidebar" | "drawer";
+}) {
   const pathname = usePathname();
   const active = activeFor(pathname, groups);
 
   return (
-    <>
-      <div className="lg:hidden">
-        <SectionSwitcher groups={groups} pathname={pathname} active={active} />
-      </div>
-      <nav aria-label="Admin" className="hidden lg:block">
-        <NavBody groups={groups} pathname={pathname} active={active} shortcut />
-      </nav>
-    </>
+    <nav aria-label="Admin">
+      <NavBody groups={groups} pathname={pathname} active={active} shortcut={variant === "sidebar"} />
+    </nav>
   );
 }
 
@@ -195,7 +208,7 @@ function NavBody({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:space-y-3">
       <div className="relative">
         <label htmlFor={inputId} className="sr-only">
           Find a page
@@ -227,7 +240,7 @@ function NavBody({
           }}
           placeholder="Find a page"
           autoComplete="off"
-          className="h-10 w-full rounded-(--radius) border border-border bg-background pr-9 pl-9 text-sm placeholder:text-muted-foreground focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-ring/40"
+          className="h-10 w-full rounded-(--radius) border border-border bg-background pr-9 pl-9 text-sm lg:h-9 lg:text-[0.8125rem] placeholder:text-muted-foreground focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-ring/40"
         />
         {shortcut && !query ? (
           <kbd
@@ -253,7 +266,7 @@ function NavBody({
                     onNavigate?.();
                   }}
                   className={cn(
-                    "flex items-center gap-3 rounded-(--radius) px-3 py-2 text-sm transition-colors hover:bg-surface-muted",
+                    "flex items-center gap-3 rounded-(--radius) px-3 py-2 text-sm lg:gap-2.5 lg:px-2 lg:py-1.5 lg:text-[0.8125rem] transition-colors hover:bg-surface-muted",
                     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                     i === 0 && "bg-surface-muted",
                   )}
@@ -302,7 +315,7 @@ function Tree({
   }
 
   return (
-    <ul className="space-y-1">
+    <ul className="space-y-1 lg:space-y-0.5">
       {groups.map((group) => {
         // Overview holds only the dashboard: a heading over one link is
         // chrome, so it is the dashboard link itself, at group level.
@@ -316,7 +329,7 @@ function Tree({
                   onClick={onNavigate}
                   aria-current={isCurrentPage(pathname, item.href) ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-(--radius) px-2 py-1.5 text-sm font-semibold transition-colors",
+                    "flex items-center gap-3 rounded-(--radius) px-2 py-1.5 text-sm lg:text-[0.8125rem] font-semibold transition-colors",
                     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                     current ? "bg-accent/10 text-accent" : "text-foreground hover:bg-surface-muted",
                   )}
@@ -341,7 +354,7 @@ function Tree({
               aria-expanded={isOpen}
               aria-controls={panelId}
               className={cn(
-                "flex w-full items-center gap-3 rounded-(--radius) px-2 py-1.5 text-left text-sm font-semibold transition-colors",
+                "flex w-full items-center gap-3 rounded-(--radius) px-2 py-1.5 text-left text-sm lg:text-[0.8125rem] font-semibold transition-colors",
                 "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                 "text-foreground hover:bg-surface-muted",
               )}
@@ -380,7 +393,7 @@ function Tree({
                             // (ml-5.5) and pl-3, the page name starts exactly
                             // where the group name's text does — a child is
                             // never indented less than its heading (owner).
-                            "block rounded-(--radius) px-3.5 py-1.5 text-sm transition-colors",
+                            "block rounded-(--radius) px-3.5 py-1.5 text-sm lg:py-1 lg:text-[0.8125rem] transition-colors",
                             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                             current
                               ? "bg-accent/10 font-medium text-accent"
@@ -415,100 +428,5 @@ function IconTile({ label, active }: { label: string; active: boolean }) {
     >
       <GroupIcon label={label} />
     </span>
-  );
-}
-
-/**
- * Below lg: one button naming where you are; the finder and tree in a panel.
- * Same outside-click / Escape / focus-restore contract and `.dropdown-panel`
- * motion as AccountNav's switcher (note 10 §37.1).
- */
-function SectionSwitcher({
-  groups,
-  pathname,
-  active,
-}: {
-  groups: NavGroup[];
-  pathname: string;
-  active: Located | undefined;
-}) {
-  const [open, setOpen] = useState(false);
-  const panelId = useId();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  const [renderedPath, setRenderedPath] = useState(pathname);
-  if (renderedPath !== pathname) {
-    setRenderedPath(pathname);
-    if (open) setOpen(false);
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    function onPointerDown(event: MouseEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      setOpen(false);
-      triggerRef.current?.focus();
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-controls={panelId}
-        className={cn(
-          "flex w-full items-center gap-3 rounded-(--radius-lg) border bg-surface p-2.5 pr-4 text-left shadow-card transition-colors",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-          open ? "border-accent" : "border-border hover:border-foreground/40",
-        )}
-      >
-        <span
-          aria-hidden="true"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-block-indigo text-block-foreground"
-        >
-          <GroupIcon label={active?.group ?? "Overview"} className="h-4.5 w-4.5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[0.6875rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
-            Admin{active && active.group !== "Overview" ? ` · ${active.group}` : ""}
-          </span>
-          <span className="block truncate text-sm font-medium">{active?.item.label ?? "Menu"}</span>
-        </span>
-        <svg
-          viewBox="0 0 12 12"
-          aria-hidden="true"
-          className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-180")}
-        >
-          <path d="M2 4.5 6 8.5 10 4.5" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-
-      <div
-        id={panelId}
-        aria-hidden={!open}
-        data-open={open}
-        className="dropdown-panel absolute inset-x-0 z-30 mt-2 origin-top"
-      >
-        <nav
-          aria-label="Admin"
-          className="max-h-[70svh] overflow-y-auto overscroll-contain rounded-(--radius-lg) border border-border bg-surface p-3 shadow-lift"
-        >
-          <NavBody groups={groups} pathname={pathname} active={active} onNavigate={() => setOpen(false)} />
-        </nav>
-      </div>
-    </div>
   );
 }

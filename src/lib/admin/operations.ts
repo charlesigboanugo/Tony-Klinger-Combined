@@ -1,6 +1,8 @@
 import "server-only";
 
+import { codeLabel } from "@/lib/admin/labels";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { timeAgo } from "@/lib/utils/device";
 import type { Database } from "@/types/database";
 
 /**
@@ -22,8 +24,10 @@ export const BOOKING_STATUSES: readonly BookingStatus[] = [
   "confirmed", "pending", "completed", "cancelled", "no_show",
 ];
 export const BOOKABLE_TYPES: readonly BookableType[] = [
-  "event", "group_coaching_session", "private_coaching", "cohort_workshop", "retreat", "masterclass",
+  "event", "group_coaching_session", "private_coaching", "cohort_workshop", "retreat",
 ];
+/** What admin's Bookings covers: events and one-to-one coaching (owner, 2026-10-14). */
+export const BOOKINGS_TYPES: readonly BookableType[] = ["event", "private_coaching"];
 export const EMAIL_STATUSES: readonly EmailStatus[] = ["pending", "sent", "failed", "cancelled"];
 
 export const BOOKABLE_LABEL: Record<BookableType, string> = {
@@ -39,7 +43,33 @@ export function isOneOf<T extends string>(list: readonly T[], value: unknown): v
   return typeof value === "string" && (list as readonly string[]).includes(value);
 }
 
-export type Person = { id: string; name: string | null; email: string | null };
+export type Person = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  /** When the account last signed in (not when it was last active); null if never. */
+  lastSignInAt: string | null;
+  /** The same in words, "2 days ago"; null if never. */
+  lastSignInAgo: string | null;
+};
+
+/**
+ * The auth records for a set of accounts.
+ *
+ * For more than a handful it asks for the account list once (a thousand per
+ * call) and picks from it, instead of one request per account: a page of two
+ * hundred rows was two hundred round trips. Any id not in that first thousand
+ * is still fetched on its own, so nothing is missed on a larger site.
+ */
+async function authUsersByIds(ids: string[]) {
+  const admin = createAdminClient();
+  const one = (id: string) => admin.auth.admin.getUserById(id).then((r) => r.data.user);
+  if (ids.length <= 5) return Promise.all(ids.map(one));
+
+  const { data } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  const listed = new Map((data?.users ?? []).map((u) => [u.id, u]));
+  return Promise.all(ids.map((id) => listed.get(id) ?? one(id)));
+}
 
 /**
  * Names and email addresses for a set of accounts.
@@ -56,7 +86,7 @@ export async function peopleByIds(ids: Array<string | null | undefined>): Promis
   const admin = createAdminClient();
   const [{ data: profiles }, users] = await Promise.all([
     admin.from("profiles").select("user_id,display_name,first_name,last_name").in("user_id", unique),
-    Promise.all(unique.map((id) => admin.auth.admin.getUserById(id).then((r) => r.data.user))),
+    authUsersByIds(unique),
   ]);
 
   const nameOf = new Map(
@@ -65,11 +95,118 @@ export async function peopleByIds(ids: Array<string | null | undefined>): Promis
       p.display_name || [p.first_name, p.last_name].filter(Boolean).join(" ") || null,
     ]),
   );
+  const now = Date.now();
   for (const id of unique) {
     const user = users.find((u) => u?.id === id);
-    people.set(id, { id, name: nameOf.get(id) ?? null, email: user?.email ?? null });
+    people.set(id, {
+      id,
+      name: nameOf.get(id) ?? null,
+      email: user?.email ?? null,
+      lastSignInAt: user?.last_sign_in_at ?? null,
+      lastSignInAgo: timeAgo(user?.last_sign_in_at, now, "always"),
+    });
   }
   return people;
+}
+
+/**
+ * The account that holds an email address, or null.
+ *
+ * So staff can type the address they know, not a uuid copied from another
+ * page (owner, 2026-10-13). An email is unique to one account. Exact match,
+ * ignoring case; reads the account list a thousand at a time.
+ */
+export async function userIdForEmail(email: string): Promise<string | null> {
+  const wanted = email.trim().toLowerCase();
+  if (!wanted) return null;
+  const admin = createAdminClient();
+  for (let page = 1; page <= 5; page++) {
+    const { data } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    const users = data?.users ?? [];
+    const found = users.find((u) => u.email?.toLowerCase() === wanted);
+    if (found) return found.id;
+    if (users.length < 1000) break;
+  }
+  return null;
+}
+
+/** Whether a field or column holds an account's id. */
+export function isUserColumn(name: string): boolean {
+  return name === "user_id" || name.endsWith("_user_id");
+}
+
+/**
+ * Why an account cannot be deleted yet, in words staff can act on; empty
+ * when it can be — note 06 §14.4.
+ *
+ * Deleting an account removes the person's access, bookings, registrations
+ * and history with it (those rows cascade), so it is refused while any of
+ * that is still LIVE: staff roles, access in force, a place still to come, a
+ * subscription still charging.
+ *
+ * AND IT IS REFUSED FOR ANYONE WHO HAS EVER ORDERED (owner, 2026-10-14: not
+ * one "with something/running purchases"). The database requires every order
+ * to keep either its account or an email (`orders_have_an_owner_or_an_email`),
+ * and a signed-in order carries no email of its own, so deleting the account
+ * would fail at the database anyway. Keeping such accounts keeps the purchase
+ * records whole; deletion is for accounts that never bought anything.
+ */
+export async function accountDeletionBlockers(userId: string): Promise<string[]> {
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+
+  const [roles, access, bookings, subscriptions, orders] = await Promise.all([
+    admin.from("user_roles").select("roles(name)").eq("user_id", userId),
+    admin
+      .from("entitlements")
+      .select("resource_type", { count: "exact" })
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .or(`expires_at.is.null,expires_at.gt.${now}`),
+    admin
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .in("status", ["pending", "confirmed"])
+      .or(`starts_at.is.null,starts_at.gt.${now}`),
+    admin
+      .from("subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .in("status", ["trialing", "active", "past_due", "incomplete"]),
+    admin.from("orders").select("id", { count: "exact", head: true }).eq("user_id", userId),
+  ]);
+
+  const blockers: string[] = [];
+  const roleNames = ((roles.data ?? []) as unknown as Array<{ roles: { name: string } | null }>)
+    .map((r) => r.roles?.name)
+    .filter((n): n is string => Boolean(n));
+  if (roleNames.length) {
+    blockers.push(
+      `Holds the role${roleNames.length === 1 ? "" : "s"} ${roleNames.map((r) => r.replace(/_/g, " ")).join(", ")}. Revoke ${roleNames.length === 1 ? "it" : "them"} under Roles first.`,
+    );
+  }
+  const accessCount = access.count ?? 0;
+  if (accessCount) {
+    const kinds = [...new Set((access.data ?? []).map((e) => codeLabel(e.resource_type)))];
+    blockers.push(
+      `Has ${accessCount} piece${accessCount === 1 ? "" : "s"} of access still in force (${kinds.join(", ")}). Revoke ${accessCount === 1 ? "it" : "them"} under Access, or wait until ${accessCount === 1 ? "it ends" : "they end"}.`,
+    );
+  }
+  if (bookings.count) {
+    blockers.push(
+      `Has ${bookings.count} booking${bookings.count === 1 ? "" : "s"} still to come. Cancel ${bookings.count === 1 ? "it" : "them"} first.`,
+    );
+  }
+  if (subscriptions.count) {
+    blockers.push("Has a subscription that is still running. Cancel it in Stripe first.");
+  }
+  if (orders.count) {
+    blockers.push(
+      `Has ${orders.count} order${orders.count === 1 ? "" : "s"}. An account that has bought anything is kept, so its purchase records stay complete.`,
+    );
+  }
+  return blockers;
 }
 
 /* ─── Orders ───────────────────────────────────────────────────────────── */
@@ -146,7 +283,22 @@ export async function adminPayments(limit = 200) {
     .select("id,order_id,amount,currency,status,provider,provider_payment_id,receipt_url,paid_at,created_at")
     .order("created_at", { ascending: false })
     .limit(limit);
-  return data ?? [];
+  const payments = data ?? [];
+
+  // Who paid: a payment has no customer of its own, its order does. Read in
+  // batches, because a thousand ids do not fit in one request's address.
+  const orderIds = [...new Set(payments.map((p) => p.order_id).filter((id): id is string => Boolean(id)))];
+  const batches: string[][] = [];
+  for (let i = 0; i < orderIds.length; i += 150) batches.push(orderIds.slice(i, i + 150));
+  const found = await Promise.all(
+    batches.map((ids) => admin.from("orders").select("id,user_id,guest_email").in("id", ids)),
+  );
+  const orderOf = new Map(found.flatMap((r) => r.data ?? []).map((o) => [o.id, o]));
+
+  return payments.map((p) => {
+    const order = p.order_id ? orderOf.get(p.order_id) : undefined;
+    return { ...p, user_id: order?.user_id ?? null, guest_email: order?.guest_email ?? null };
+  });
 }
 
 /**
@@ -187,16 +339,18 @@ export async function adminBookingList(
     .select("id,user_id,bookable_type,bookable_id,status,starts_at,reference,checked_in_at,entitlement_id,hold_expires_at,created_at")
     .order("starts_at", { ascending: false, nullsFirst: false })
     .limit(limit);
-  if (filter.type) request = request.eq("bookable_type", filter.type);
+  request = filter.type ? request.eq("bookable_type", filter.type) : request.in("bookable_type", [...BOOKINGS_TYPES]);
   if (filter.status) request = request.eq("status", filter.status);
 
   const [{ data }, counts] = await Promise.all([request, countBy("bookings", "bookable_type", BOOKABLE_TYPES)]);
+  // "All" means all that Bookings covers, not every booking in the table.
+  counts.all = BOOKINGS_TYPES.reduce((sum, t) => sum + counts[t], 0);
   const rows = (data ?? []) as Array<Omit<AdminBooking, "title">>;
 
   // `bookable_id` is polymorphic, so titles are resolved per type.
   const ids = (type: BookableType) => rows.filter((r) => r.bookable_type === type).map((r) => r.bookable_id);
   const titles = new Map<string, string>();
-  const [events, sessions, slots, workshops, retreats, masterclasses] = await Promise.all([
+  const [events, sessions, slots, workshops, retreats] = await Promise.all([
     ids("event").length ? admin.from("events").select("id,name").in("id", ids("event")) : null,
     ids("group_coaching_session").length
       ? admin.from("group_coaching_sessions").select("id,title").in("id", ids("group_coaching_session"))
@@ -207,8 +361,9 @@ export async function adminBookingList(
     ids("cohort_workshop").length
       ? admin.from("cohort_workshops").select("id,title").in("id", ids("cohort_workshop"))
       : null,
-    ids("retreat").length ? admin.from("retreats").select("id,title").in("id", ids("retreat")) : null,
-    ids("masterclass").length ? admin.from("masterclasses").select("id,title").in("id", ids("masterclass")) : null,
+    // `name`, not `title`: retreats have no title column, so this read failed
+    // and every retreat booking was listed as plain "Retreat".
+    ids("retreat").length ? admin.from("retreats").select("id,name").in("id", ids("retreat")) : null,
   ]);
   for (const e of events?.data ?? []) titles.set(e.id, e.name);
   for (const s of sessions?.data ?? []) titles.set(s.id, s.title);
@@ -216,8 +371,7 @@ export async function adminBookingList(
     titles.set(s.id, s.private_coaching_services?.name ?? "Private coaching");
   }
   for (const w of workshops?.data ?? []) titles.set(w.id, w.title);
-  for (const r of (retreats?.data ?? []) as Array<{ id: string; title: string }>) titles.set(r.id, r.title);
-  for (const m of (masterclasses?.data ?? []) as Array<{ id: string; title: string }>) titles.set(m.id, m.title);
+  for (const r of retreats?.data ?? []) titles.set(r.id, r.name);
 
   return {
     bookings: rows.map((r) => ({ ...r, title: titles.get(r.bookable_id) ?? null })),
@@ -313,17 +467,4 @@ async function countBy<T extends string>(
     counts[v] = each[i].count ?? 0;
   });
   return counts;
-}
-
-/** Staff roles held by each of a set of accounts — for the people list. */
-export async function rolesByUser(ids: string[]): Promise<Map<string, string[]>> {
-  const roles = new Map<string, string[]>();
-  if (ids.length === 0) return roles;
-  const admin = createAdminClient();
-  const { data } = await admin.from("user_roles").select("user_id,roles(name)").in("user_id", ids);
-  for (const row of (data ?? []) as unknown as Array<{ user_id: string; roles: { name: string } | null }>) {
-    if (!row.roles) continue;
-    roles.set(row.user_id, [...(roles.get(row.user_id) ?? []), row.roles.name]);
-  }
-  return roles;
 }

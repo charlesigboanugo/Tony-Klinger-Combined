@@ -14,10 +14,13 @@ export function Container({
 }: {
   children: ReactNode;
   className?: string;
-  width?: "default" | "wide" | "narrow";
+  width?: "default" | "wide" | "medium" | "narrow";
 }) {
   const widths = {
     narrow: "max-w-3xl",
+    // 64rem: a form beside a summary (checkout), where `narrow` squeezed the
+    // summary whenever the form grew.
+    medium: "max-w-5xl",
     // 76rem (1216px): the content column. Deliberately narrower than the
     // header and footer (`wide`), so the page body sits inset from the chrome
     // rather than on its edges — owner's call, 2026-09-24: 72rem felt narrow,

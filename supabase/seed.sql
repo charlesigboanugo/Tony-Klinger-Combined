@@ -55,11 +55,11 @@ values
    crypt('password123', gen_salt('bf')), now(), now(), now(),
    '{"provider":"email","providers":["email"]}', '{"display_name":"Test Support"}', '', '', '', '', '', '', '', ''),
 
-  -- A paying customer: Gold membership, live entitlements.
+  -- A paying customer: a Gold Pass, live entitlements.
   ('00000000-0000-0000-0000-000000000000', '00000000-0000-4000-a000-000000000010',
    'authenticated', 'authenticated', 'gold@test.local',
    crypt('password123', gen_salt('bf')), now(), now(), now(),
-   '{"provider":"email","providers":["email"]}', '{"display_name":"Gold Member"}', '', '', '', '', '', '', '', ''),
+   '{"provider":"email","providers":["email"]}', '{"display_name":"Gold Pass Holder"}', '', '', '', '', '', '', '', ''),
 
   -- A signed-in customer who has bought nothing. Exercises the empty states
   -- and the "signed in but not entitled" path (note 03 §18).
@@ -108,41 +108,38 @@ on conflict do nothing;
 -- Entitlements
 -- ---------------------------------------------------------------------------
 
--- Gold member: a live recurring subscription, course access plus 16
--- consumable session credits (2 already used) — both entitlements sourced
--- FROM that membership, dated against its current paid period.
---
--- Note 09 §16.1: access is read from the entitlement, never the subscription
--- directly, so both rows below carry their own `expires_at` rather than
--- leaving it null. The subscription exists only to drive renewal — without
--- it, `/academy`, `/account/membership` and `/account/billing` had nothing to
--- show for a user named "Gold Member", which is exactly the kind of gap this
--- rule exists to prevent: a display name promising something the data never
--- backed up.
-insert into public.subscriptions
-  (user_id, product_id, price_id, membership_tier, provider, provider_subscription_id,
-   status, current_period_start, current_period_end)
-select
-  '00000000-0000-4000-a000-000000000010', p.id, pr.id, 'gold', 'stripe', 'sub_test_gold_member',
-  'active', now() - interval '10 days', now() + interval '20 days'
-from public.products p
-join public.prices pr on pr.product_id = p.id and pr.billing_type = 'recurring'
-where p.slug = 'membership-gold'
-on conflict (provider, provider_subscription_id) do nothing;
-
+-- Gold pass holder: a Gold Pass the way one is sold (owner, 2026-10-09) — one
+-- payment for twelve months, so a `membership` entitlement sourced from a
+-- purchase, with no subscription behind it (note 09 §16.1: access is read from
+-- the entitlement). What the pass includes is derived from it: the playlists
+-- by `sync_membership_entitlements`, the two series a year by registering for
+-- a run. Until 2026-10-09 this account held a monthly subscription, a course
+-- and sixteen session credits "from the membership"; none of that is sold.
 insert into public.entitlements
-  (user_id, resource_type, resource_id, source_type, status, starts_at, expires_at, quantity, quantity_used)
-values
-  ('00000000-0000-4000-a000-000000000010', 'course',
-   (select id from public.courses where slug = 'level-one'), 'membership', 'active',
-   now() - interval '10 days', now() + interval '355 days', null, 0),
-  ('00000000-0000-4000-a000-000000000010', 'group_coaching_session',
-   null, 'membership', 'active', now() - interval '10 days', now() + interval '355 days', 16, 2)
-on conflict do nothing;
+  (user_id, resource_type, resource_id, source_type, status, starts_at, expires_at)
+select '00000000-0000-4000-a000-000000000010', 'membership', t.id, 'purchase', 'active',
+       now() - interval '10 days', now() + interval '355 days'
+from public.membership_tiers t
+where t.tier = 'gold'
+  and not exists (
+    select 1 from public.entitlements e
+    where e.user_id = '00000000-0000-4000-a000-000000000010' and e.resource_type = 'membership'
+  );
 
--- Gold member also holds a cohort place, exercising the Cohorts area the
--- same way their course and session-credit entitlements already exercise
--- Courses and Coaching. Masterclass and standalone-resource content was
+-- Bought separately, as a pass holder would: a course (a pass does not include
+-- courses), which is also what the lesson-access test reads as "an entitled
+-- customer".
+insert into public.entitlements
+  (user_id, resource_type, resource_id, source_type, status, starts_at)
+select '00000000-0000-4000-a000-000000000010', 'course', c.id, 'purchase', 'active', now() - interval '10 days'
+from public.courses c
+where c.slug = 'level-one'
+  and not exists (
+    select 1 from public.entitlements e
+    where e.user_id = '00000000-0000-4000-a000-000000000010' and e.resource_type = 'course' and e.resource_id = c.id
+  );
+
+-- The Gold pass holder also holds a cohort place, exercising the Cohorts area. Masterclass and standalone-resource content was
 -- seeded here too on 2026-09-05 and removed the same day, along with both
 -- Academy areas — masterclasses fold into Courses conceptually, and
 -- resources are delivered inside whichever course, cohort or coaching

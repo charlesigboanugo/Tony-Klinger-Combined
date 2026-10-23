@@ -93,12 +93,13 @@ on conflict (slug) do update set description = excluded.description,
 
 insert into private_coaching_services (product_id, name, slug, description, benefits, duration_minutes, status)
 select p.id, 'Advanced One-to-One Coaching', 'advanced-one-to-one',
-  'A direct line to Tony''s own experience, applied to your project.',
+  'Reap the huge benefit of a one-to-one with your host.',
+  -- The storefront service page's own wording, kept as written.
   array[
-    'Personal insight into your project from a working producer''s perspective',
-    'Direct advice on how to mount, produce and market your work',
-    'Scheduled to suit you, not a fixed slot',
-    'Can be purchased as a gift'
+    'Gain a personal insight for your project or career',
+    'Receive direct advice on how to mount, produce and market your work',
+    'Schedule to suit your own needs',
+    'Also available to purchase as a gift'
   ],
   60, 'published'
 from products p where p.slug = 'one-to-one-single'

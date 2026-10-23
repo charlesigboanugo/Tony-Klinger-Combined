@@ -11,7 +11,7 @@ type EntitlementResource =
 /**
  * Signed URLs for private assets — note 05 §33, note 07, migration 0005_storage_contact_and_consent.
  *
- * PRIVATE ASSETS ARE NEVER LINKED DIRECTLY. `course-assets` and `documents`
+ * PRIVATE ASSETS ARE NEVER LINKED DIRECTLY. `course-assets` and `private-media`
  * have no read policy for anon or authenticated, so the only way to reach an
  * object is a short-lived signed URL minted here, and only after the
  * entitlement has been checked.

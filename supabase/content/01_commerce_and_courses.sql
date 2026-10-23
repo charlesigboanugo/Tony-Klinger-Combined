@@ -122,14 +122,6 @@ with p as (
 insert into prices (product_id, currency, amount, billing_type, active)
 select id, 'GBP', 39950, 'one_time', true from p;
 
-with p as (
-  insert into products (name, slug, product_type, description, status)
-  values ('Level Three', 'course-level-three', 'course', 'Advanced movie production and getting made.', 'active')
-  on conflict (slug) do update set name = excluded.name returning id
-)
-insert into prices (product_id, currency, amount, billing_type, active)
-select id, 'GBP', 49950, 'one_time', true from p;
-
 -- Bundles. 'The Deluxe' and its level bundles are the storefront's premium
 -- offers; note 01's Ultimate tier has no equivalent in any source site, so it is
 -- deliberately left unpriced rather than guessed at.
@@ -172,22 +164,6 @@ select id, 'GBP', 105950, 'one_time', true from p;
 
 with p as (
   insert into products (name, slug, product_type, description, status)
-  values ('Group Coaching — Single Session', 'group-coaching-single', 'group_coaching', 'One virtual seat in any group session.', 'active')
-  on conflict (slug) do update set name = excluded.name returning id
-)
-insert into prices (product_id, currency, amount, billing_type, active)
-select id, 'GBP', 2500, 'one_time', true from p;
-
-with p as (
-  insert into products (name, slug, product_type, description, status)
-  values ('Group Coaching — 8 Sessions', 'group-coaching-x8', 'group_coaching', 'Eight group coaching sessions. Valid for three months.', 'active')
-  on conflict (slug) do update set name = excluded.name returning id
-)
-insert into prices (product_id, currency, amount, billing_type, active)
-select id, 'GBP', 13000, 'one_time', true from p;
-
-with p as (
-  insert into products (name, slug, product_type, description, status)
   values ('Advanced One-to-One — Single', 'one-to-one-single', 'private_coaching', 'One advanced one-to-one coaching session.', 'active')
   on conflict (slug) do update set name = excluded.name returning id
 )
@@ -196,11 +172,14 @@ select id, 'GBP', 15000, 'one_time', true from p;
 
 with p as (
   insert into products (name, slug, product_type, description, status)
-  values ('Advanced One-to-One — 8 Sessions', 'one-to-one-x8', 'private_coaching', 'The eight-session one-to-one offer.', 'active')
-  on conflict (slug) do update set name = excluded.name returning id
+  values ('Advanced One-to-One — 8 Sessions', 'one-to-one-x8', 'private_coaching', 'Eight advanced one-to-one coaching sessions. Valid for six months.', 'active')
+  on conflict (slug) do update set name = excluded.name, description = excluded.description returning id
 )
+-- £1,000, valid for six months: /plans-pricing's "Adv Coaching Bundle". The
+-- storefront's /product-page/one-to-one-x8-offer is misnamed — it sells the
+-- GROUP bundle at £130 — and that price was first migrated here by mistake.
 insert into prices (product_id, currency, amount, billing_type, active)
-select id, 'GBP', 13000, 'one_time', true from p;
+select id, 'GBP', 100000, 'one_time', true from p;
 
 -- Interactive cohorts. £699 per level, eight three-hour Zoom workshops.
 -- COHORT LEVEL IS NOT A MEMBERSHIP TIER (R17) — the names coincide, the
@@ -316,7 +295,7 @@ with c as (
 insert into lessons (module_id, title, slug, content, position, status)
 select m.id, v.title, v.slug, v.content, v.position, 'published'
 from m, (values
-  ('Education Training', 'education-training', 'Remember, there is no one-size-fits-all method to getting into the movie industry. Cultivating relationships, demonstrating your passion through your work, and continuously striving for growth and learning are key components of success in this dynamic field.
+  ('Education and Training', 'education-training', 'Remember, there is no one-size-fits-all method to getting into the movie industry. Cultivating relationships, demonstrating your passion through your work, and continuously striving for growth and learning are key components of success in this dynamic field.
 
 The film and movie industry values both formal education and practical experience. Graduating from a prestigious program can open doors and aid in networking, but ultimately, skills, creativity, and experience are key factors in this industry. Here are some of the best colleges and universities in the U.K. and the USA for education and training in film and movie production:
 
@@ -339,7 +318,7 @@ The film and movie industry values both formal education and practical experienc
 
 The film industry does recognize candidates graduating from these programs, as they often provide a strong foundation in both theoretical and practical aspects of filmmaking. Additionally, these institutions often encourage networking, which can be crucial for career growth. Internships, film festivals, and alumni connections provided by these schools can lead to opportunities within the industry.
 
-However, it is important to note that the industry also greatly values hands-on experience, a diverse portfolio, and the ability to adapt and innovate. Many successful filmmakers have taken alternative paths into industry, including self-taught routes, short courses, apprenticeships, or starting their careers as assistants and working their way up. Ultimately, the combination of education, real-world experience, creativity, and persistence is key to a successful career in the movie industry.', 1),
+However, it is important to note that the industry also greatly values hands-on experience, a diverse portfolio, and the ability to adapt and innovate. Many successful filmmakers have taken alternative paths into industry, including self-taught routes, short courses, apprenticeships, or starting their careers as assistants and working their way up. Ultimately, the combination of education, real-world experience, creativity, and persistence is key to a successful career in the movie industry.', 3),
   ('Networking', 'networking', 'Achieving the best possible networking outcomes in the movie industry as a newcomer involves a combination of strategic relationship-building, persistent effort, developing your craft, and leveraging available resources. Here is a detailed approach with examples:
 
 1.   **Educate Yourself:** Understanding the industry is vital. Familiarize yourself with its history, current trends, key players (producers, directors, actors, etc.), and how projects are developed from concept to premiere. Reading trade publications like Variety or The Hollywood Reporter can provide current insights.
@@ -364,7 +343,7 @@ However, it is important to note that the industry also greatly values hands-on 
 
 For example, consider the story of an aspiring actor who attends acting workshops, auditions regularly for roles, and volunteers at film festivals. Through these activities, they meet a local director who casts them in a small indie film. The film garners attention at festivals, and the actor’s performance is noted. Simultaneously, the actor keeps in touch with industry contacts, updating them on this success, which eventually leads to more auditions and opportunities.
 
-In sum, treating every encounter as an opportunity to learn and connect, while consistently demonstrating professionalism, passion, and respect for others'' time, is essential for achieving the best networking outcomes in the movie industry.', 2),
+In sum, treating every encounter as an opportunity to learn and connect, while consistently demonstrating professionalism, passion, and respect for others'' time, is essential for achieving the best networking outcomes in the movie industry.', 4),
   ('Creating An Impressive Portfolio', 'creating-an-impressive-portfolio', '### Introduction:
 
 Building a portfolio is crucial for aspiring creatives in the film and TV industry. Whether you aim to be a director, screenwriter, actor, or cinematographer, a well-curated portfolio showcases your talent, skills, and unique style. In this guide, we will provide step-by-step guidance on how to create an impressive portfolio that will help you stand out in the competitive world of film and television.
@@ -387,7 +366,7 @@ Building a portfolio is crucial for aspiring creatives in the film and TV indust
 
 ### Conclusion:
 
-Creating an impressive portfolio is a crucial step for aspiring creatives in the film and TV industry. By following these steps, you can curate a portfolio that showcases your talents, style, and achievements. Remember to regularly update your portfolio and seek feedback to continually improve and stay relevant in this competitive industry. Good luck on your creative journey!', 3),
+Creating an impressive portfolio is a crucial step for aspiring creatives in the film and TV industry. By following these steps, you can curate a portfolio that showcases your talents, style, and achievements. Remember to regularly update your portfolio and seek feedback to continually improve and stay relevant in this competitive industry. Good luck on your creative journey!', 5),
   ('Starting Small In The Industry', 'starting-small-in-the-industry', '*Entry-Level Positions and Building Connections*
 
 ### Introduction:
@@ -412,7 +391,7 @@ Starting your journey in the film and TV industry at entry-level positions such 
 
 ### Conclusion:
 
-Starting small in the film and TV industry through entry-level positions can provide you with industry insights, valuable connections, and a solid foundation for your career. By following these steps, you can increase your chances of securing entry-level roles and leverage them to propel your growth in the industry. Remember to continuously learn, network, and stay persistent. Good luck on your journey to success!', 4),
+Starting small in the film and TV industry through entry-level positions can provide you with industry insights, valuable connections, and a solid foundation for your career. By following these steps, you can increase your chances of securing entry-level roles and leverage them to propel your growth in the industry. Remember to continuously learn, network, and stay persistent. Good luck on your journey to success!', 6),
   ('Internships', 'internships', '*The Comprehensive Guide to Internships: Benefits, Drawbacks, and Finding Opportunities in the Film and TV Industry*
 
 ### Introduction:
@@ -440,7 +419,7 @@ Internships play a vital role in the film and TV industry, offering valuable han
 
 ### Conclusion:
 
-Internships in the film and TV industry offer numerous benefits, including hands-on experience and the chance to build a professional network. However, it''s essential to consider the potential drawbacks, such as unpaid positions and demanding work hours. By researching production companies, networking, and utilizing online resources, you can increase your chances of finding valuable internship opportunities. Remember to approach internships with enthusiasm, a willingness to learn, and a strong work ethic. Good luck on your journey to a successful career in the film and TV industry!', 5),
+Internships in the film and TV industry offer numerous benefits, including hands-on experience and the chance to build a professional network. However, it''s essential to consider the potential drawbacks, such as unpaid positions and demanding work hours. By researching production companies, networking, and utilizing online resources, you can increase your chances of finding valuable internship opportunities. Remember to approach internships with enthusiasm, a willingness to learn, and a strong work ethic. Good luck on your journey to a successful career in the film and TV industry!', 7),
   ('Specialization', 'specialization', '*The Importance of Specializing in the Film and TV Industry: Becoming an International Standard Expert in Your Niche*
 
 ### Introduction:
@@ -469,7 +448,7 @@ As a new entry-level professional in the film and TV industry, gaining knowledge
 
 ### Conclusion:
 
-Specializing in a specific area within the film and TV industry is a strategic move for new entry-level professionals. By becoming an international standard expert in your niche, you can develop a depth of knowledge, enhance your career prospects, and build a strong reputation and professional network. Embracing specialization allows you to pursue your passion, achieve personal growth, and ultimately excel in your chosen field. Remember, specialization is a journey that requires continuous learning, adaptability, and dedication. Embrace the opportunity to become a specialist and unlock the full potential of your career in the film and TV industry.', 6),
+Specializing in a specific area within the film and TV industry is a strategic move for new entry-level professionals. By becoming an international standard expert in your niche, you can develop a depth of knowledge, enhance your career prospects, and build a strong reputation and professional network. Embracing specialization allows you to pursue your passion, achieve personal growth, and ultimately excel in your chosen field. Remember, specialization is a journey that requires continuous learning, adaptability, and dedication. Embrace the opportunity to become a specialist and unlock the full potential of your career in the film and TV industry.', 8),
   ('Stay Current', 'stay-current', '*The importance of Staying Current in the Movie and Television Industry: A Guide to Keeping Up with the Latest News and Advancements*
 
 **The film industry is always evolving with new technology and trends. Keep yourself updated with the latest news, methods, and technological advancements.**
@@ -488,7 +467,7 @@ In today''s fast-paced world, staying current and up-to-date is crucial, especia
 
 ### Conclusion:
 
-In the movie and television industry, staying current is not just a choice, but a necessity for both newcomers and veterans. By utilizing various sources such as industry publications, trade shows, social media, podcasts, and industry associations, you can keep yourself constantly updated and informed about the latest news, methods, and technical advancements. Remember, staying current is a continuous process that requires dedication and a genuine passion for the industry. So, embrace the opportunities available and stay ahead in this ever-evolving industry.', 7),
+In the movie and television industry, staying current is not just a choice, but a necessity for both newcomers and veterans. By utilizing various sources such as industry publications, trade shows, social media, podcasts, and industry associations, you can keep yourself constantly updated and informed about the latest news, methods, and technical advancements. Remember, staying current is a continuous process that requires dedication and a genuine passion for the industry. So, embrace the opportunities available and stay ahead in this ever-evolving industry.', 9),
   ('Persistence And Resilience', 'persistence-and-resilience', '*The Necessity of Persistence and Resilience for Newcomers in the Film and Television Industries*
 
 **It’s a competitive field with many rejections. Persistence is key – keep improving your skills and applying for new opportunities.**
@@ -506,7 +485,7 @@ The film and television industries are known for their competitiveness, and brea
 
 ### Conclusion:
 
-For newcomers in the film and television industries, persistence and resilience are indispensable qualities. Embrace the competitive nature of the industry, continuously improve your skills, network, and build relationships, and view rejection as a stepping stone to growth. Stay adaptable, celebrate small victories, and remember that success often comes to those who persist despite challenges. By cultivating these qualities, you can navigate the industry with determination and resilience, increasing your chances of achieving your goals in the film and television industries.', 8),
+For newcomers in the film and television industries, persistence and resilience are indispensable qualities. Embrace the competitive nature of the industry, continuously improve your skills, network, and build relationships, and view rejection as a stepping stone to growth. Stay adaptable, celebrate small victories, and remember that success often comes to those who persist despite challenges. By cultivating these qualities, you can navigate the industry with determination and resilience, increasing your chances of achieving your goals in the film and television industries.', 10),
   ('Find A Mentor', 'find-a-mentor', '**Finding an Appropriate and Helpful Mentor in the Film and TV Industries**
 
 *Seek out a mentor who can provide guidance, advice, and help navigate the complexities of the industry.*
@@ -525,7 +504,7 @@ In the film and TV industries, having a mentor can be invaluable for newcomers. 
 
 ### Conclusion:
 
-Finding an appropriate and helpful mentor in the film and TV industries is a valuable step towards success. By clarifying your goals, conducting research, networking, and approaching potential mentors professionally, you can find a mentor who aligns with your needs. Establishing a mentor-mentee relationship and actively seeking guidance can provide invaluable support, advice, and help in navigating the complexities of the business. Embrace the opportunity to learn from experienced professionals and leverage their expertise to accelerate your career growth in the film and TV industries. Utilize Online Platforms: Platforms like YouTube or Vimeo offer the ability to showcase your work to a wider audience. Crowdfunding sites can also help finance your projects.', 9),
+Finding an appropriate and helpful mentor in the film and TV industries is a valuable step towards success. By clarifying your goals, conducting research, networking, and approaching potential mentors professionally, you can find a mentor who aligns with your needs. Establishing a mentor-mentee relationship and actively seeking guidance can provide invaluable support, advice, and help in navigating the complexities of the business. Embrace the opportunity to learn from experienced professionals and leverage their expertise to accelerate your career growth in the film and TV industries. Utilize Online Platforms: Platforms like YouTube or Vimeo offer the ability to showcase your work to a wider audience. Crowdfunding sites can also help finance your projects.', 11),
   ('Utilize Online Platforms', 'utilize-online-platforms', 'In today’s digital age, online platforms have revolutionized the way newcomers in the film and TV industries can showcase their work and finance their projects. This analysis explores the benefits and strategies for utilizing platforms like YouTube, Vimeo and crowdfunding sites to reach a wider audience and secure funding for creative endeavors.
 
 ### A. Showcasing work on YouTube and Vimeo.
@@ -546,7 +525,7 @@ Finding an appropriate and helpful mentor in the film and TV industries is a val
 
 ### Conclusion:
 
-Online Platforms like YouTube and Vimeo offer newcomers in the film and television industries the ability to showcase their work to a wider audience, while crowdfunding site like Kickstarter and Indiegogo provide a means to finance their projects. By leveraging these platforms effectively, newcomers can gain exposure, build a supportive community, and secure funding for their creative endeavors. However, success requires a compelling pitch, active engagement with the audience, and the cultivation of a network within the industry. Embracing these strategies can significantly enhance the visibility and viability of newcomers’ projects in the dynamic and competitive landscape of the film and TV industries.', 10),
+Online Platforms like YouTube and Vimeo offer newcomers in the film and television industries the ability to showcase their work to a wider audience, while crowdfunding site like Kickstarter and Indiegogo provide a means to finance their projects. By leveraging these platforms effectively, newcomers can gain exposure, build a supportive community, and secure funding for their creative endeavors. However, success requires a compelling pitch, active engagement with the audience, and the cultivation of a network within the industry. Embracing these strategies can significantly enhance the visibility and viability of newcomers’ projects in the dynamic and competitive landscape of the film and TV industries.', 12),
   ('Market Yourself', 'market-yourself', 'Use social media and personal branding to get noticed. Engage with your potential audience and don’t be afraid to turn them into customers. Share yourself and your projects to build an online presence. Remember, in the movie business, you’re also a marketable commodity.
 
 Although each chapter is self contained there are many crossovers - things that are recommended contained in more than one area. They’re present at various points in your personal journey and shouldn’t be ignored.
@@ -581,7 +560,7 @@ A personal website serves as your online portfolio. Include your biography, a re
 ### Consistency and Patience 
 Building a strong online presence and personal brand takes time. Be consistent with your efforts and patient with the results. It''s a long-term investment in your career.
 
-By strategically using social media and personal branding, you can position yourself effectively in the movie business. Engaging with your audience, showcasing your skills, and building valuable relationships will pave the way for significant opportunities.', 11),
+By strategically using social media and personal branding, you can position yourself effectively in the movie business. Engaging with your audience, showcasing your skills, and building valuable relationships will pave the way for significant opportunities.', 13),
   ('Breaking Into The Film Industry', 'breaking-into-the-film-industry', 'If your interest lies in screenwriting or directing, constantly write ideas and screenplays. Consider submitting to screenwriting competitions or script showcases. These platforms not only offer feedback but also put your work in front of industry professionals.
 
 1.   **Network within the Industry:** New to the industry writers should attend film festivals, workshops, and industry events. Building relationships with other filmmakers, producers, and actors can lead to collaboration opportunities. Networking for writers  is crucial, as the movie business is often about who you know.
@@ -593,7 +572,7 @@ By strategically using social media and personal branding, you can position your
 7.   **Keep Learning:** Continuously improve your skills by taking courses in screenwriting, directing, or other areas of filmmaking. These areas are very closely related so you need to be aware of this. Online education platforms and local community colleges offer various classes to help you refine your craft.
 9.   **Stay Resilient and Persistent:** The movie business is highly competitive and often comes with setbacks. Persistence and adaptability are key. Learn from rejections, maintain a positive attitude, and keep pushing forward.
 
-By following these steps, you can immerse yourself in the movie business and slowly but surely carve out your path to a successful career.', 12),
+By following these steps, you can immerse yourself in the movie business and slowly but surely carve out your path to a successful career.', 14),
   ('Be Versatile', 'be-versatile', 'The more skills you have, the more job opportunities you’ll find. Don’t hesitate to explore various disciplines within the industry. Here’s a guide on how to diversify your skills and increase your chances of landing a job in the movie business:
 
 1. **Learn Different Roles:** Understanding the different roles within a movie production can make you more valuable. From screenwriting, directing, and producing to editing, cinematography, and acting, each role contributes uniquely to the final product. Take time to learn the basics of various jobs to gain a well-rounded perspective.
@@ -616,7 +595,7 @@ By following these steps, you can immerse yourself in the movie business and slo
 
 10. **Build a Strong Portfolio:** A diverse portfolio showcases your versatility. Include samples of different projects you’ve worked on, highlighting various skills and roles you’ve undertaken. A strong, varied portfolio can make a significant impression on potential employers.
 
-Being versatile means being open to learning and adapting continuously. The more adaptable and skilled you are, the more likely you are to find your niche and succeed in the competitive movie business.', 13),
+Being versatile means being open to learning and adapting continuously. The more adaptable and skilled you are, the more likely you are to find your niche and succeed in the competitive movie business.', 15),
   ('Join Unions And Associations', 'join-unions-and-associations', 'Consider joining relevant associations such as SAG, AFTRA, DGA or WGA in the States, or similar organizations in your own country. These organizations can provide resources, services, experiences, and further networking opportunities that are crucial for anyone looking to thrive in the movie business.
 
 Joining a professional organization such as the Screen Actors Guild-American Federation of Television and Radio Artists (SAG-AFTRA) can offer actors essential protections and resources. SAG-AFTRA ensures fair pay, safe working conditions, and health benefits. Membership also allows access to workshops, seminars, and networking events which are ideal for skill development and career advancement. Similarly, the Directors Guild of America (DGA) provides support, advocacy, and negotiation power for directors and production staff, ensuring that their work conditions and compensation meet industry standards.
@@ -631,7 +610,7 @@ For those outside the United States, most countries have their own equivalent or
 
 In addition to national organizations, international associations such as the International Alliance of Theatrical Stage Employees (IATSE) or the International Federation of Actors (FIA) also offer valuable resources and connections on a global scale.
 
-In conclusion, joining a union or guild not only provides essential protections and resources but also opens doors to a network of like-minded professionals. The significance of community, continuous education, and advocacy for rights cannot be overstated. As you embark on your journey into the movie business, becoming a member of these organizations can be a pivotal step towards achieving lasting success and fulfillment in your career.', 14),
+In conclusion, joining a union or guild not only provides essential protections and resources but also opens doors to a network of like-minded professionals. The significance of community, continuous education, and advocacy for rights cannot be overstated. As you embark on your journey into the movie business, becoming a member of these organizations can be a pivotal step towards achieving lasting success and fulfillment in your career.', 16),
   ('Move To Industry Hubs', 'move-to-industry-hubs', 'If possible, relocate to places where the industry flourishes, like Los Angeles, London, New York, or Vancouver. These cities are not only the epicenters of production but also hubs for networking, job opportunities, and exposure to the latest industry trends. Moving to an industry hub can significantly increase your chances of breaking into the movie business for several reasons.
 
 Firstly, these cities host major film and television studios, production companies, and numerous independent filmmakers. Being present in these locations means that you''ll have direct access to many potential employers and collaborators. It’s much easier to attend auditions, interviews, or impromptu meetings when you’re just a short drive or subway ride away.
@@ -646,7 +625,7 @@ Moreover, these hubs are home to a vast array of educational institutions offeri
 
 Finally, many entry-level opportunities in the movie business are often filled locally. By being present in industry hubs, you can take advantage of internships, assistant roles, and other entry-level positions that are rarely advertised outside these locales. Gaining practical experience in a real-world setting, even in seemingly minor roles, can be invaluable. These positions often provide the training ground necessary for higher-level opportunities and allow you to build a resume rich with relevant experience.
 
-Relocating to an industry hub requires significant investment in terms of time, money, and effort. However, the potential benefits of doing so can be substantial. Being in the right environment can dramatically propel your career forward, making the pursuit of success in the movie business feel more attainable.', 15),
+Relocating to an industry hub requires significant investment in terms of time, money, and effort. However, the potential benefits of doing so can be substantial. Being in the right environment can dramatically propel your career forward, making the pursuit of success in the movie business feel more attainable.', 17),
   ('Work On Personal Projects', 'work-on-personal-projects', 'Use your initiative to create independent films or projects. This can help you experiment, enhance your skills, and gain an elevated profile quickly. Start by identifying stories or concepts you’re passionate about. This could be anything from a short film, a web series, or a documentary. Passion projects often resonate more deeply with audiences and can showcase your unique voice and style.
 
 Begin with a short film. Short films are a fantastic way to get your feet wet in filmmaking. They require less time and money compared to feature films but still allow you to explore storytelling, directing, and editing. For example, create a 10-minute short drama focusing on a day in the life of a unique character. This not only hones your skills but also can be entered into film festivals, which can boost your recognition.
@@ -663,7 +642,7 @@ Enter film festivals and competitions. Festivals not only provide a platform to 
 
 Finally, always be learning. Take advantage of online tutorials, filmmaking courses, and workshops. Platforms like MasterClass, Udemy, or local film schools can offer valuable insights into scriptwriting, cinematography, directorial techniques, and post-production. Continuous improvement and staying updated with the latest industry trends will keep your skills sharp and relevant.
 
-By creating personal projects, you demonstrate your ability to take initiative, experiment, and produce compelling content. This proactive approach can lead to recognition, new opportunities, and ultimately, a successful career in the movie business.', 16),
+By creating personal projects, you demonstrate your ability to take initiative, experiment, and produce compelling content. This proactive approach can lead to recognition, new opportunities, and ultimately, a successful career in the movie business.', 18),
   ('Stay Positive And Patient', 'stay-positive-and-patient', 'Success rarely comes overnight in the movie business. Stay positive and patient, while consistently working towards your goals. Visualization of your goals to manifest them is a very powerful first step. Imagine yourself on the red carpet, at the director’s chair, or writing the next big blockbuster. Visualizing these moments can propel your motivation and keep you focused on the journey ahead.
 
 1. **Set Realistic Goals**: Break down your ultimate dream into smaller, attainable goals. Whether it’s writing a short script, attending film school, or working on local productions, every step counts. Celebrate these small victories to maintain morale and stay motivated.
@@ -682,8 +661,8 @@ By creating personal projects, you demonstrate your ability to take initiative, 
 
 8. **Stay Balanced**: While it’s essential to work hard, it’s equally important to maintain a work-life balance. Overworking can lead to burnout. Ensure you have time for relaxation, hobbies, and spending time with loved ones to keep your mind fresh and creative.
 
-Remember, each day is a step closer to your dream. Stay positive, patient, and persistent. Your passion and dedication will eventually pay off, and you’ll find yourself making strides in the movie business.', 17),
-  ('Movie Basic Course Intro', 'movie-basic-course-intro', '## How to get into the Movie Business: An Introduction
+Remember, each day is a step closer to your dream. Stay positive, patient, and persistent. Your passion and dedication will eventually pay off, and you’ll find yourself making strides in the movie business.', 19),
+  ('Course Intro', 'movie-basic-course-intro', '## How to get into the Movie Business: An Introduction
 
 I offer you a concise, informative guide to help you get into the movie industry:
 
@@ -719,9 +698,9 @@ I offer you a concise, informative guide to help you get into the movie industry
 
 16. **Work on Personal Projects:** Use your initiative to create independent films or projects. This can help you experiment, enhance your skills, and gain recognition.
 
-17. **Stay Positive and Patient:** Success rarely comes overnight. Stay positive and patient, while consistently working towards your goals.', 999),
-  ('Movie Basic Congratulations', 'movie-basic-congratulations', null, 999),
-  ('Movie Basic Welcome Video', 'movie-basic-welcome-video', null, 999)
+17. **Stay Positive and Patient:** Success rarely comes overnight. Stay positive and patient, while consistently working towards your goals.', 2),
+  ('Congratulations', 'movie-basic-congratulations', null, 999),
+  ('Welcome Video', 'movie-basic-welcome-video', null, 1)
 ) as v(title, slug, content, position)
 on conflict (module_id, slug) do nothing;
 
@@ -774,7 +753,7 @@ Persistence is key. If you believe in your story, pursue it relentlessly. Even s
 Success varies for everyone. For some, it''s material wealth; for others, it''s personal fulfilment. True success is the accomplishment of your goals and the positive impact your work has on others. Gauge your success by the reactions and enjoyment of your audience. Continuous success is built on achieving milestones and progressing towards your dreams.
 
 Remember to embrace positivity, plan meticulously, be self-aware, handle criticism constructively, work with professionals, and persist in your creative endeavours. Success in the creative industry is a blend of passion, hard work, and resilience.
-', 1),
+', 2),
   ('Developing An Idea', 'developing-an-idea', '
 *Turning Your Idea into a Screenplay*
 
@@ -823,7 +802,7 @@ Starting a writing career is hard work and requires thorough planning and strate
 
 ### Embrace Opportunities
 
-See barriers as opportunities. Always look for ways to push forward, especially during challenging times like the Covid pandemic. Persistence and hard work are key to turning your dream into reality.', 2),
+See barriers as opportunities. Always look for ways to push forward, especially during challenging times like the Covid pandemic. Persistence and hard work are key to turning your dream into reality.', 3),
   ('Compromising Your Creative Vision', 'compromising-your-creative-vision', '
 ### Listening to Your Inner Voice
 
@@ -860,7 +839,7 @@ Quality over speed is crucial. Take your time with writing and rewriting to ensu
 ### Your Voice is Your Brand
 
 From the beginning, hold on to your unique voice. It is your brand and the best representation of you.
-', 3),
+', 4),
   ('Reasons For Writing', 'reasons-for-writing', '
 We write because we are driven, sometimes obsessed. Why do we write film scripts? For pleasure, glory, money, showcasing creativity, sharing a vision, and making submissions. It''s not just about money but the reward of doing it and the response to our writing.
 
@@ -898,7 +877,7 @@ Writing brings pleasure, even though it starts with a blank page. Despite the so
 Glory is a questionable motive. Fame brings criticism, and glory hunting can diminish the joy of writing. Money is a practical reason, but writing solely for it can be unfulfilling. True pleasure comes from sharing creative talent and vision, affecting others with your words.
 
 The creative industries are significant, employing millions and contributing substantially to the economy. For successful submissions, find out who will read your work and tailor your approach to their preferences. Believe in yourself, keep submitting, and stay persistent. One day, your work will succeed.
-', 4),
+', 5),
   ('Common Issues In Writing', 'common-issues-in-writing', '
 *Plagiarism*
 
@@ -927,7 +906,7 @@ As a writer, you might start from your own idea or be commissioned. Ensure you s
 ### Final Thoughts
 
 Writing is a diverse field with various challenges and opportunities. Protect your work, verify your facts, secure your contracts, and understand the unique demands of different media. With careful planning and clear agreements, you can navigate the complexities of a writing career successfully.
-', 5),
+', 6),
   ('The Right Role For You', 'the-right-role-for-you', '
 *Know yourself - believe in your creative abilities*
 
@@ -987,7 +966,7 @@ Evaluate where you are and where you want to be. Understand the politics and dyn
 ### Compromise and Success
 
 Success requires knowing your needs and being willing to compromise. Self-knowledge and flexibility are essential for achieving your career goals.
-', 6),
+', 7),
   ('Career From Creativity', 'career-from-creativity', '
 ## Foundations of Pragmatism
 
@@ -1030,7 +1009,7 @@ Forming alliances within the creative community strengthens your position. The c
 ### Mixing Money and Creativity
 
 There''s nothing wrong with mixing money and creativity. Financial success enables you to reach a wider audience and produce higher-quality work. Understanding and navigating the economic realities of the creative industry are essential for sustainable success.
-', 7),
+', 8),
   ('Being Professional', 'being-professional', '
 To thrive in a creative career, one must blend creativity with business savvy. This balance isn''t contradictory but complementary, as business efforts enhance your creative endeavours. If your goal is to make a living from your creativity, you need to handle contracts, invoices, and fees professionally.
 
@@ -1060,7 +1039,7 @@ Always put agreements and communications in writing to protect yourself and main
 Rejection is inevitable, so don''t take it personally. Learn from any constructive feedback to improve your work. If feedback isn''t relevant, understand that the rejection may simply be due to timing or preference. Maintain good relationships, leaving a positive impression even if your project is declined. This can lead to future opportunities and personal growth.
 
 By combining business acumen with your creative skills, you can navigate the complexities of a creative career more effectively, increasing your chances of success and sustainability.
-', 8),
+', 9),
   ('Sharing Ideas', 'sharing-ideas', '
 While creativity is about talent, imagination, and passion, a financial base is essential. Creativity isn''t about money, but without it, sustaining a creative career is challenging. My philosophy is that our financial achievements are like pebbles; some of us become significant rocks like David Lean or Shakespeare, but what truly matters is the legacy we leave behind.
 
@@ -1081,7 +1060,7 @@ Regular and transparent reporting is vital. It keeps everyone informed about the
 Break down your budget into manageable parts and allow a small margin for error. Regularly check your spending to stay on track. Clear communication about finances within your team prevents misunderstandings and ensures everyone is aligned.
 
 In essence, sharing ideas, philosophy, knowledge, and information is crucial for a successful creative project. Transparent communication, careful planning, and ethical practices form the backbone of a sustainable creative career.
-', 9),
+', 10),
   ('Who Should I Work With', 'who-should-i-work-with', '
 ### Projects and Priorities
 
@@ -1110,7 +1089,7 @@ Chemistry with your team is crucial. Ensure everyone is on the same page and com
 ### Preparation
 
 Always be prepared and well-informed when dealing with investors or clients. Present complete and detailed proposals to ensure clarity and confidence in your project. Preparation and professionalism are key to securing support and achieving success.
-', 10),
+', 11),
   ('Competition', 'competition', '
 *Who Are You Competing With?*
 
@@ -1131,7 +1110,7 @@ When presenting a project, be thoroughly prepared with a schedule, budget, and d
 ### Planning and Professionalism
 
 Before starting a project, outline your goals, schedule, costs, and critical points. This preparation might reveal that a project is unfeasible, saving you time and resources. Making tough decisions upfront is crucial for long-term success.
-', 11),
+', 12),
   ('Agents', 'agents', '
 *The Role of an Agent*
 
@@ -1166,7 +1145,7 @@ Before approaching an agent, build a strong portfolio. Gain experience through i
 Agents typically take a percentage of your earnings, usually between 10-20%. As you become more established, you can negotiate this percentage. Understand that agents must balance your interests with maintaining good relationships with studios and producers.
 
 By hiring a dedicated agent who believes in your potential, you can protect your creative work, get proper payment, and receive valuable career advice.
-', 12),
+', 13),
   ('Financing Your Film', 'financing-your-film', '
 ### Raising Finance for Your Creative Projects
 
@@ -1198,7 +1177,7 @@ When seeking funding, always be honest about why your project is a good investme
 -   Consider additional revenue streams like games or apps to diversify risk.
 
 By following these guidelines, you can effectively raise finance for your film and increase your chances of success.
-', 13),
+', 14),
   ('Selling Your Story', 'selling-your-story', '
 *A Good Story Sells*
 
@@ -1223,7 +1202,7 @@ Understanding and being involved in marketing and distribution is essential. Hir
 ### Continuous Learning
 
 Always be aware of your industry''s current trends and changes. This knowledge helps you plan effectively and avoid repeating mistakes. Keep learning and hiring experts to strengthen your projects and ultimately achieve success.
-', 14),
+', 15),
   ('The Perfect Pitch', 'the-perfect-pitch', '
 ### Importance of Pitching
 
@@ -1270,7 +1249,7 @@ While some exaggeration is expected, always be honest about your project’s det
 Know your project inside and out and be ready to answer any questions. If you don’t know something, admit it and promise to find out. Consider consulting experts before your pitch to ensure you’re fully prepared.
 
 By mastering these elements, you can deliver a pitch that captivates investors and sets your project on the path to success.
-', 15),
+', 16),
   ('Understanding The Market', 'understanding-the-market', '
 *The Evolving Market*
 
@@ -1286,7 +1265,7 @@ Timing is everything. For example, the pandemic halted many productions, causing
 
 ### Competing with Studios
 
-Studios have the resources to create high-budget projects with big names and special effects, making it challenging for smaller projects to compete. Investors will always weigh the potential returns, so it''s important to position your project strategically and highlight its unique strengths.', 16),
+Studios have the resources to create high-budget projects with big names and special effects, making it challenging for smaller projects to compete. Investors will always weigh the potential returns, so it''s important to position your project strategically and highlight its unique strengths.', 17),
   ('Negotiations', 'negotiations', '
 *Who to Negotiate With*
 
@@ -1314,7 +1293,7 @@ Persistence is key. Don''t give up if you believe in your abilities. Focus on yo
 
 ### Become Established
 
-Pitch to industry intermediaries, not the end-user. Align yourself with someone who can advance your project. Build credibility by being reliable and serious about your work. Credibility and a good track record are crucial for success.', 17),
+Pitch to industry intermediaries, not the end-user. Align yourself with someone who can advance your project. Build credibility by being reliable and serious about your work. Credibility and a good track record are crucial for success.', 18),
   ('Contracts', 'contracts', '
 *Put It in Writing*
 
@@ -1335,7 +1314,7 @@ Aim to resolve disputes through arbitration to save time and protect reputations
 ### Enjoy Your Work
 
 With a solid contract in place, focus on the creative aspects of your work. Having clear agreements allows you to enjoy your creative career fully.
-', 18),
+', 19),
   ('Making Your Movie', 'making-your-movie', '
 *How to Get Your Movie Made*
 
@@ -1383,7 +1362,7 @@ Engage accountants and lawyers for legal and regulatory compliance. Financial co
 ### Preferred Approach
 
 Combine specialist law firm deals with finance brokers who offer reasonable advance fees and success percentages. This strategy ensures legal soundness and incentivizes brokers to secure financing.
-', 19),
+', 20),
   ('Casting Actors', 'casting-actors', '
 ### How Casting Works
 
@@ -1412,16 +1391,67 @@ Studios have the resources to cast without stars, relying on their marketing pow
 ### Selecting the Right Actor
 
 Evaluate actors not just for their fit with the role but also their motivation and interest in the project. Their enthusiasm and input can enhance their performance and contribute to the overall success of the film.
-', 20),
-  ('Movie Adv Welcome How To Get Your Movie Made', 'movie-adv-welcome-how-to-get-your-movie-made', null, 999),
-  ('Movie Adv Congratulations', 'movie-adv-congratulations', null, 999)
+', 21),
+  ('Welcome How To Get Your Movie Made', 'movie-adv-welcome-how-to-get-your-movie-made', null, 1),
+  ('Congratulations', 'movie-adv-congratulations', null, 999)
 ) as v(title, slug, content, position)
 on conflict (module_id, slug) do nothing;
 
--- Level Three is priced on the storefront but has no curriculum in any export,
--- so it exists as a product without lessons rather than being padded out.
--- Its title stays "Level Three" until it has a curriculum to name it by.
-insert into courses (product_id, title, slug, description, status, level, position)
-select id, 'Level Three', 'level-three', 'Advanced movie production and getting made.', 'draft', 'Level Three', 30
-from products where slug = 'course-level-three'
-on conflict (slug) do nothing;
+-- Lesson descriptions (owner, 2026-10-15): the one- or two-sentence summary
+-- under each lesson's title, from the earlier course app (its
+-- `courseModules` data), with spelling corrected. Matched by course and
+-- lesson slug, so it runs after both courses' lessons exist.
+update lessons l
+set description = v.description
+from (values
+  ('level-one', 'movie-basic-welcome-video', 'Welcome to Tony Klinger Coaching Online. Watch this short welcome video.'),
+  ('level-one', 'movie-basic-course-intro', 'In this online course, you will learn essential steps to break into the movie business, including how to build a strong portfolio, network effectively within the industry, gain hands-on experience, and persist in a competitive field through ongoing education and specialization.'),
+  ('level-one', 'education-training', 'In this lesson, you will explore leading film schools such as USC, NYU, and NFTS, renowned for their comprehensive programs in film production and theory. Whether pursuing formal education or alternative paths, the focus remains on cultivating skills, creativity, and industry connections vital for success in the competitive movie industry.'),
+  ('level-one', 'networking', 'In this lesson, you will learn key networking strategies for the movie industry, how to go about focusing on education, how to develop your skills, building your online presence, event attendance, finding mentorship, learning collaboration, finding internships, and persistence. These are critical for newcomers seeking to build connections and advance in filmmaking.'),
+  ('level-one', 'creating-an-impressive-portfolio', 'In this lesson, you will learn how to create a compelling film and TV portfolio by defining focus, selecting the best work, organize effectively, showcase your skills, and highlight achievements.'),
+  ('level-one', 'starting-small-in-the-industry', 'In this lesson, you will learn how to start your film and TV career from entry-level positions like production assistants or script readers. Gain skills, network effectively, and build a foundation for advancing in the industry.'),
+  ('level-one', 'internships', 'In this lesson, you will learn how internships can gain hands on experience, build you a professional network, and navigate potential drawbacks like unpaid positions and demanding hours. Discover how to find opportunities and maximize your internship experience.'),
+  ('level-one', 'specialization', 'In this lesson, you will discover the benefits of specializing in film and TV. Learn how to gain deep knowledge, find career advancement, obtain higher earning potential, build your reputation, expand your network, find personal fulfillment, and master your chosen niche.'),
+  ('level-one', 'stay-current', 'In this lesson, you will learn how to stay current in the movie and TV industry through media, publications, shows and conferences, and associations and guilds you can join for exclusive insights and networking.'),
+  ('level-one', 'persistence-and-resilience', 'In this lesson, you will learn that persistence and resilience are crucial for newcomers in the film and TV industry. Learn how to improve your skills continuously, network effectively, embrace rejection, stay adaptable, and how to celebrate small victories in this dynamic field.'),
+  ('level-one', 'find-a-mentor', 'In this lesson, you will learn how to find a mentor and what to look for. Discover and understand your goals, research professionals, how to network, how to approach mentors respectfully, how to find and consider programs, learn industry insights, and how to establish relationships to support your career journey.'),
+  ('level-one', 'utilize-online-platforms', 'In this lesson, you will learn how to use today''s digital age to level you up in the film and TV industry. Understand platforms like YouTube and Vimeo, using crowdfunding sites to your advantage, and finding strategies for success.'),
+  ('level-one', 'market-yourself', 'In this lesson, you will learn to market yourself in film by building a strong online presence, sharing engaging content, networking with industry professionals, and developing a unique personal brand.'),
+  ('level-one', 'breaking-into-the-film-industry', 'In this lesson, you will learn essential strategies for breaking into the film industry whether that is in screenwriting or directing. Learn how to network at festivals, gain experience through assistant roles, creating your own content, understanding the business side, joining professional organizations, seeking mentorship, and continually improving your skills.'),
+  ('level-one', 'be-versatile', 'In this lesson, you will learn how to diversify your skills by understanding different roles, develop technical proficiency, how to explore creativity, networking actively, gain varied experience, collaborate effectively, continue education, consider entry level positions, and build a strong portfolio. Versatility enhances your chances of success in this competitive field.'),
+  ('level-one', 'join-unions-and-associations', 'In this lesson, you will learn why and how you should join unions and associations for protections, resources, and how to network for success in filmmaking. Including insights to international equivalents.'),
+  ('level-one', 'move-to-industry-hubs', 'In this lesson, you will learn why you should consider moving to industry hubs like LA, NYC, London, or Vancouver for access to jobs, networking, and cutting edge resources crucial for breaking into the movie business.'),
+  ('level-one', 'work-on-personal-projects', 'In this lesson, you will learn how and why to work on independent films or projects, series, and more to showcase your skills and style. Learn to find and utilize local resources, collaborate with others, promote on social media, and enter festivals to gain recognition and advance your career in filmmaking.'),
+  ('level-one', 'stay-positive-and-patient', 'In this lesson, you will learn why you should stay positive and patient in the movie business. Set realistic goals, network actively, continue to learn, and stay resilient in the face of setbacks. These strategies and more will keep you motivated and focused on achieving success in filmmaking.'),
+  ('level-one', 'movie-basic-congratulations', 'Congratulations on completing my online course!'),
+  ('level-two', 'movie-adv-welcome-how-to-get-your-movie-made', 'In this lesson, you will learn how to break into the film industry as an independent creator. Gain insights on raising funds, distribution, and transforming your ideas into reality, along with expert advice not typically taught in traditional film schools.'),
+  ('level-two', 'general-advice-for-creators', 'In this lesson, you will learn essential advice for creators. Staying positive, planning, self awareness, handling criticism, working with professionals, and persistence.'),
+  ('level-two', 'developing-an-idea', 'In this lesson, you will learn how to develop a screenplay idea, from idea generation and writing processes to hiring a writer and legal considerations.'),
+  ('level-two', 'compromising-your-creative-vision', 'In this lesson, you will learn to balance external feedback with your inner voice, maintain your vision, choose collaborators wisely, and value your unique voice.'),
+  ('level-two', 'reasons-for-writing', 'In this lesson, you will learn the motivations behind writing, strategies for getting screenplays accepted, and tips for successful submissions and career development in the film industry.'),
+  ('level-two', 'common-issues-in-writing', 'In this lesson, you will learn to address common writing issues such as plagiarism, fact checking, securing contracts, writing for various media, and navigating early career challenges.'),
+  ('level-two', 'the-right-role-for-you', 'In this lesson, you will learn to identify the right role for yourself in the creative industry, from producer to director to writer, and how to align your strengths and goals with your career choice.'),
+  ('level-two', 'career-from-creativity', 'In this lesson, you will learn to balance creative passion with business skills for a sustainable career, covering financial management, reputation building, market dynamics, and flexibility.'),
+  ('level-two', 'being-professional', 'In this lesson, you will learn how to blend creativity with business skills, handle contracts, meet deadlines, and pitch projects effectively.'),
+  ('level-two', 'sharing-ideas', 'In this lesson, you will learn how to balance creativity with financial planning, maintain ethics in business, and ensure transparent communication and budgeting.'),
+  ('level-two', 'who-should-i-work-with', 'In this lesson, you will learn how to choose projects wisely, collaborate effectively, and prepare thoroughly for successful creative endeavors.'),
+  ('level-two', 'competition', 'In this lesson, you will learn about your competition, who you are competing with, how to better yourself, and how to prepare for competition.'),
+  ('level-two', 'agents', 'In this lesson, you will learn the role of an agent, why you should find one, how to get one, and building your portfolio with one.'),
+  ('level-two', 'financing-your-film', 'In this lesson, you will learn the importance of financing your film, how to raise money, and the steps and tips to take in order to manage your expectations.'),
+  ('level-two', 'selling-your-story', 'In this lesson, you will learn how to sell your story and ideas, understanding the industry for creativity and marketing, and how to continue to learn.'),
+  ('level-two', 'the-perfect-pitch', 'In this lesson, you will learn how to create, plan, and present your perfect pitch to investors with long term strategies to follow you, your story, brand, and more.'),
+  ('level-two', 'understanding-the-market', 'In this lesson, you will learn how to work within your market, compete with studios, and understand the system with industry professionals.'),
+  ('level-two', 'negotiations', 'In this lesson, you will learn how to negotiate, take or deny deals, understand risks, and how to become established.'),
+  ('level-two', 'contracts', 'In this lesson, you will learn the importance of contracts, what to include, things to consider, and how to still enjoy your work through all of the legal jargon.'),
+  ('level-two', 'making-your-movie', 'In this lesson, you will learn how to get your movie made and the key steps to a proposal, story development, scripts, and finances. Decide if you should manage this yourself or with an Agent.'),
+  ('level-two', 'casting-actors', 'In this lesson, you will learn the steps to casting actors, who to consider, how to find them, how to market with them, and choosing the right ones.'),
+  ('level-two', 'movie-adv-congratulations', 'Congratulations on completing my online course!')
+) as v(course_slug, lesson_slug, description)
+join courses c on c.slug = v.course_slug
+join course_modules m on m.course_id = c.id
+where l.module_id = m.id and l.slug = v.lesson_slug;
+
+
+-- Level Three is not loaded (owner, 2026-10-09). The old storefront priced it,
+-- but no export holds a curriculum for it; it was kept here as a draft course
+-- with a paused product and is removed until there is something to teach.

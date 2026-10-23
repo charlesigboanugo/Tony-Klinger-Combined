@@ -41,7 +41,8 @@ const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Co
 const rest = (path) => fetch(`${supabaseUrl}/rest/v1/${path}`, { headers }).then((r) => r.json());
 
 const seeded = await rest(
-  "lessons?select=id,title,slug,video_id,video_provider&video_id=not.is.null&order=position",
+  // Only this course's lessons: the page is opened under /academy/courses/${COURSE}/.
+  `lessons?select=id,title,slug,video_id,video_provider,course_modules!inner(courses!inner(slug))&course_modules.courses.slug=eq.${COURSE}&video_id=not.is.null&order=position`,
 );
 if (seeded.length === 0) { console.log("FAIL: no lesson has video seeded"); process.exit(1); }
 
@@ -67,6 +68,8 @@ async function signedIn(email) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
   const page = await context.newPage();
   await page.goto(`${BASE}/auth/sign-in`, { waitUntil: "domcontentloaded" });
+  // Sign-in opens on the email-link tab (owner, 2026-10-13); passwords are the other tab.
+  await page.getByRole("tab", { name: "Password" }).click();
   await page.fill('input[type="email"]', email);
   await page.fill('input[type="password"]', PASS);
   await Promise.all([
@@ -116,7 +119,7 @@ const lessonPath = `/academy/courses/${COURSE}/lessons/${videoLesson.slug}`;
   step("entitled: no CSP refusal for the player origin");
 
   // Mark complete.
-  await page.getByRole("button", { name: /^Mark as complete$/i }).click();
+  await page.getByRole("button", { name: /^(Mark as complete|Complete and continue)/i }).click();
   await page.waitForTimeout(3000);
   if ((await page.getByText("Completed", { exact: false }).count()) === 0) {
     await fail("completion was not reflected on the lesson");
@@ -130,7 +133,8 @@ const lessonPath = `/academy/courses/${COURSE}/lessons/${videoLesson.slug}`;
   await page.goto(`${BASE}/academy/courses/${COURSE}`, { waitUntil: "domcontentloaded" });
   await page.waitForLoadState("networkidle").catch(() => {});
   const summary = await page.locator("main").innerText();
-  if (!/1 of \d+ lessons done/.test(summary)) {
+  // At least one: the sample account may already have progress of its own.
+  if (!/(?<!\d)[1-9]\d* of \d+ lessons done|Every lesson done/.test(summary)) {
     await fail(`the course does not report the completion: ${summary.slice(0, 200)}`);
   }
   step(`course outline: ${summary.match(/\d+ of \d+ lessons done/)?.[0]}`);
@@ -173,7 +177,7 @@ const lessonPath = `/academy/courses/${COURSE}/lessons/${videoLesson.slug}`;
   await page.goto(`${BASE}/academy/courses/${COURSE}`, { waitUntil: "domcontentloaded" });
   await page.waitForLoadState("networkidle").catch(() => {});
   const text = await page.locator("main").innerText();
-  if (!/don't have access|access to this course/i.test(text)) {
+  if (!/don't have access|access to this course|not in your academy/i.test(text)) {
     await fail(`no explanation for an unentitled customer: ${text.slice(0, 200)}`);
   }
   for (const host of Object.values(PLAYER_HOST)) {

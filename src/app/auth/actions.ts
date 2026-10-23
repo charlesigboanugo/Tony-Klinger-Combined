@@ -5,12 +5,14 @@ import { redirect } from "next/navigation";
 import { DEFAULT_REDIRECT, safeRedirect } from "@/lib/auth/safe-redirect";
 import { getMfaState } from "@/lib/auth/mfa";
 import { claimWelcome } from "@/lib/auth/welcome";
+import { queueEmail } from "@/lib/email/send";
 import { publicEnv } from "@/lib/env/public";
 import { createClient } from "@/lib/supabase/server";
 import {
   fieldErrorsFrom,
   forgotPasswordSchema,
   magicLinkSchema,
+  magicSignUpSchema,
   resetPasswordSchema,
   signInSchema,
   signUpSchema,
@@ -105,7 +107,7 @@ export async function signUpAction(
   const next = safeRedirect(formData.get("next")?.toString());
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
@@ -114,15 +116,36 @@ export async function signUpAction(
     },
   });
 
-  if (error) {
+  /*
+    THE ADDRESS ALREADY HAS AN ACCOUNT (owner, 2026-10-23). Supabase says so in
+    one of two ways, depending on the project's settings: a disguised success
+    (a user with no identities, nothing sent) or a `user_already_exists` error.
+    Either way the page answers exactly as for a new address, so it cannot be
+    used to test who is registered, and the person is told by email instead:
+    only the owner of the inbox learns the account exists. One per address per
+    hour, so the form cannot be used to flood someone's inbox.
+  */
+  const exists =
+    error?.code === "user_already_exists" || (!error && data.user && (data.user.identities?.length ?? 0) === 0);
+
+  if (error && !exists) {
     return { error: "We could not create that account. Please try again." };
+  }
+
+  if (exists) {
+    const hour = new Date().toISOString().slice(0, 13);
+    await queueEmail({
+      idempotencyKey: `account_exists:${parsed.data.email.toLowerCase()}:${hour}`,
+      template: "account_exists",
+      to: parsed.data.email,
+    });
   }
 
   // The application profile is created by a database trigger on auth.users,
   // not here, so an account can never exist without one (note 08 §23).
   return {
     success:
-      "Check your email to confirm your account. The link expires shortly.",
+      "Check your email to finish. We've sent what you need to carry on, and the link expires shortly.",
   };
 }
 
@@ -158,6 +181,44 @@ export async function magicLinkAction(
 
   return {
     success: "If that email address has an account, a sign-in link is on its way.",
+  };
+}
+
+/**
+ * Create an account with an email link — note 05 §7.1 (owner, 2026-10-23).
+ *
+ * The same link as signing in, carrying the name for the profile trigger. The
+ * link creates the account when it is clicked, and is the proof of the inbox,
+ * so there is no separate confirmation. For an address that already has an
+ * account the name is ignored and the link simply signs them in; the answer is
+ * the same either way, so this never says which addresses are registered.
+ */
+export async function magicSignUpAction(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const parsed = magicSignUpSchema.safeParse({
+    email: formData.get("email"),
+    displayName: formData.get("displayName"),
+  });
+
+  if (!parsed.success) {
+    return { fieldErrors: fieldErrorsFrom(parsed.error) };
+  }
+
+  const next = safeRedirect(formData.get("next")?.toString());
+  const supabase = await createClient();
+
+  await supabase.auth.signInWithOtp({
+    email: parsed.data.email,
+    options: {
+      data: { display_name: parsed.data.displayName },
+      emailRedirectTo: `${publicEnv.NEXT_PUBLIC_SITE_URL}/auth/callback?next=${encodeURIComponent(next)}`,
+    },
+  });
+
+  return {
+    success: "We've emailed you a link. Open it on this device to finish creating your account.",
   };
 }
 
@@ -252,6 +313,27 @@ export async function resetPasswordAction(
     return { error: "We could not update your password. Please try again." };
   }
 
+  // An invitee's first arrival: the callback leaves the welcome to whichever
+  // way they finish here. A no-op for anyone already welcomed.
+  if (await claimWelcome()) redirect("/welcome");
+  redirect(DEFAULT_REDIRECT);
+}
+
+/**
+ * Accept an invitation without a password — note 06 §14.2.
+ *
+ * Accepting confirmed the address, so the account is already theirs and can be
+ * signed in to with an email link or Google (same address) from now on. A
+ * password can be added later in Account → Security.
+ */
+export async function skipPasswordAction(): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/auth/sign-in");
+
+  if (await claimWelcome()) redirect("/welcome");
   redirect(DEFAULT_REDIRECT);
 }
 

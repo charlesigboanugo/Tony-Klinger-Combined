@@ -17,11 +17,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * The application stays the source of truth for its own catalogue; Stripe holds
  * a mirror (note 09 §12).
  *
- * Idempotent: anything already carrying an id is skipped, so this can be re-run
- * after adding a product without touching existing ones.
+ * Idempotent: anything already in Stripe and unchanged is skipped, so this can
+ * be re-run after adding a product without touching existing ones. A renamed
+ * product is updated in place; a changed price is replaced.
  */
 export type SyncResult = {
   productsCreated: number;
+  /** Products whose name or description changed and were updated in Stripe. */
+  productsUpdated: number;
   pricesCreated: number;
   /** Prices whose amount diverged from Stripe and were replaced. */
   pricesReplaced: number;
@@ -58,6 +61,7 @@ export async function syncCatalogueToStripe(
   const admin = createAdminClient();
   const result: SyncResult = {
     productsCreated: 0,
+    productsUpdated: 0,
     pricesCreated: 0,
     pricesReplaced: 0,
     skipped: 0,
@@ -102,7 +106,22 @@ export async function syncCatalogueToStripe(
 
         result.productsCreated += 1;
       } else {
-        result.skipped += 1;
+        // A rename or new description in /admin is carried to Stripe, so the
+        // dashboard and checkout never show a name the site has dropped.
+        // Compared against Stripe itself, as prices are below.
+        const existing = await stripe().products.retrieve(stripeProductId);
+        const description = product.description ?? "";
+
+        if (existing.name !== product.name || (existing.description ?? "") !== description) {
+          await stripe().products.update(stripeProductId, {
+            name: product.name,
+            // An empty string clears it; Stripe rejects null here.
+            description,
+          });
+          result.productsUpdated += 1;
+        } else {
+          result.skipped += 1;
+        }
       }
 
       const { data: prices } = await admin

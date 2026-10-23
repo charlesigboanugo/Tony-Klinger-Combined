@@ -114,10 +114,9 @@ export default async function RolesPage() {
       )}
 
       <p className="mt-8 text-sm text-muted-foreground">
-        Roles are defined in migrations so the permission matrix lives in one
-        place (note 06 §39). Granting one to a person is done from their own
-        page, is checked server-side, and writes an audit entry (note 06 §13,
-        §31).
+        Roles and what each may do are fixed by the system. To give someone a
+        role, open their page under Users; every change is checked and recorded
+        in the audit log.
       </p>
     </>
   );

@@ -152,10 +152,6 @@ type CoverEmbed = {
  * `resources` restricts the rest (migration 0006_public_content_and_benefits) — so an unassigned or private
  * cover simply yields null and the image is not rendered.
  */
-function coverPath(embed: CoverEmbed | CoverEmbed[] | null | undefined): string | null {
-  return coverOf(embed)?.storage_path ?? null;
-}
-
 function coverOf(embed: CoverEmbed | CoverEmbed[] | null | undefined): CoverEmbed | null {
   if (!embed) return null;
   return (Array.isArray(embed) ? embed[0] : embed) ?? null;

@@ -1,6 +1,8 @@
 import { Container } from "@/components/layout/Container";
+import { SessionSync } from "@/components/navigation/SessionSync";
 import { TaskFooter } from "@/components/navigation/TaskFooter";
 import { WorkspaceHeader } from "@/components/navigation/WorkspaceHeader";
+import { getAuthContext } from "@/lib/permissions";
 
 /**
  * Checkout — minimal, task-focused layout (note 04 §18, §33; note 03 §31).
@@ -14,12 +16,15 @@ import { WorkspaceHeader } from "@/components/navigation/WorkspaceHeader";
 /** Per request, so /checkout/cancel carries the CSP nonce too (note 05 §32.1). */
 export const dynamic = "force-dynamic";
 
-export default function CheckoutLayout({ children }: LayoutProps<"/checkout">) {
+export default async function CheckoutLayout({ children }: LayoutProps<"/checkout">) {
+  const context = await getAuthContext();
+
   return (
     <div className="flex min-h-svh flex-col">
+      <SessionSync email={context?.email ?? null} />
       <WorkspaceHeader label="Checkout" home="/checkout" strip="bg-block-noir" />
       <main id="main" className="flex-1 pt-8 pb-20 sm:pt-10">
-        <Container width="narrow">{children}</Container>
+        <Container width="medium">{children}</Container>
       </main>
       <TaskFooter />
     </div>

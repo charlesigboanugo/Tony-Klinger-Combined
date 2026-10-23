@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 
+import { AdminFilter, AdminSort } from "@/components/admin/AdminSort";
 import { AdminTable, StatusPill } from "@/components/admin/AdminTable";
-import { AdminPageHeader, FilterTabs, humanise, ukDateTime } from "@/components/admin/AdminUI";
+import { AdminPageHeader, AdminSearch, FilterTabs, humanise, ukDateTime } from "@/components/admin/AdminUI";
 import { EMAIL_STATUSES, adminEmails, isOneOf } from "@/lib/admin/operations";
+import { SEARCH_DEPTH, applyFilters, readQuery, readSort, searchRows, sortRows } from "@/lib/admin/sort";
 import { requirePermission } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Emails · Admin", robots: { index: false } };
@@ -18,7 +20,28 @@ export default async function AdminEmailsPage({ searchParams }: PageProps<"/admi
   await requirePermission("emails.read", "/admin/emails");
   const params = await searchParams;
   const status = isOneOf(EMAIL_STATUSES, params.status) ? params.status : undefined;
-  const { emails, counts } = await adminEmails(status);
+  const query = readQuery(params);
+  const { emails: loaded, counts } = await adminEmails(status, query ? SEARCH_DEPTH : undefined);
+  // By who it went to, which email it was, or why it failed.
+  const emails = searchRows(loaded, query, (e) => [
+    e.to_name,
+    e.to_email,
+    humanise(e.template),
+    humanise(e.status),
+    e.last_error,
+  ]);
+
+  const sort = readSort(params, ["queued", "to", "email", "status"]);
+  const f = applyFilters(emails, params, [
+    { key: "email", name: "Email", read: (e) => e.template, label: humanise },
+  ]);
+  const carry = { status, sort: sort?.key, dir: sort?.dir, ...f.active, q: query };
+  const sortedEmails = sortRows(f.rows, sort, {
+    queued: (e) => e.created_at,
+    to: (e) => e.to_name ?? e.to_email,
+    email: (e) => e.template,
+    status: (e) => e.status,
+  });
 
   return (
     <>
@@ -33,17 +56,51 @@ export default async function AdminEmailsPage({ searchParams }: PageProps<"/admi
         path="/admin/emails"
         param="status"
         current={status}
+        keep={{ sort: sort?.key, dir: sort?.dir, ...f.active, q: query }}
         options={[
           { value: undefined, label: "All", count: counts.all },
           ...EMAIL_STATUSES.map((s) => ({ value: s, label: humanise(s), count: counts[s] })),
         ]}
       />
 
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <AdminSearch
+          path="/admin/emails"
+          query={query}
+          label="Recipient name, email address or email type"
+          placeholder="Recipient name, email address or email type"
+          keep={{ ...carry, q: undefined }}
+        />
+        <AdminSort
+          path="/admin/emails"
+          state={sort}
+          params={{ status, ...f.active, q: query }}
+          unsorted={{ label: query ? "Best match" : "Default order" }}
+          options={[
+            { label: "Newest first", key: "queued", dir: "desc" },
+            { label: "Oldest first", key: "queued", dir: "asc" },
+            { label: "Recipient A to Z", key: "to", dir: "asc" },
+            { label: "Email type", key: "email", dir: "asc" },
+            { label: "Status", key: "status", dir: "asc" },
+          ]}
+        />
+        {f.controls.map((c) => (
+          <AdminFilter key={c.param} path="/admin/emails" {...c} params={carry} />
+        ))}
+      </div>
+
       <AdminTable
-        headers={["Queued", "To", "Email", "Status", "Detail"]}
-        empty={emails.length === 0 ? "Nothing here." : undefined}
+        headers={[
+          { label: "Queued", key: "queued", first: "desc" },
+          { label: "To", key: "to" },
+          { label: "Email", key: "email" },
+          { label: "Status", key: "status" },
+          "Detail",
+        ]}
+        sort={{ path: "/admin/emails", state: sort, params: { status, ...f.active, q: query } }}
+        empty={sortedEmails.length === 0 ? (query ? `No emails match “${query}”.` : "Nothing here.") : undefined}
       >
-        {emails.map((e) => (
+        {sortedEmails.map((e) => (
           <tr key={e.id} className="align-top hover:bg-surface-muted/60">
             <td className="px-4 py-3 whitespace-nowrap">{ukDateTime(e.created_at)}</td>
             <td className="px-4 py-3">

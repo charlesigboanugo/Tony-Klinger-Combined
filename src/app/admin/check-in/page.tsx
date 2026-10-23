@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { BackLink } from "@/components/ui/BackLink";
+import { FILLED_STATES } from "@/components/ui/Button";
 import { AdminTable, StatusPill } from "@/components/admin/AdminTable";
 import { AdminPageHeader } from "@/components/admin/AdminUI";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -14,7 +16,7 @@ import { cn } from "@/lib/utils/cn";
 import { checkInAction, saveJoiningAction } from "./actions";
 import { Scanner } from "./Scanner";
 
-export const metadata: Metadata = { title: "Check-in · Admin", robots: { index: false } };
+export const metadata: Metadata = { title: "Event check-in · Admin", robots: { index: false } };
 
 type Attendee = Database["public"]["Functions"]["event_attendees"]["Returns"][number];
 
@@ -40,7 +42,7 @@ export default async function CheckInPage({ searchParams }: PageProps<"/admin/ch
 
     return (
       <>
-        <AdminPageHeader title="Check-in" description="Choose an event to see its attendees and check people in." />
+        <AdminPageHeader title="Event check-in" description="Choose an event to see its attendees and check people in." />
         <Scanner eventId={null} />
         {events.length > 0 ? (
           <div className="mt-8">
@@ -86,9 +88,7 @@ export default async function CheckInPage({ searchParams }: PageProps<"/admin/ch
 
   return (
     <>
-      <Link href="/admin/check-in" className="text-sm text-muted-foreground hover:text-accent">
-        &larr; All events
-      </Link>
+      <BackLink href="/admin/check-in">All events</BackLink>
       <AdminPageHeader
         title={event.name}
         description={`${event.starts_at ? `${eventDay(event.starts_at)}, ${eventTime(event.starts_at, event.ends_at)} UK` : "No date"} · ${FORMAT_LABEL[event.format as EventFormat]}${event.location ? ` · ${event.location}` : ""}`}
@@ -154,7 +154,7 @@ export default async function CheckInPage({ searchParams }: PageProps<"/admin/ch
               />
             </label>
             {canWrite ? (
-              <button type="submit" className="h-10 w-fit rounded-full bg-button px-5 text-sm font-semibold text-button-foreground">
+              <button type="submit" className={`h-10 w-fit rounded-full bg-button px-5 text-sm font-semibold text-button-foreground transition-[filter,transform,box-shadow,background-color,border-color,color] duration-200 ease-out active:scale-96 ${FILLED_STATES}`}>
                 Save joining details
               </button>
             ) : null}

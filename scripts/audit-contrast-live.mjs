@@ -41,8 +41,8 @@ const ROUTES = [
   "/catalogue/books",
   "/catalogue/films",
   "/coaching",
-  "/coaching/memberships",
-  "/coaching/memberships/gold",
+  "/coaching/passes",
+  "/coaching/passes/gold",
   "/coaching/courses",
   "/coaching/cohorts",
   "/coaching/group-coaching",
@@ -227,6 +227,8 @@ async function contextFor(kind) {
   };
 
   await page.goto(`${BASE}/auth/sign-in`, { waitUntil: "domcontentloaded" });
+  // Sign-in opens on the email-link tab (owner, 2026-10-13); passwords are the other tab.
+  await page.getByRole("tab", { name: "Password" }).click();
   await page.fill('input[type="email"]', kind === "staff" ? "owner@test.local" : "gold@test.local");
   await page.fill('input[type="password"]', PASS);
   await Promise.all([

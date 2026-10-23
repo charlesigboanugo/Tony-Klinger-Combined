@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { LegalDocument } from "@/components/content/LegalDocument";
+import { pageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Privacy policy",
-  description: "How tonyklinger.com collects, uses and protects your information, and what you can ask us to do about it.",
-};
+  description:
+    "How tonyklinger.com collects, uses and protects your information, and what you can ask us to do about it.",
+  path: "/privacy",
+});
 
 /**
  * Legal page — note 03 §8.2. Flat at the top level rather than under /legal:
@@ -83,7 +86,7 @@ export default function Page() {
               <p>Each use has a lawful basis under UK data protection law:</p>
               <dl>
                 <div><dt>Your account and purchases</dt><dd>To provide the service you signed up for or bought (contract).</dd></div>
-                <div><dt>Service emails</dt><dd>Receipts, booking confirmations, membership changes and security notices (contract).</dd></div>
+                <div><dt>Service emails</dt><dd>Receipts, booking confirmations, changes to your Coaching Pass and security notices (contract).</dd></div>
                 <div><dt>Security</dt><dd>To keep accounts safe and the site free of abuse and spam (legitimate interests).</dd></div>
                 <div><dt>Records</dt><dd>To keep the financial records the law requires (legal obligation).</dd></div>
                 <div><dt>News and offers</dt><dd>Only where you have agreed, or, as a customer, about our own similar offers with a way to refuse in every message (consent, or soft opt-in).</dd></div>
