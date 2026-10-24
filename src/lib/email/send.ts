@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { deliver } from "@/lib/email/transport";
+import { currentTransport, deliver, isReservedTestAddress } from "@/lib/email/transport";
 import {
   brevoParams,
   render,
@@ -43,7 +43,7 @@ export async function queueEmail(params: {
   return data !== null;
 }
 
-export type DispatchResult = { claimed: number; sent: number; failed: number };
+export type DispatchResult = { claimed: number; sent: number; failed: number; skipped: number };
 
 /**
  * Send whatever is due. Driven by Vercel Cron (note 09 §44).
@@ -53,7 +53,7 @@ export type DispatchResult = { claimed: number; sent: number; failed: number };
  */
 export async function dispatchPendingEmails(limit = 20): Promise<DispatchResult> {
   const admin = createAdminClient();
-  const result: DispatchResult = { claimed: 0, sent: 0, failed: 0 };
+  const result: DispatchResult = { claimed: 0, sent: 0, failed: 0, skipped: 0 };
 
   const { data, error } = await admin.rpc("claim_email_batch", { p_limit: limit });
   if (error) throw new Error(`claim_email_batch failed: ${error.message}`);
@@ -69,6 +69,18 @@ export async function dispatchPendingEmails(limit = 20): Promise<DispatchResult>
   result.claimed = batch.length;
 
   for (const message of batch) {
+    // A sample account's address, about to go out for real: not sent,
+    // recorded as cancelled with the reason, so it neither bounces nor sits
+    // retrying. Locally it still goes to Mailpit.
+    if (currentTransport() === "brevo" && isReservedTestAddress(message.to_email)) {
+      await admin
+        .from("email_messages")
+        .update({ status: "cancelled", last_error: "test address (reserved domain), not sent" })
+        .eq("id", message.id);
+      result.skipped += 1;
+      continue;
+    }
+
     const payload = message.payload ?? {};
     const content = render(message.template, payload);
 

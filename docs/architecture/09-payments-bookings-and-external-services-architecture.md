@@ -1404,6 +1404,12 @@ system whose customer or commercial records need to be carried across.
 - Outside production, recipients must match an allowlist. A non-matching address is refused
   with a recorded reason, never silently dropped — a silent no-op here would surface later
   as a delivery bug.
+- **Reserved test domains are never sent through Brevo, in any environment** (2026-10-24,
+  owner). `.local`, `.test`, `.example`, `.invalid`, `.localhost` and `example.com/.net/.org`
+  have no real recipients; the sample accounts are `@test.local`. On Vercel (production
+  mode, allowlist off) their tickets and welcomes were queued for Brevo, to bounce against
+  the sender the real site shares. Such a message is set to `cancelled` with the reason
+  "test address (reserved domain), not sent". Mailpit still receives them locally.
 
 ## 42.3 Templates and lists
 
@@ -1565,20 +1571,23 @@ The rules:
 - **One implementation per job.** Supabase Cron is not introduced as a competing scheduler.
   A job that runs on Vercel Cron does not also exist as a Supabase Edge Function.
 
-### Test deploy: GitHub Actions stands in for Vercel Cron
+### Test deploy: Google Apps Script stands in for Vercel Cron
 
-*Recorded 2026-10-23 (owner).* While the test deploy is on Vercel Hobby, which allows a cron
-only once a day, `.github/workflows/scheduled-jobs.yml` calls the same `/api/cron/[job]`
-routes with the same `CRON_SECRET`. It is a temporary deviation from "Vercel Cron is the
-single scheduler", not a second implementation: the jobs and routes are unchanged, and the
-workflow is deleted when the project moves to Pro and `vercel.json.test` becomes
-`vercel.json`. Both must never run against the same deploy.
+*Recorded 2026-10-23, scheduler changed 2026-10-24 (owner).* While the test deploy is on
+Vercel Hobby, which allows a cron only once a day, a Google Apps Script project
+(`scripts/apps-script/scheduled-jobs.gs`, run from the owner's Google account) calls the
+same `/api/cron/[job]` routes with the same `CRON_SECRET`, kept in its Script Properties.
+It is a temporary deviation from "Vercel Cron is the single scheduler", not a second
+implementation: the jobs and routes are unchanged, and its triggers are removed when the
+project moves to Pro and `vercel.json.test` becomes `vercel.json`. Both must never run
+against the same deploy.
 
-It uses the same schedules as `vercel.json.test`, one schedule line per job, so a new job is
-added to both files until launch. This relies on the repository being public while it is on
-the test account (Actions minutes are free); private, those schedules would exceed the free
-allowance. GitHub may start a scheduled run late or skip one when busy; because every job
-catches up on outstanding work, that only delays email and reminders.
+Its schedules follow `vercel.json.test`, so a new job is added to both until launch. Apps
+Script cannot offset a trigger within the hour, so session reminders run on the quarter
+hour rather than at :05/:20/:35/:50, and daily jobs run somewhere within their hour; every
+job catches up on outstanding work, so neither matters. It replaced a GitHub Actions
+workflow, which GitHub started late and mostly skipped (14 runs in about eight hours
+against roughly 22 asked for each hour).
 
 Supabase remains the database, Auth, RLS and Storage layer. PostgreSQL triggers and
 constraints are still used where the guarantee genuinely belongs in the database (note 08
@@ -2008,10 +2017,12 @@ at every stage of the customer and administrative workflows.
 | 2026-10-09 | §28.1: one Group Coaching session is bought for a date and booked on fulfilment (`order_items.metadata.session_id`, `session_sale_status`, `book_session_for`, migration 0022); one run of a series open at a time (0021). |
 | 2026-10-09 | §16.1, §28.1: membership sold only as one payment for twelve months; recurring prices retired; buying-again rule for membership and `saleCheck`. |
 | 2026-10-09 | §28.1: a cohort is sold only while one of its intakes is open for registration, and its price buys a place on that intake (migration 0017). |
+| 2026-10-24 | §42.2: messages to reserved test domains are cancelled, not sent, whenever the transport is Brevo (sample accounts on the test site); Mailpit unaffected. |
 | 2026-10-24 | §42.3: Brevo templates are one shared layout filled with the site's own wording (`subject`, `title`, `body` with `| safe`, `site_url`), replacing per-template params. All 21 created/updated by `pnpm brevo:templates` (ids 21–27, 29–42). Visitor-typed text in the contact enquiry and welcome emails now escaped. **Flag:** note 01 says templates should be managed in Brevo rather than duplicated in the application — the wording now lives in the application and the look in Brevo; recorded as a deliberate reading, not silently resolved. |
 | 2026-10-14 | Email `retreat_application_closed`: sent when staff decline or withdraw a retreat application, one wording for both, with the optional staff note; once per closing (idempotency key carries `closed_at`). Optional Brevo template `BREVO_TEMPLATE_RETREAT_APPLICATION_CLOSED`. |
 | 2026-10-15 | §12.1 (new): the catalogue mirror described; a product renamed or re-described in admin now updates its Stripe Product in place instead of keeping the name it was created with. |
 | 2026-10-15 | §44: `cleanup-uploads` job added (daily): removes Media uploads under `uploads/` never saved as a Media item after a day. |
 | 2026-10-16 | §44: job list completed (sync-audiences, sync-stripe and event-reminders were missing) and two jobs added: `session-reminders` (every 15 minutes; reminders for Group Coaching, private sessions, workshops, the Q&A and retreats) and `pass-reminders` (daily; a month and a week before a Coaching Pass ends). New emails `session_reminder`, `session_starting`, `pass_ending`, with optional Brevo templates `BREVO_TEMPLATE_SESSION_REMINDER`, `BREVO_TEMPLATE_SESSION_STARTING`, `BREVO_TEMPLATE_PASS_ENDING`. Migration 0017. |
+| 2026-10-24 | §44: test-deploy scheduler moved from GitHub Actions (late and mostly skipped runs) to Google Apps Script (`scripts/apps-script/scheduled-jobs.gs`); workflow deleted. |
 | 2026-10-23 | §44: test deploy scheduled by GitHub Actions (`.github/workflows/scheduled-jobs.yml`, same schedules as `vercel.json.test`) while Vercel is on Hobby; removed when Vercel Cron is switched on at launch. |
 | 2026-10-23 | §28.1: sale status `ended`, and `past`/`unscheduled` for series without a run to start (migration 0022). §42: one `notifyPaidOrder` for webhook and reconciliation; guest and gift payers get a receipt; recovered gifts' claim links go to the recipient; applicants get `retreat_application_sent`. |

@@ -260,13 +260,14 @@ recipient is permitted.
 the current `vercel.json` (test deploy) declares none. They are **not** available on the Hobby
 plan at sub-daily frequency.
 
-**On the test deploy (Hobby), GitHub Actions runs them instead:**
-`.github/workflows/scheduled-jobs.yml` calls the same routes on the same schedules as the table
-below. It is free only while the repository is public. It needs two repository secrets under
-Settings → Secrets and variables → Actions: `SITE_URL` (the deploy's address) and
-`CRON_SECRET` (the same value as on Vercel). It only runs from `main` once pushed; start
-it by hand from the Actions tab ("Run workflow") to check it. GitHub can start a run a few minutes late. **Delete the workflow when renaming
-`vercel.json.test`**, so the jobs are not run by both.
+**On the test deploy (Hobby), Google Apps Script runs them instead:**
+`scripts/apps-script/scheduled-jobs.gs`, pasted into a project at script.google.com, calls
+the same routes on the schedules below (every 5 / 15 minutes, hourly, daily). Its Script
+Properties hold `SITE_URL` (the deploy's address) and `CRON_SECRET` (the same value as on
+Vercel); run `installTriggers` once, then `testConnection`. Setup steps are at the top of
+the file. **Run `removeTriggers` when renaming `vercel.json.test`**, so the jobs are not
+run by both. (A GitHub Actions workflow did this first, 2026-10-23; GitHub started runs late
+and dropped most of them, so it was removed on 2026-10-24.)
 
 | Path | Schedule |
 |---|---|

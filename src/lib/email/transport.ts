@@ -59,6 +59,19 @@ function allowedRecipients(): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Reserved test domains (RFC 2606/6761, plus `.local`): no real person has an
+ * address there, in any environment (owner, 2026-10-24). The sample accounts
+ * are `@test.local`; on Vercel — production mode, where the allowlist below is
+ * off — their tickets and welcomes went to Brevo, to bounce against the sender
+ * the real site shares. Through Brevo such messages are cancelled instead of
+ * sent; Mailpit still receives them, since that is where local testing reads.
+ */
+export function isReservedTestAddress(to: string): boolean {
+  const domain = to.toLowerCase().trim().split("@").pop() ?? "";
+  return /(^|\.)(local|test|example|invalid|localhost)$/.test(domain) || /(^|\.)example\.(com|net|org)$/.test(domain);
+}
+
 export function recipientPermitted(to: string): boolean {
   if (process.env.NODE_ENV === "production") return true;
 

@@ -7,7 +7,7 @@ import { JOBS } from "@/lib/jobs";
  * Scheduled jobs — note 01 §18, note 09 §44.
  *
  * Vercel Cron is the single scheduler and invokes these routes (on the Hobby
- * test deploy, .github/workflows/scheduled-jobs.yml calls them instead). Each one is a
+ * test deploy, Google Apps Script calls them instead: scripts/apps-script/). Each one is a
  * THIN authenticated entry point that calls a shared operation in `src/lib`;
  * the logic never lives here, so the same work can be run by a schedule, an
  * admin action or a reconciliation pass without being written twice.
