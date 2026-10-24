@@ -151,6 +151,16 @@ try {
         return u;
       };
 
+      // ---- The seed's accounts, on the test site ---------------------------
+      // seed.sql (loaded by a reset) makes six @test.local accounts with
+      // password123. On the public test site they get the testers' password
+      // instead (owner, 2026-10-24); locally they keep password123.
+      if (!local) {
+        await tx`update auth.users set encrypted_password = crypt(${PASSWORD}, gen_salt('bf'))
+                 where email in ('owner@test.local', 'admin@test.local', 'support@test.local',
+                                 'gold@test.local', 'expired@test.local', 'nobody@test.local')`;
+      }
+
       // ---- People in the seats -------------------------------------------
       // A sample that is fully booked is full the way a real one is: its usual
       // number of places, each taken by a person (owner, 2026-10-13) — not one
