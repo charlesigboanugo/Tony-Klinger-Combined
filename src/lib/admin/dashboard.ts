@@ -98,7 +98,9 @@ export async function dashboardStats(): Promise<DashboardStats> {
     count("subscriptions", "status", "active"),
     count("email_messages", "status", "pending"),
     count("email_messages", "status", "failed"),
-    count("contact_messages"),
+    // Only those still marked new: counting every enquiry kept the card up
+    // after each one had been read or replied to.
+    count("contact_messages", "status", "new"),
     count("catalogue_items", "status", "draft"),
     count("blog_posts", "status", "draft"),
     count("retreat_applications", "status", "submitted"),
