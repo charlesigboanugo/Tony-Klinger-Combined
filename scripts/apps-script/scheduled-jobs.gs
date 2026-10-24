@@ -14,8 +14,10 @@
  *      it asks for (calling an external URL, managing its own triggers).
  *   3. Choose `testConnection` and Run: the log should show send-emails 200.
  *
- * Run `installTriggers` again after editing the schedules: it removes the old
- * triggers first, so they never double up. `removeTriggers` stops everything.
+ * Run `installTriggers` again after editing the schedules: it removes its own
+ * old triggers first, so they never double up. `removeTriggers` stops these
+ * jobs. Neither touches triggers belonging to other scripts in the project, but
+ * a project of its own is tidiest.
  * A failed call throws, so Google emails a failure summary to the script owner.
  *
  * Apps Script cannot offset a trigger within the hour, so session reminders run
@@ -40,11 +42,21 @@ function installTriggers() {
   ScriptApp.newTrigger("dailyAt3").timeBased().everyDays(1).atHour(3).inTimezone("Etc/UTC").create();
   ScriptApp.newTrigger("dailyAt4").timeBased().everyDays(1).atHour(4).inTimezone("Etc/UTC").create();
   ScriptApp.newTrigger("dailyAt9").timeBased().everyDays(1).atHour(9).inTimezone("Etc/UTC").create();
-  Logger.log("Installed " + ScriptApp.getProjectTriggers().length + " triggers.");
+  var ours = ScriptApp.getProjectTriggers().filter(function (t) { return HANDLERS.indexOf(t.getHandlerFunction()) !== -1; });
+  Logger.log("Installed " + ours.length + " scheduled-job triggers (others in this project left alone).");
 }
 
+/** The functions this file schedules. Only their triggers are ever removed. */
+var HANDLERS = ["everyFiveMinutes", "everyFifteenMinutes", "hourly", "dailyAt3", "dailyAt4", "dailyAt9"];
+
+/**
+ * Removes this file's triggers and NOTHING ELSE, so it is safe in a project
+ * that holds other scripts with triggers of their own.
+ */
 function removeTriggers() {
-  ScriptApp.getProjectTriggers().forEach(function (trigger) { ScriptApp.deleteTrigger(trigger); });
+  ScriptApp.getProjectTriggers().forEach(function (trigger) {
+    if (HANDLERS.indexOf(trigger.getHandlerFunction()) !== -1) ScriptApp.deleteTrigger(trigger);
+  });
 }
 
 function testConnection() { runJobs(["send-emails"]); }
