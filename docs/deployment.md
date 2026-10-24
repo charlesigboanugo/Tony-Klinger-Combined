@@ -196,10 +196,18 @@ Anything missing fails closed rather than silently degrading — see
 Optional. Absent means the message renders from version-controlled HTML instead
 (`src/lib/email/templates.ts`), which is a valid production configuration.
 
-`BREVO_TEMPLATE_WELCOME=21`, `ORDER_RECEIPT=22`, `MEMBERSHIP_ACTIVATED=23`,
-`GUEST_CLAIM=24`, `BOOKING_CONFIRMED=25`, `BOOKING_CANCELLED=26`. Every other email (event
-tickets and reminders, session and pass reminders, retreat applications, security notices)
-has an optional variable too; the full list is `TEMPLATE_ENV` in `src/lib/email/templates.ts`.
+All 21 exist in the shared Brevo account (`pnpm brevo:templates`, 2026-10-24), so test and
+production use the same ids: `WELCOME=21`, `ORDER_RECEIPT=22`, `MEMBERSHIP_ACTIVATED=23`,
+`GUEST_CLAIM=24`, `BOOKING_CONFIRMED=25`, `BOOKING_CANCELLED=26`, `CONTACT_ENQUIRY=27`,
+`EVENT_TICKET=29`, `EVENT_PLACE_AVAILABLE=30`, `EVENT_REMINDER=31`, `EVENT_STARTING=32`,
+`SESSION_REMINDER=33`, `SESSION_STARTING=34`, `PASS_ENDING=35`,
+`PRIVATE_COACHING_REBOOK=36`, `SECURITY_KEY_REMOVED=37`, `ACCOUNT_EXISTS=38`,
+`RETREAT_APPLICATION_RECEIVED=39`, `RETREAT_APPLICATION_SENT=40`,
+`RETREAT_APPLICATION_APPROVED=41`, `RETREAT_APPLICATION_CLOSED=42` (each prefixed
+`BREVO_TEMPLATE_`). Lists: `BREVO_LIST_NEWSLETTER=9`, `BREVO_LIST_CUSTOMERS=10`,
+`BREVO_LIST_MEMBERS=11`. Each template is the site's layout filled with the site's own
+wording, so restyle it in Brevo but change words in `src/lib/email/templates.ts`. After
+changing `src/lib/email/layout.mjs`, run `pnpm brevo:templates` again (same ids).
 
 ## Email transport — read before the first production deploy
 

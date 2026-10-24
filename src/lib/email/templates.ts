@@ -1,6 +1,7 @@
 import "server-only";
 
 import { formatPrice } from "@/lib/commerce/pricing";
+import { layout } from "@/lib/email/layout.mjs";
 import { absoluteUrl } from "@/lib/urls";
 
 /**
@@ -38,16 +39,14 @@ export type TemplateName =
   | "retreat_application_approved"
   | "retreat_application_closed";
 
-type Rendered = { subject: string; html: string; text: string };
+/**
+ * `title` and `body` are the parts the layout is filled with, kept so the same
+ * wording can be handed to a Brevo template (`brevoParams`).
+ */
+type Rendered = { subject: string; html: string; text: string; title: string; body: string };
 
-const wrap = (title: string, body: string) => `
-<!doctype html>
-<html><body style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.6;color:#1E1B2E;max-width:560px;margin:0 auto;padding:24px">
-<h1 style="font-size:20px;margin:0 0 16px">${title}</h1>
-${body}
-<hr style="border:none;border-top:1px solid #DCD8E6;margin:32px 0 16px">
-<p style="font-size:12px;color:#56506B;margin:0">Tony Klinger · <a href="${absoluteUrl("/")}" style="color:#56506B">tonyklinger.com</a></p>
-</body></html>`.trim();
+/** The layout (src/lib/email/layout.mjs) filled in, with its parts kept. */
+const page = (title: string, body: string) => ({ title, body, html: layout(title, body, absoluteUrl("/")) });
 
 /** Event times are always UK time, whatever zone the server runs in. */
 const ukWhen = (iso: unknown) =>
@@ -111,9 +110,9 @@ export function render(
       return {
         subject: "Welcome to Tony Klinger",
         text: `Hello ${name},\n\nYour account is ready. Everything you buy is delivered in the Academy: ${absoluteUrl("/academy")}\n\nBrowsing is open to everyone — an account is only needed for what you buy.`,
-        html: wrap(
+        ...page(
           "Your account is ready",
-          `<p>Hello ${name},</p>
+          `<p>Hello ${esc(name)},</p>
            <p>Everything you buy is delivered in one place — courses, coaching sessions, cohort workshops and resources.</p>
            <p><a href="${absoluteUrl("/academy")}" style="display:inline-block;background:#A8500A;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Go to the Academy</a></p>
            <p style="font-size:13px;color:#56506B">Nothing is unlocked yet — access appears here as soon as you have it.</p>`,
@@ -127,7 +126,7 @@ export function render(
       return {
         subject: `Retreat application — ${String(payload.retreat ?? "")} (${String(payload.batch ?? "")})`,
         text: `${String(payload.name ?? "Someone")} <${String(payload.email ?? "")}> applied for ${String(payload.retreat ?? "")}, ${String(payload.batch ?? "")}.\n\n${String(payload.message ?? "")}\n\nRead and answer it: ${absoluteUrl("/admin/retreat-applications")}`,
-        html: wrap(
+        ...page(
           "New retreat application",
           `<p><strong>${esc(payload.name ?? "Someone")}</strong><br>${esc(payload.email)}</p>
            <p>For <strong>${esc(payload.retreat)}</strong>, ${esc(payload.batch)}.</p>
@@ -144,7 +143,7 @@ export function render(
       return {
         subject: `We have your application for ${String(payload.retreat ?? "the retreat")}`,
         text: `Thank you for applying for ${String(payload.retreat ?? "")} (${String(payload.batch ?? "")}). Tony's team will read it and be in touch about a short interview. Once you are accepted you can book your place here: ${url}`,
-        html: wrap(
+        ...page(
           "We have your application",
           `<p>Thank you for applying for <strong>${esc(payload.retreat)}</strong>, ${esc(payload.batch)}.</p>
            <p>Tony's team will read it and be in touch about a short interview. Once you are accepted, you can book your place on the retreat's page.</p>
@@ -158,7 +157,7 @@ export function render(
       return {
         subject: `You are accepted for ${String(payload.retreat ?? "the retreat")}`,
         text: `Good news: your application for ${String(payload.retreat ?? "")} (${String(payload.batch ?? "")}) has been accepted. You can now book your place: ${url}`,
-        html: wrap(
+        ...page(
           "You are accepted",
           `<p>Good news: your application for <strong>${esc(payload.retreat)}</strong> (${esc(payload.batch)}) has been accepted.</p>
            <p>You can now book your place. Places are limited, so do not leave it long.</p>
@@ -176,7 +175,7 @@ export function render(
       return {
         subject: `Your application for ${String(payload.retreat ?? "the retreat")}`,
         text: `Thank you for applying for ${String(payload.retreat ?? "")} (${String(payload.batch ?? "")}). Your application for these dates won't be going ahead.${note ? `\n\n${note}` : ""}\n\nYou're welcome to apply again for other dates, or get in touch if you'd like to talk it over: ${url}`,
-        html: wrap(
+        ...page(
           "Your retreat application",
           `<p>Thank you for applying for <strong>${esc(payload.retreat)}</strong> (${esc(payload.batch)}). Your application for these dates won't be going ahead.</p>
            ${note ? `<p style="white-space:pre-wrap;border-left:3px solid #a3162f;padding-left:12px">${esc(note)}</p>` : ""}
@@ -197,11 +196,12 @@ export function render(
       return {
         subject: `Contact form — ${subject}`,
         text: `From: ${name} <${from}>\nSubject: ${subject}\n\n${message}`,
-        html: wrap(
+        ...page(
           "New enquiry",
-          `<p><strong>${name}</strong><br>${from}</p>
-           <p><strong>${subject}</strong></p>
-           <p style="white-space:pre-wrap">${message}</p>`,
+          // Everything here was typed by a visitor, so all of it is escaped.
+          `<p><strong>${esc(name)}</strong><br>${esc(from)}</p>
+           <p><strong>${esc(subject)}</strong></p>
+           <p style="white-space:pre-wrap">${esc(message)}</p>`,
         ),
       };
     }
@@ -216,7 +216,7 @@ export function render(
       return {
         subject: `Your ${tier} is active`,
         text: `Your ${tier} is now active.${renews ? ` It renews on ${renews}.` : ""}\n\nEverything it includes is in your Academy.\n\n${absoluteUrl("/academy")}`,
-        html: wrap(
+        ...page(
           `Your ${tier} is active`,
           `<p>Your <strong>${tier}</strong> is now active.${renews ? ` It renews on ${renews}.` : ""}</p>
            <p>Everything it includes is in your Academy.</p>
@@ -234,7 +234,7 @@ export function render(
       return {
         subject: `Your order is confirmed — ${total}`,
         text: `Thank you. Your payment of ${total} has been received and your access is ready.\n\nView your order: ${absoluteUrl("/account/orders")}`,
-        html: wrap(
+        ...page(
           "Your order is confirmed",
           `<p>Thank you. Your payment of <strong>${total}</strong> has been received and your access is ready.</p>
            <p><a href="${absoluteUrl("/account/orders")}">View your order</a></p>`,
@@ -255,7 +255,7 @@ export function render(
         return {
           subject: "You've been given a gift",
           text: `Someone has bought you ${payload.items ? String(payload.items) : "a gift"} from Tony Klinger. Use this one-time link to set up your account and receive it:\n\n${url}\n\n${later}`,
-          html: wrap(
+          ...page(
             "You've been given a gift",
             `<p>Someone has bought you ${items ? `<strong>${items}</strong>` : "a gift"} from Tony Klinger.</p>
              <p>Set up your account and receive it with this one-time link:</p>
@@ -267,7 +267,7 @@ export function render(
       return {
         subject: "Add your purchase to an account",
         text: `You bought as a guest. Use this one-time link to add the purchase to an account:\n\n${url}\n\nThe link expires in 72 hours and can only be used once. ${later}`,
-        html: wrap(
+        ...page(
           "Add your purchase to an account",
           `<p>You checked out as a guest. Use this one-time link to add the purchase to an account:</p>
            <p><a href="${url}" style="display:inline-block;background:#A8500A;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Claim your purchase</a></p>
@@ -288,9 +288,9 @@ export function render(
       return {
         subject: `Booking confirmed — ${payload.title ?? "your session"}`,
         text: `Your place is booked for ${when}.\n\nManage your bookings: ${absoluteUrl("/account/bookings")}`,
-        html: wrap(
+        ...page(
           "Your place is booked",
-          `<p><strong>${payload.title ?? "Your session"}</strong><br>${when}</p>
+          `<p><strong>${esc(payload.title ?? "Your session")}</strong><br>${when}</p>
            <p><a href="${absoluteUrl("/account/bookings")}">Manage your bookings</a></p>`,
         ),
       };
@@ -302,7 +302,7 @@ export function render(
       return {
         subject: `Your ticket — ${payload.title ?? "event"}`,
         text: `Your place is confirmed.\n\n${payload.title}\n${ukWhen(payload.startsAt)}\n${payload.location ?? ""}\n\nTicket reference: ${payload.reference}\n\nYour ticket${online ? " and joining link" : ""}: ${ticketUrl}`,
-        html: wrap(
+        ...page(
           "Your place is confirmed",
           `<p><strong>${esc(payload.title)}</strong><br>${ukWhen(payload.startsAt)}${payload.location ? `<br>${esc(payload.location)}` : ""}</p>
            <p>Ticket reference<br><strong style="font-size:22px;letter-spacing:2px;font-family:ui-monospace,monospace">${esc(payload.reference)}</strong></p>
@@ -317,7 +317,7 @@ export function render(
       return {
         subject: `A place has opened — ${payload.title ?? "event"}`,
         text: `Good news: a place has opened for ${payload.title} on ${ukWhen(payload.startsAt)}.\n\nPlaces go to whoever takes them first: ${eventUrl}`,
-        html: wrap(
+        ...page(
           "A place has opened",
           `<p>You are on the waiting list for <strong>${esc(payload.title)}</strong>, ${ukWhen(payload.startsAt)}, and a place has just come free.</p>
            <p>It is not held for you: places go to whoever takes them first.</p>
@@ -341,7 +341,7 @@ export function render(
       return {
         subject: `${soon ? "Starting soon" : "Coming up"} — ${payload.title ?? "your event"}`,
         text: `${payload.title}\n${ukWhen(payload.startsAt)}\n${where}\n\nTicket reference: ${payload.reference}\n${ticketUrl}`,
-        html: wrap(
+        ...page(
           soon ? "Starting soon" : "See you soon",
           `<p><strong>${esc(payload.title)}</strong><br>${ukWhen(payload.startsAt)}</p>
            ${join ? button(join, "Join the event") : payload.venueAddress ? `<p>${esc(payload.venueAddress)}</p>` : payload.location ? `<p>${esc(payload.location)}</p>` : ""}
@@ -356,19 +356,19 @@ export function render(
       // Coaching sessions of every kind (migration 0017). Each opens from its
       // own page in the Academy, which is also where the link always is.
       const soon = template === "session_starting";
-      const page = absoluteUrl(sessionPage(payload));
+      const sessionUrl = absoluteUrl(sessionPage(payload));
       const join = payload.joinUrl ? String(payload.joinUrl) : null;
       const what = sessionKindLabel(payload);
       const title = String(payload.title ?? "your session");
       return {
         subject: `${soon ? "Starting soon" : "Coming up"} — ${title}`,
-        text: `${what}: ${title}\n${ukWhen(payload.startsAt)}\n${join ? `Join here: ${join}\n` : ""}\nIn your Academy: ${page}`,
-        html: wrap(
+        text: `${what}: ${title}\n${ukWhen(payload.startsAt)}\n${join ? `Join here: ${join}\n` : ""}\nIn your Academy: ${sessionUrl}`,
+        ...page(
           soon ? "Starting soon" : "See you soon",
           `<p>${esc(what)}<br><strong>${esc(title)}</strong><br>${ukWhen(payload.startsAt)}</p>
            ${join ? button(join, "Join the session") : `<p>The joining link will be in your Academy before the start.</p>`}
            ${payload.notes ? `<p style="white-space:pre-wrap">${esc(payload.notes)}</p>` : ""}
-           <p><a href="${page}">Open it in your Academy</a></p>`,
+           <p><a href="${sessionUrl}">Open it in your Academy</a></p>`,
         ),
       };
     }
@@ -382,7 +382,7 @@ export function render(
       return {
         subject: `Your ${tier} ends on ${ends}`,
         text: `Your ${tier} ends on ${ends}. After that, its Group Coaching, playlists and other benefits close. You can buy your next year now, and it starts when this one ends: ${url}`,
-        html: wrap(
+        ...page(
           "Your pass ends soon",
           `<p>Your <strong>${esc(tier)}</strong> ends on <strong>${ends}</strong>. After that, its Group Coaching, playlists and other benefits close.</p>
            <p>You can buy your next year now, and it starts when this one ends.</p>
@@ -402,7 +402,7 @@ export function render(
       return {
         subject: "Booking cancelled",
         text: `Your booking has been cancelled. ${returned}\n\n${absoluteUrl("/account/bookings")}`,
-        html: wrap(
+        ...page(
           "Booking cancelled",
           `<p>Your booking has been cancelled. ${returned}</p>
            <p><a href="${absoluteUrl("/account/bookings")}">Your bookings</a></p>`,
@@ -421,7 +421,7 @@ export function render(
       return {
         subject: `A${what === "authenticator app" ? "n" : ""} ${what} was removed from your account`,
         text: `The ${what} "${payload.name ?? "unnamed"}" was removed from your Tony Klinger account on ${when}.\n\nIf this was you, there's nothing to do. If it wasn't, sign in, sign out your other devices and check how you sign in: ${url}`,
-        html: wrap(
+        ...page(
           `A${what === "authenticator app" ? "n" : ""} ${what} was removed`,
           `<p>The ${what} <strong>${name}</strong> was removed from your account on ${when}.</p>
            <p>If this was you, there's nothing to do.</p>
@@ -440,7 +440,7 @@ export function render(
       return {
         subject: "You already have an account with Tony Klinger",
         text: `Someone, probably you, just tried to create an account with this email address. You already have one, so nothing new was created.\n\nSign in here: ${signIn}\nForgotten your password? Reset it here: ${reset}\n\nYou can also sign in with an email link, or with Google if it uses this address.\n\nIf this wasn't you, you can ignore this email. Your account has not changed.`,
-        html: wrap(
+        ...page(
           "You already have an account",
           `<p>Someone, probably you, just tried to create an account with this email address. You already have one, so nothing new was created.</p>
            ${button(signIn, "Sign in")}
@@ -457,9 +457,9 @@ export function render(
       return {
         subject: `Choose a new time — ${payload.title ?? "private coaching"}`,
         text: `Thank you for your payment. The time you chose was taken by someone else before your payment completed, so your session is waiting in your account instead. Choose another time here: ${url}`,
-        html: wrap(
+        ...page(
           "Please choose a new time",
-          `<p>Thank you for your payment for <strong>${payload.title ?? "private coaching"}</strong>.</p>
+          `<p>Thank you for your payment for <strong>${esc(payload.title ?? "private coaching")}</strong>.</p>
            <p>The time you chose was taken before your payment completed, so your session is waiting in your account. You won't be charged again.</p>
            <p><a href="${url}">Choose another time</a></p>`,
         ),
@@ -515,149 +515,20 @@ export function templateIdFor(template: TemplateName): number | undefined {
 }
 
 /**
- * Values a Brevo template can render.
+ * What a Brevo template is filled with — the same wording the site would send
+ * itself (owner, 2026-10-24).
  *
- * The outbox stores raw data (`total: 19900`), because formatting belongs at
- * render time. A dashboard template cannot format, so amounts and dates are
- * converted here into finished strings.
- *
- * The KEYS must match the variable names inside the Brevo template. A name that
- * does not match renders as empty and Brevo reports no error — so a mismatch
- * appears as a receipt with a blank total, not as a failure. Verify with a test
- * send before trusting a newly configured template.
+ * Every Brevo template is the shared layout with these four slots
+ * (`BREVO_TEMPLATE`, created by `pnpm brevo:templates`), so the dashboard holds
+ * the look and the site holds the words: a template can be restyled in Brevo
+ * without the copy there going stale. This replaced per-template variables,
+ * which had to be kept in step with the copy here by hand and had drifted.
  */
-export function brevoParams(
-  template: TemplateName,
-  payload: Record<string, unknown>,
-): Record<string, unknown> {
-  switch (template) {
-    case "welcome":
-      return {
-        name: String(payload.name ?? "there"),
-        academy_url: absoluteUrl("/academy"),
-      };
-
-    case "membership_activated":
-      return {
-        tier_name: String(payload.tier_name ?? "Coaching Pass"),
-        renews_at: payload.renews_at
-          ? new Date(String(payload.renews_at)).toLocaleDateString("en-GB")
-          : "",
-        academy_url: absoluteUrl("/academy"),
-        benefits_url: absoluteUrl("/coaching/passes"),
-      };
-
-    case "order_receipt":
-      return {
-        total: formatPrice(
-          Number(payload.total ?? 0),
-          String(payload.currency ?? "GBP"),
-        ),
-        orders_url: absoluteUrl("/account/orders"),
-      };
-
-    case "guest_claim":
-      return {
-        claim_url: String(payload.claimUrl ?? absoluteUrl("/account/claim")),
-        expires_at: payload.expiresAt
-          ? new Date(String(payload.expiresAt)).toLocaleString("en-GB")
-          : "",
-      };
-
-    case "booking_confirmed":
-      return {
-        title: String(payload.title ?? "Your session"),
-        starts_at: payload.startsAt
-          ? new Date(String(payload.startsAt)).toLocaleString("en-GB", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "",
-        bookings_url: absoluteUrl("/account/bookings"),
-      };
-
-    case "booking_cancelled":
-      return {
-        credit_returned: Boolean(payload.creditReturned),
-        by_us: Boolean(payload.byUs),
-        bookings_url: absoluteUrl("/account/bookings"),
-      };
-
-    case "private_coaching_rebook":
-      return {
-        title: String(payload.title ?? "Private coaching"),
-        rebook_url: absoluteUrl("/academy/coaching"),
-      };
-
-    case "event_ticket":
-    case "event_place_available":
-    case "event_reminder":
-    case "event_starting":
-      return {
-        title: String(payload.title ?? ""),
-        starts_at: ukWhen(payload.startsAt),
-        reference: String(payload.reference ?? ""),
-        ticket_url: absoluteUrl(`/account/tickets/${payload.bookingId ?? ""}`),
-        event_url: absoluteUrl(`/events/${payload.slug ?? ""}`),
-        join_url: String(payload.joinUrl ?? ""),
-        location: String(payload.venueAddress ?? payload.location ?? ""),
-      };
-
-    case "session_reminder":
-    case "session_starting":
-      return {
-        kind: sessionKindLabel(payload),
-        title: String(payload.title ?? ""),
-        starts_at: ukWhen(payload.startsAt),
-        join_url: String(payload.joinUrl ?? ""),
-        notes: String(payload.notes ?? ""),
-        academy_url: absoluteUrl(sessionPage(payload)),
-      };
-
-    case "pass_ending":
-      return {
-        tier_name: String(payload.tierName ?? "Coaching Pass"),
-        expires_at: ukDate(payload.expiresAt),
-        passes_url: absoluteUrl("/coaching/passes"),
-      };
-
-    case "security_key_removed":
-      return {
-        key_name: String(payload.name ?? ""),
-        removed_at: ukWhen(payload.at),
-        security_url: absoluteUrl("/account/security/mfa"),
-      };
-
-    case "account_exists":
-      return {
-        sign_in_url: absoluteUrl("/auth/sign-in"),
-        reset_url: absoluteUrl("/auth/forgot-password"),
-      };
-
-    case "retreat_application_received":
-    case "retreat_application_sent":
-    case "retreat_application_approved":
-    case "retreat_application_closed":
-      return {
-        name: String(payload.name ?? ""),
-        email: String(payload.email ?? ""),
-        retreat: String(payload.retreat ?? ""),
-        batch: String(payload.batch ?? ""),
-        message: String(payload.message ?? ""),
-        booking_url: absoluteUrl(`/coaching/retreats/${String(payload.slug ?? "")}`),
-        admin_url: absoluteUrl("/admin/retreat-applications"),
-        note: String(payload.note ?? ""),
-        contact_url: absoluteUrl("/contact"),
-      };
-    case "contact_enquiry":
-      return {
-        name: String(payload.name ?? ""),
-        email: String(payload.email ?? ""),
-        subject: String(payload.subject ?? ""),
-        message: String(payload.message ?? ""),
-      };
-  }
+export function brevoParams(content: Rendered): Record<string, string> {
+  return {
+    subject: content.subject,
+    title: content.title,
+    body: content.body,
+    site_url: absoluteUrl("/"),
+  };
 }

@@ -85,7 +85,7 @@ export async function dispatchPendingEmails(limit = 20): Promise<DispatchResult>
       html: content.html,
       text: content.text,
       ...(templateId
-        ? { templateId, params: brevoParams(message.template, payload) }
+        ? { templateId, params: brevoParams(content) }
         : {}),
     });
 

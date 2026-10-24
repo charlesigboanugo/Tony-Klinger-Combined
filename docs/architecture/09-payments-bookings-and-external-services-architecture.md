@@ -1426,10 +1426,28 @@ empty message; and a template later deleted in the dashboard degrades to HTML ra
 sending nothing. A non-numeric id falls back to HTML rather than reaching Brevo as garbage
 and failing every message of that type.
 
-**The parameter names are the contract.** A name that does not match the template renders
-empty and Brevo reports no error — so a mismatch appears as a receipt with a blank total,
-not as a failure. Templates are authored from the same parameter names the code sends, and
-a new one is verified with a test send before it is trusted.
+**Layout in Brevo, wording in the code (2026-10-24, owner).** Every template is the same
+layout (`src/lib/email/layout.mjs`) with four slots — `subject`, `title`, `body`,
+`site_url` — and `brevoParams` fills them with exactly what the site would send itself.
+The look can be restyled in the Brevo dashboard; the words cannot go stale there. This
+replaced per-template variables, which had to be kept in step with the copy by hand and
+had drifted (the September templates still said "membership" and had no gift wording).
+
+- `body` is inserted with `{{ params.body | safe }}`. Checked against Brevo with a real
+  send: plain `{{ params.x }}` is HTML-escaped, `| safe` is not — so the site escapes
+  everything a visitor typed before it gets there (contact enquiry, welcome name and
+  session titles were found unescaped in the same check and fixed).
+- `pnpm brevo:templates` creates or updates one template per site email, matched by name
+  (`TK.com — …`), so ids never change; `--write <env file>` records the ids. It is the only
+  code that writes templates, it touches only `TK.com — ` names, and it lives in `scripts/`,
+  not in the email module (§42.2 still holds there).
+- Ids (shared Brevo account, so the same for test and production): Welcome 21, Order
+  receipt 22, Membership activated 23, Guest claim 24, Booking confirmed 25, Booking
+  cancelled 26, Contact enquiry 27, Event ticket 29, Event place available 30, Event
+  reminder 31, Event starting soon 32, Session reminder 33, Session starting soon 34,
+  Coaching Pass ending 35, Private coaching rebook 36, Verification method removed 37,
+  Account already exists 38, Retreat application received 39, sent 40, approved 41,
+  closed 42.
 
 Contact lists are separate from transactional email and are not written by the application:
 
@@ -1990,6 +2008,7 @@ at every stage of the customer and administrative workflows.
 | 2026-10-09 | §28.1: one Group Coaching session is bought for a date and booked on fulfilment (`order_items.metadata.session_id`, `session_sale_status`, `book_session_for`, migration 0022); one run of a series open at a time (0021). |
 | 2026-10-09 | §16.1, §28.1: membership sold only as one payment for twelve months; recurring prices retired; buying-again rule for membership and `saleCheck`. |
 | 2026-10-09 | §28.1: a cohort is sold only while one of its intakes is open for registration, and its price buys a place on that intake (migration 0017). |
+| 2026-10-24 | §42.3: Brevo templates are one shared layout filled with the site's own wording (`subject`, `title`, `body` with `| safe`, `site_url`), replacing per-template params. All 21 created/updated by `pnpm brevo:templates` (ids 21–27, 29–42). Visitor-typed text in the contact enquiry and welcome emails now escaped. **Flag:** note 01 says templates should be managed in Brevo rather than duplicated in the application — the wording now lives in the application and the look in Brevo; recorded as a deliberate reading, not silently resolved. |
 | 2026-10-14 | Email `retreat_application_closed`: sent when staff decline or withdraw a retreat application, one wording for both, with the optional staff note; once per closing (idempotency key carries `closed_at`). Optional Brevo template `BREVO_TEMPLATE_RETREAT_APPLICATION_CLOSED`. |
 | 2026-10-15 | §12.1 (new): the catalogue mirror described; a product renamed or re-described in admin now updates its Stripe Product in place instead of keeping the name it was created with. |
 | 2026-10-15 | §44: `cleanup-uploads` job added (daily): removes Media uploads under `uploads/` never saved as a Media item after a day. |
