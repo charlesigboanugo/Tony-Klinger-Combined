@@ -3076,6 +3076,7 @@ export type Database = {
           aaguid: string
           created_at: string
           id: string
+          kind: string
           last_used_at: string
           name: string
         }[]

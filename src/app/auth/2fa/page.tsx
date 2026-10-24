@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { AuthCard } from "@/app/auth/AuthCard";
 import { Challenge } from "@/app/auth/2fa/Challenge";
 import { DEFAULT_REDIRECT, safeRedirect } from "@/lib/auth/safe-redirect";
-import { getMfaState } from "@/lib/auth/mfa";
+import { SECURITY_KEYS_ENABLED, getMfaState } from "@/lib/auth/mfa";
 import { publicEnv } from "@/lib/env/public";
 import { requireSession } from "@/lib/permissions";
 
@@ -30,6 +30,10 @@ export const metadata: Metadata = {
  * Enrolment is still the settings page's job. This route only ever CHALLENGES,
  * and it refuses to be a dead end: an account with no keys is sent to enrol
  * instead of being shown a button that cannot work.
+ *
+ * Offers a key, an authenticator app, or both (2026-10-24) — only the kinds
+ * this site can challenge: a key is never offered where SECURITY_KEYS is off,
+ * because Supabase would refuse it there.
  */
 export default async function TwoFactorPage({
   searchParams,
@@ -50,21 +54,28 @@ export default async function TwoFactorPage({
   const reconfirm = params.confirm === "1";
   if (mfa.current === "aal2" && !reconfirm) redirect(next);
 
+  const factors = mfa.factors.filter((f) => f.kind === "app" || SECURITY_KEYS_ENABLED);
+
   // Nothing to challenge. Enrolment is a different job on a different page.
-  if (mfa.factors.length === 0) {
+  if (factors.length === 0) {
     redirect(`/account/security/mfa?required=1`);
   }
 
   const site = new URL(publicEnv.NEXT_PUBLIC_SITE_URL);
+  const hasKey = factors.some((f) => f.kind === "key");
+  const hasApp = factors.some((f) => f.kind === "app");
+  const what = hasKey && hasApp ? "your security key or authenticator app" : hasKey ? "your security key" : "your authenticator app";
 
   return (
     <AuthCard
-      eyebrow="Security key"
+      eyebrow={hasKey ? "Security key" : "Authenticator app"}
       title="Confirm it's you"
       description={
         reconfirm
-          ? "Changing your security keys needs a fresh confirmation. Use one of your keys — you'll go straight back."
-          : "Use the security key registered to this account. You are not creating a new one."
+          ? `Changing how you sign in needs a fresh confirmation. Use ${what} — you'll go straight back.`
+          : hasKey
+            ? `Use ${what} registered to this account. You are not creating a new one.`
+            : "Enter the code from your authenticator app to finish signing in."
       }
       escape={false}
       /*
@@ -79,28 +90,29 @@ export default async function TwoFactorPage({
       footer={
         context.isStaff ? (
           <>
-            Lost your key? Another administrator can clear it for you — it is
-            recorded in the audit log.
+            Lost your {hasKey ? "key" : "phone"}? Another administrator can clear
+            it for you — it is recorded in the audit log.
           </>
         ) : (
           <>
-            Lost your key?{" "}
+            Lost your {hasKey ? "key" : "phone"}?{" "}
             <Link
               href="/contact"
               className="underline decoration-current/40 underline-offset-4 transition-colors hover:text-accent hover:decoration-current"
             >
               Ask us to remove it
             </Link>{" "}
-            and you can register a new one.
+            and you can set up a new one.
           </>
         )
       }
     >
       <Challenge
-        factors={mfa.factors}
+        factors={factors}
         rpId={site.hostname}
         origin={site.origin}
         next={next}
+        reconfirm={reconfirm}
       />
     </AuthCard>
   );

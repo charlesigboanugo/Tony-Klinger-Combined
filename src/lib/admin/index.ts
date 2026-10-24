@@ -340,7 +340,7 @@ export async function adminTeamMembership(userId: string) {
 }
 
 /**
- * The security keys on an account — note 05 §11.1.
+ * The security keys and authenticator apps on an account — note 05 §11.1.
  *
  * Read with the service role because an operator handling a lockout must see
  * what the person has, which their own session cannot show them once they
@@ -354,7 +354,8 @@ export async function adminUserFactors(userId: string) {
     .filter((factor) => factor.status === "verified")
     .map((factor) => ({
       id: factor.id,
-      name: factor.friendly_name?.trim() || "Unnamed key",
+      name: factor.friendly_name?.trim() || (factor.factor_type === "totp" ? "Authenticator app" : "Unnamed key"),
+      kind: factor.factor_type === "totp" ? ("app" as const) : ("key" as const),
       created_at: factor.created_at,
     }));
 }

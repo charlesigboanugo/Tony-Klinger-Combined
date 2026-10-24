@@ -10,8 +10,8 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 const initial: KeyRemovalState = {};
 
 /**
- * Remove one key — asks first, naming the key, because removal cannot be
- * undone from here (the key would have to be registered again). The database
+ * Remove one key or authenticator app — asks first, naming it, because removal
+ * cannot be undone from here (it would have to be set up again). The database
  * decides whether it is allowed; this only presents the answer.
  */
 export function RemoveKey({ factorId, name }: { factorId: string; name: string }) {
@@ -22,10 +22,10 @@ export function RemoveKey({ factorId, name }: { factorId: string; name: string }
     return (
       <div className="mt-3 w-full space-y-3">
         <FormMessage>
-          For your safety, confirm it&apos;s you with one of your keys before removing one.
+          For your safety, confirm it&apos;s you before removing one.
         </FormMessage>
         <ButtonLink href="/auth/2fa?confirm=1&next=/account/security/mfa" size="sm">
-          Confirm with a key
+          Confirm it&apos;s you
         </ButtonLink>
       </div>
     );
@@ -47,12 +47,12 @@ export function RemoveKey({ factorId, name }: { factorId: string; name: string }
     <form action={action} className="mt-3 w-full space-y-3 rounded-(--radius) border border-error/40 bg-error/5 p-4">
       <input type="hidden" name="factorId" value={factorId} />
       <p className="text-sm">
-        Remove <strong>{name}</strong>? You won&apos;t be able to sign in with it any more.
+        Remove <strong>{name}</strong>? You won&apos;t be able to use it to sign in any more.
       </p>
       {state.error ? <FormMessage>{state.error}</FormMessage> : null}
       <div className="flex flex-wrap gap-2">
         <SubmitButton variant="destructive" size="sm" pendingLabel="Removing…">
-          Remove key
+          Remove
         </SubmitButton>
         <button
           type="button"

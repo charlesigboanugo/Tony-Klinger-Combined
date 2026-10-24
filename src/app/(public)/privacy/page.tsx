@@ -155,8 +155,8 @@ export default function Page() {
             <p>
               Passwords are never stored in readable form, the site is served
               only over encrypted connections, and each account can reach only
-              its own information. You can add a second sign-in step from your
-              account&apos;s security page.
+              its own information. You can turn on two-step verification from
+              your account&apos;s security page.
             </p>
           ),
         },

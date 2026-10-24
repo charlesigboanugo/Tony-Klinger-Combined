@@ -15,10 +15,16 @@ import { onReturnToTab } from "@/components/navigation/useVisitor";
  * then does what it would on a fresh load: a sign-in form sends a signed-in
  * visitor on, an account page sends a signed-out one to sign in.
  *
+ * `verified` (Account, Academy, Admin) adds the second step to the comparison
+ * (owner, 2026-10-24): signing out and back in as the SAME person in another
+ * tab left the email unchanged, so a confirmed Admin page stayed as it was
+ * until a click found the new session unconfirmed. Now it re-renders on return
+ * and the page's own gate sends the visitor to "Confirm it's you" at once.
+ *
  * Display only. Nothing is authorized here; every request is still checked on
  * the server whatever a stale tab shows.
  */
-export function SessionSync({ email }: { email: string | null }) {
+export function SessionSync({ email, verified }: { email: string | null; verified?: boolean }) {
   const router = useRouter();
 
   useEffect(
@@ -26,12 +32,13 @@ export function SessionSync({ email }: { email: string | null }) {
       onReturnToTab(() => {
         fetch("/api/session", { cache: "no-store" })
           .then((r) => (r.ok ? r.json() : null))
-          .then((data: { email: string | null } | null) => {
-            if (data && data.email !== email) router.refresh();
+          .then((data: { email: string | null; verified: boolean } | null) => {
+            if (!data) return;
+            if (data.email !== email || (verified !== undefined && data.verified !== verified)) router.refresh();
           })
           .catch(() => {});
       }),
-    [email, router],
+    [email, verified, router],
   );
 
   return null;

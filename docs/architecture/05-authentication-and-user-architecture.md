@@ -399,7 +399,24 @@ kinds of email this application actually sends before being passed to the Auth s
 
 # 11.1 Multi-Factor Authentication
 
-MFA uses **WebAuthn only**. TOTP authenticator apps and SMS factors are both disabled.
+MFA uses **security keys (WebAuthn) or authenticator apps (TOTP)**. SMS is disabled.
+
+> **Deviation, owner 2026-10-24 — authenticator apps allowed.** This section was written as
+> WebAuthn only. Hosted Supabase refuses WebAuthn MFA: the Management API answers
+> `422 Enabling of MFA with WebAuthn not currently supported`, and the dashboard has no
+> switch for it. With keys impossible on the test project and on production, staff could
+> not reach Admin at all. The owner chose authenticator apps beside keys:
+>
+> - An app (TOTP) is always offered. A key is offered only where `SECURITY_KEYS=on`
+>   (the local stack today); unset on Vercel. When Supabase allows WebAuthn on hosted
+>   projects, setting the variable brings keys back with no code change.
+> - Either raises the session to `aal2`, so every RLS rule, Server Action and gate that asks
+>   for `aal2` accepts both unchanged. Only one is needed per sign-in.
+> - The staff minimums (owner 2, other staff 1) count both kinds. Removal needs a key **or
+>   an app code** used in the last 10 minutes (migration 0023). Admin recovery clears both.
+> - The phishing argument below still holds: keys are the stronger option and are presented
+>   first wherever they are available. Apps are the accepted compromise, with copy telling
+>   people to type the code only on this site.
 
 ```text
 Staff (owner, admin, any operational role)
@@ -429,7 +446,7 @@ Supabase expresses MFA state as an assurance level carried in the session token:
 
 ```text
 aal1   authenticated, no second factor presented
-aal2   authenticated, WebAuthn factor verified
+aal2   authenticated, a security key or authenticator-app code verified
 ```
 
 **Enforcement is server-side and database-side, never in the interface.** A staff session
@@ -613,6 +630,24 @@ first `X-Forwarded-For` (`lib/supabase/forwarded.ts`), with the two client hints
 the user agent as `TKModel/…` and `TKPlatformVersion/…` tokens, since Supabase stores only
 the user agent. Informational only — nothing is
 authorised on either value; private and loopback addresses are not displayed.
+
+**Where the second factor is asked for, and why not in the account layout** (2026-10-24, §11.1).
+Staff with no key yet are sent from sign-in straight to the key page (`afterPassword` →
+`secondFactorDestination`), not to the destination or the welcome page. Each Account page
+calls `requireUser`; the account layout asks only for a session (`requireSession`), and the key
+page asks only for a session too. The layout used to redirect key-less staff itself, exempting
+the key page by `x-pathname`: during an in-browser navigation (the account menu's Orders, for
+instance) that redirect, to a page under the same layout, put the router into an endless refetch
+of the key page and a blank screen, in development and production alike. Redirects thrown by a
+page, or by a different layout (Admin), don't do this. The Academy dashboard, which had no
+second-factor check of its own, now sends key-less staff to the key page like every other Academy
+page.
+
+**The hosted Supabase projects need WebAuthn switched on** (Authentication → Multi-factor →
+WebAuthn: enrolment and verification). `config.toml` enables it for the local stack only; on a
+hosted project left at the default, registering a key fails with
+`mfa_webauthn_enroll_not_enabled`, now shown to the person as "Security keys aren't switched on
+for this site yet".
 
 ---
 
@@ -1438,6 +1473,12 @@ visible, or a page restored by Back), by asking `/api/session`.
   and Auth layouts, holding the email the page was rendered for. If the answer differs it
   re-renders the route and the server does what it would on a fresh load: a sign-in form sends
   a signed-in visitor on (§37.2), an account page sends a signed-out one to sign in.
+- **The second step too (2026-10-24, owner).** In Account, Academy, Book and Admin,
+  `SessionSync` also holds whether the page was rendered for a confirmed (`aal2`) session, and
+  `/api/session` reports `verified`. Signing out and back in as the same person in another tab
+  no longer goes unnoticed: on return the page re-renders and its gate sends the visitor to
+  "Confirm it's you". Pages waiting on that step (`/auth/2fa`, the setup page) move on by
+  themselves on return once another tab has confirmed (`useVerifiedElsewhere`).
 
 No open connection and no cross-tab messaging: a background tab is not updated until it is
 looked at. Supabase Realtime was considered and rejected as the wrong tool, since nothing here
@@ -1580,3 +1621,6 @@ The architecture must be secure by design and must not rely on client-side check
 | 2026-10-13 | §37.3 (new): tabs re-check the session when the visitor returns to them (`onReturnToTab`, `SessionSync` in the Account, Academy, Book, Admin, Checkout and Auth layouts; `PublicHeader` on public pages) and re-render if who is signed in has changed. No Realtime, no cross-tab messaging. |
 | 2026-10-13 | §11.1: the spare-key prompt moved from a panel above every admin page into the Admin header, as a pill. |
 | 2026-10-23 | §29.3: a gift's claim page is worded for the recipient (`gift=1` on the link, wording only). |
+| 2026-10-24 | §37.3: tabs also catch up on the second step — `SessionSync` compares `verified` (aal2) as well as the email; `/auth/2fa` and the setup page move on when another tab confirms. |
+| 2026-10-24 | §11.1: authenticator apps (TOTP) allowed beside security keys (deviation recorded in §11.1: hosted Supabase refuses WebAuthn MFA). Keys shown only where `SECURITY_KEYS=on`. Removal gate and key list cover both kinds (migration 0023). Supersedes the "hosted projects must enable WebAuthn MFA" line below. |
+| 2026-10-24 | §11.1: second-factor redirects moved out of the account layout into the pages (layout→same-layout redirect looped during client navigation); key-less staff go from sign-in straight to the key page; Academy dashboard checks the factor; hosted projects must enable WebAuthn MFA. |

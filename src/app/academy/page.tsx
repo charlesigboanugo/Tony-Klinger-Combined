@@ -26,7 +26,7 @@ import { myCoaching, myQaSessions, nextWorkshops, sessionGroup } from "@/lib/aca
 import { formatSlot, greetingFor } from "@/lib/academy/format";
 import { myProfile } from "@/lib/account";
 import { formatDate } from "@/lib/account/format";
-import { getAuthContext } from "@/lib/permissions";
+import { getAuthContext, requireUser } from "@/lib/permissions";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 /**
@@ -66,6 +66,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AcademyPage() {
   const context = await getAuthContext();
   if (!context) return <AcademyLanding />;
+  // Signed in but owing a second factor (staff with no key yet, or anyone
+  // who has one and hasn't used it this session): to the key page, as every
+  // other Academy page sends them. The dashboard skipped this, so it opened
+  // while its own menu links did not (2026-10-24).
+  if (context.mfaRequired) await requireUser("/academy");
 
   const staffView = await academyStaffView();
   const [courses, progress, credits, membership, ownCohorts, everyCohort, coaching, workshops, profile, qa] =

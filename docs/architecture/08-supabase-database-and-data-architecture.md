@@ -159,6 +159,7 @@ after the `documents` bucket delete, since later sections now share its transact
 | `0020_admins_manage_roles` | new 2026-10-23 (`roles.manage` granted to `admin`; owner role still owner-only in `admin_set_role`; note 06 §34) |
 | `0021_grants_outlive_granter` | new 2026-10-23 (admin grants need a reason; `granted_by` required on insert by trigger, may be nulled when the granter's account is deleted; note 06 §14.4) |
 | `0022_sale_status_reasons` | new 2026-10-23 (`coaching_sale_status`: `ended`; `past`/`unscheduled` for series with no run to start; note 09 §28.1) |
+| `0023_authenticator_apps` | new 2026-10-24 (`my_security_keys` lists authenticator apps too, with `kind`; `authorise_security_key_removal` accepts a recent app code (`totp`) as well as a key; note 05 §11.1) |
 
 Bare migration numbers above 0010 in notes, comments and change-log rows written before
 2026-10-15 refer to the earlier numbering; the section banners resolve them.

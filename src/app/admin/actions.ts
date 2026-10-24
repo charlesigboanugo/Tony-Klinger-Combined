@@ -718,7 +718,7 @@ export async function resetMfaAction(
     // locked out while the audit log says they were helped.
     if (error) {
       return {
-        error: `Removed some keys, then failed on “${factor.friendly_name ?? factor.id}”: ${error.message}`,
+        error: `Removed some, then failed on “${factor.friendly_name ?? factor.id}”: ${error.message}`,
       };
     }
   }
@@ -728,8 +728,8 @@ export async function resetMfaAction(
   return {
     success:
       removed.length === 0
-        ? "That account had no keys to clear."
-        : `Cleared ${removed.length} key${removed.length === 1 ? "" : "s"}. They can register a new one next time they sign in.`,
+        ? "That account had nothing to clear."
+        : `Cleared ${removed.length} verification method${removed.length === 1 ? "" : "s"}. They can set up a new one next time they sign in.`,
   };
 }
 

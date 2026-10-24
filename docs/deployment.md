@@ -72,6 +72,9 @@ file still works. The Supabase CLI is never linked to the production project.
 - [ ] Auth → URL Configuration: site URL and redirect allowlist ([below](#supabase-hosted-project)).
 - [ ] Auth → Providers → Google.
 - [ ] Auth → Rate limits: raise the email limit.
+- [ ] Auth → Multi-factor → **App Authenticator (TOTP): enabled** (on by default). This is how
+      staff do the second step on a hosted project: hosted Supabase refuses WebAuthn MFA, so
+      leave `SECURITY_KEYS` unset on Vercel and the site offers authenticator apps only.
 - [ ] Load the content: `pnpm content:setup --env <file>` (all twelve files, including
       `12_coaching_offer.sql`), then `pnpm images:import --env <file>`, both with
       `--env .env.production.local`.
@@ -186,6 +189,7 @@ Anything missing fails closed rather than silently degrading — see
 | `BREVO_SENDER_NAME` | optional; defaults to "Tony Klinger" |
 | `CRON_SECRET` | Vercel sends it as `Authorization: Bearer …` |
 | `EMAIL_TRANSPORT` | `brevo` in production |
+| `SECURITY_KEYS` | leave **unset** (security keys off; staff use authenticator apps). `on` only once hosted Supabase allows WebAuthn MFA. Local `.env.local` has `on`. |
 
 ### Brevo template ids
 
@@ -221,6 +225,11 @@ recipient is permitted.
    magic-link sign-in after two attempts. `supabase/config.toml` covers local
    only; the hosted project is configured in the dashboard.
 5. **Storage**: buckets are created by migrations (`0005`, `0015`), not by hand.
+7. **Auth → Multi-factor → App Authenticator (TOTP)**: leave it enabled (the default). Staff
+   use an authenticator app as the second step. Security keys can't be used on a hosted
+   project: Supabase refuses WebAuthn MFA (`Enabling of MFA with WebAuthn not currently
+   supported`, checked 2026-10-24). Keep `SECURITY_KEYS` unset on Vercel; set it to `on`
+   only if Supabase starts allowing WebAuthn there.
 6. **Auth → Email Templates → Invite user**: paste the body of
    `supabase/templates/invite.html`. `config.toml` sets it locally only. The hosted default
    links to GoTrue's own page, which puts the session where the callback cannot see it,

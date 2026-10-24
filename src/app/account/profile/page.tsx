@@ -62,7 +62,7 @@ export default async function ProfilePage() {
             <Link href="/contact" className="font-medium text-primary underline-offset-4 hover:underline">
               get in touch
             </Link>{" "}
-            and we&apos;ll move your account across. Your password and security keys are under{" "}
+            and we&apos;ll move your account across. Your password and two-step verification are under{" "}
             <Link href="/account/security" className="font-medium text-primary underline-offset-4 hover:underline">
               Security
             </Link>

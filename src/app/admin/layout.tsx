@@ -68,7 +68,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
 
   return (
     <div className="flex min-h-svh flex-col">
-      <SessionSync email={context.email} />
+      <SessionSync email={context.email} verified={context.hasSecondFactor} />
       {/* Admin must not look like the public site (note 04 §16). */}
       <div aria-hidden="true" className="h-0.75 w-full bg-block-indigo" />
 

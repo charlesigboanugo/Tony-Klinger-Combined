@@ -1,23 +1,37 @@
 import type { Metadata } from "next";
 
+import { EnrolTotp } from "@/app/account/security/mfa/EnrolTotp";
 import { EnrolWebAuthn } from "@/app/account/security/mfa/EnrolWebAuthn";
+import { RefreshWhenVerified } from "@/app/account/security/mfa/RefreshWhenVerified";
 import { RemoveKey } from "@/app/account/security/mfa/RemoveKey";
 import { AccountHeader } from "@/components/account/AccountHeader";
 import { BackLink } from "@/components/ui/BackLink";
 import { ButtonLink } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/Field";
-import { KEY_RECONFIRM_MINUTES, REQUIRED_STAFF_FACTORS, getMfaState, mySecurityKeys } from "@/lib/auth/mfa";
+import { Icon } from "@/components/ui/Icon";
+import {
+  KEY_RECONFIRM_MINUTES,
+  REQUIRED_STAFF_FACTORS,
+  SECURITY_KEYS_ENABLED,
+  getMfaState,
+  mySecurityKeys,
+} from "@/lib/auth/mfa";
 import { publicEnv } from "@/lib/env/public";
 import { requireSession } from "@/lib/permissions";
 import { describeAuthenticator } from "@/lib/utils/device";
 
 export const metadata: Metadata = {
-  title: "Security keys",
+  title: "Two-step verification",
   robots: { index: false },
 };
 
 /**
- * Security keys — note 05 §11.1, note 06 §25.1.
+ * Two-step verification: security keys and authenticator apps — note 05
+ * §11.1, note 06 §25.1. The route keeps its old name; links point at it.
+ *
+ * An authenticator app is always offered; a key only where SECURITY_KEYS=on
+ * (hosted Supabase refuses WebAuthn MFA, 2026-10-24). Either counts towards
+ * the staff minimum and either unlocks the session.
  *
  * THE PAGE HAS TWO JOBS AND USED TO OFFER ONLY ONE.
  *
@@ -51,11 +65,16 @@ export default async function MfaPage({
   const [mfa, keys] = await Promise.all([getMfaState(), mySecurityKeys()]);
 
   const site = new URL(publicEnv.NEXT_PUBLIC_SITE_URL);
-  const remaining = REQUIRED_STAFF_FACTORS - mfa.verifiedFactors;
+  // Keys where keys are switched off can't be used, so they don't count
+  // towards the recommended two (the database's minimum still counts them).
+  const usableCount = keys.filter((k) => k.kind === "app" || SECURITY_KEYS_ENABLED).length;
+  const remaining = REQUIRED_STAFF_FACTORS - usableCount;
 
   const hasKeys = mfa.verifiedFactors > 0;
   const verified = mfa.current === "aal2";
   const needsVerification = hasKeys && !verified;
+  // A key where keys are switched off can't be challenged (Supabase refuses).
+  const usable = mfa.factors.filter((f) => f.kind === "app" || SECURITY_KEYS_ENABLED).length;
 
   // The same minimum the database enforces on removal (migration 0022):
   // an owner keeps two, other staff one, customers none.
@@ -85,20 +104,21 @@ export default async function MfaPage({
   return (
     <>
       {back ? <BackLink href={back.href}>{back.label}</BackLink> : null}
+      {verified ? null : <RefreshWhenVerified />}
 
       <AccountHeader
-        title="Security keys"
+        title="Two-step verification"
         description={
           context.isStaff
-            ? "Staff accounts are protected with security keys rather than codes."
-            : "Add a security key for stronger protection. Optional for customers."
+            ? "Staff accounts confirm it's them with a second step after the password."
+            : "A second step after your password, for stronger protection. Optional for customers."
         }
       />
 
       {removed ? (
         <div className="mb-6">
           <FormMessage tone="success">
-            {removed === "key" ? "The key" : `“${removed}”`} was removed. We&apos;ve emailed you to confirm.
+            {removed === "key" ? "That verification method" : `“${removed}”`} was removed. We&apos;ve emailed you to confirm.
           </FormMessage>
         </div>
       ) : null}
@@ -109,8 +129,10 @@ export default async function MfaPage({
         <div className="mb-6">
           <FormMessage>
             {hasKeys
-              ? "Confirm it's you with your security key to continue."
-              : "This account can manage the platform, so it needs a security key before you can continue."}
+              ? "Confirm it's you to continue."
+              : `This account can manage the platform, so it needs two-step verification before you can continue — ${
+                  SECURITY_KEYS_ENABLED ? "a security key, or an authenticator app on your phone" : "an authenticator app on your phone"
+                }.`}
           </FormMessage>
         </div>
       ) : null}
@@ -118,9 +140,9 @@ export default async function MfaPage({
       {ownerBlocked ? (
         <div className="mb-6">
           <FormMessage>
-            Owner accounts need two registered keys before performing privileged
-            actions. Nobody else can recover an owner account, so a single key
-            is a single point of failure.
+            Owner accounts need two verification methods set up before performing
+            privileged actions. Nobody else can recover an owner account, so a
+            single one is a single point of failure.
           </FormMessage>
         </div>
       ) : null}
@@ -135,14 +157,24 @@ export default async function MfaPage({
             <h2 className="font-display text-lg font-semibold">
               Confirm it&apos;s you
             </h2>
-            <p className="mt-1 mb-4 text-sm text-muted-foreground">
-              You have {mfa.verifiedFactors} key
-              {mfa.verifiedFactors === 1 ? "" : "s"} registered. Use one to
-              unlock this session — you are not creating a new key.
-            </p>
-            <ButtonLink href="/auth/2fa?next=/account/security" size="lg">
-              Unlock with your security key
-            </ButtonLink>
+            {usable > 0 ? (
+              <>
+                <p className="mt-1 mb-4 text-sm text-muted-foreground">
+                  You have {mfa.verifiedFactors} verification method{mfa.verifiedFactors === 1 ? "" : "s"} set up. Use one
+                  to unlock this session — you are not adding a new one.
+                </p>
+                <ButtonLink href="/auth/2fa?next=/account/security" size="lg">
+                  Confirm it&apos;s you
+                </ButtonLink>
+              </>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Your security key can&apos;t be used on this site.{" "}
+                {context.isStaff
+                  ? "Ask another administrator to clear it, then set up an authenticator app."
+                  : "Ask us to remove it, then set up an authenticator app."}
+              </p>
+            )}
           </div>
         ) : null}
 
@@ -152,7 +184,7 @@ export default async function MfaPage({
         >
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
             <h2 id="your-keys" className="text-lg">
-              Your keys <span className="text-sm font-normal text-muted-foreground">({keys.length})</span>
+              Your verification methods <span className="text-sm font-normal text-muted-foreground">({keys.length})</span>
             </h2>
             {verified ? (
               <span className="rounded-full border border-success/40 bg-success/10 px-3 py-1 text-xs font-medium text-success">
@@ -162,11 +194,14 @@ export default async function MfaPage({
           </div>
 
           {keys.length === 0 ? (
-            <p className="px-5 py-6 text-sm text-muted-foreground">No keys registered yet.</p>
+            <p className="px-5 py-6 text-sm text-muted-foreground">Nothing set up yet.</p>
           ) : (
             <ul className="divide-y divide-border">
               {keys.map((key) => {
-                const where = describeAuthenticator(key.aaguid);
+                const where =
+                  key.kind === "app"
+                    ? key.name.startsWith("Authenticator app") ? null : "Authenticator app"
+                    : describeAuthenticator(key.aaguid);
                 const used = key.lastUsedAgo;
                 return (
                   <li key={key.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
@@ -174,10 +209,7 @@ export default async function MfaPage({
                       aria-hidden="true"
                       className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-surface-muted text-muted-foreground"
                     >
-                      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="8" cy="12" r="3.5" />
-                        <path d="M11.5 12H21M17 12v3M20 12v2" />
-                      </svg>
+                      <Icon name={key.kind === "app" ? "phone" : "key"} className="h-5 w-5" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{key.name}</p>
@@ -189,9 +221,12 @@ export default async function MfaPage({
                         })}
                         {" · "}
                         {used ? `last used ${used}` : "not used to sign in yet"}
+                        {key.kind === "key" && !SECURITY_KEYS_ENABLED ? " · security keys can't be used on this site" : ""}
                       </p>
                     </div>
-                    {atMinimum && minimum > 0 ? (
+                    {/* Nothing to remove with until this session is confirmed: the
+                        database would refuse it, so the button isn't offered. */}
+                    {needsVerification ? null : atMinimum && minimum > 0 ? (
                       <span className="text-xs text-muted-foreground">Required — add another to remove</span>
                     ) : (
                       <RemoveKey factorId={key.id} name={key.name} />
@@ -202,9 +237,9 @@ export default async function MfaPage({
             </ul>
           )}
 
-          {keys.length > 0 && !recentlyConfirmed && !atMinimum ? (
+          {keys.length > 0 && !needsVerification && !recentlyConfirmed && !atMinimum ? (
             <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-              Removing a key asks you to confirm with one of your keys first, if you haven&apos;t in the last{" "}
+              Removing one asks you to confirm it&apos;s you first, if you haven&apos;t in the last{" "}
               {KEY_RECONFIRM_MINUTES} minutes.
             </p>
           ) : null}
@@ -212,38 +247,55 @@ export default async function MfaPage({
           {context.isStaff ? (
             <p className="border-t border-border px-5 py-3 text-sm text-muted-foreground">
               {remaining > 0
-                ? `${remaining} more recommended. Two keys means losing one is an inconvenience rather than a lockout.`
+                ? `${remaining} more recommended. Two methods means losing one is an inconvenience rather than a lockout.`
                 : "Requirement met."}
             </p>
           ) : null}
         </section>
 
-        {/* Enrolment is secondary once a key exists — it adds a spare, it is
-              not how you get in. */}
-        <div className="rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card">
-          <h2 className="font-display text-lg font-semibold">
-            {hasKeys ? "Add another key" : "Register a security key"}
-          </h2>
-          <p className="mt-1 mb-4 text-sm text-muted-foreground">
-            {hasKeys
-              ? "A spare key on a different device means losing one is an inconvenience rather than a lockout."
-              : "A key on this device, or a hardware key such as a YubiKey."}
-          </p>
-          <EnrolWebAuthn
-            rpId={site.hostname}
-            origin={site.origin}
-            // So the default name cannot collide with one already taken,
-            // which is what produced the 422 on every second enrolment.
-            existingNames={mfa.factors.map((f) => f.name)}
-          />
-        </div>
+        {/* Enrolment is secondary once one exists — it adds a spare, it is
+              not how you get in. Supabase refuses a new one from an unverified
+              session, so neither is offered until this session is confirmed. */}
+        {needsVerification ? null : (
+          <>
+            {SECURITY_KEYS_ENABLED ? (
+              <div className="rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card">
+                <h2 className="font-display text-lg font-semibold">
+                  {hasKeys ? "Add a security key" : "Register a security key"}
+                </h2>
+                <p className="mt-1 mb-4 text-sm text-muted-foreground">
+                  The strongest option: a key on this device, or a hardware key such as a YubiKey. Nothing to type,
+                  so nothing a fake site can catch.
+                </p>
+                <EnrolWebAuthn
+                  rpId={site.hostname}
+                  origin={site.origin}
+                  // So the default name cannot collide with one already taken,
+                  // which is what produced the 422 on every second enrolment.
+                  existingNames={mfa.factors.map((f) => f.name)}
+                />
+              </div>
+            ) : null}
+
+            <div className="rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card">
+              <h2 className="font-display text-lg font-semibold">
+                {hasKeys ? "Add an authenticator app" : "Set up an authenticator app"}
+              </h2>
+              <p className="mt-1 mb-4 text-sm text-muted-foreground">
+                A free app on your phone shows a new 6-digit code every 30 seconds; you type it after your password.
+                Only ever type it on this site.
+              </p>
+              <EnrolTotp existingNames={mfa.factors.map((f) => f.name)} />
+            </div>
+          </>
+        )}
 
         {context.isStaff && hasKeys ? (
           <p className="text-sm text-muted-foreground">
-            Lost every key? Recovery is performed by another administrator and
-            is recorded in the audit log — there is deliberately no self-service
-            reset, since that would make the security key only as strong as your
-            email account.
+            Lost your phone or key? Recovery is performed by another administrator
+            and is recorded in the audit log — there is deliberately no
+            self-service reset, since that would make the second step only as
+            strong as your email account.
           </p>
         ) : null}
       </div>

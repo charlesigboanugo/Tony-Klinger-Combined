@@ -411,20 +411,22 @@ export function render(
     }
 
     case "security_key_removed": {
-      // Migration 0022. Sent to the account's own address whenever a key is
-      // removed, so a removal the owner did not make is noticed at once.
+      // Migrations 0022/0023. Sent to the account's own address whenever a key
+      // or authenticator app is removed, so a removal the owner did not make is
+      // noticed at once. `kind` is the factor type ('totp' for an app).
       const url = absoluteUrl("/account/security/mfa");
-      const name = esc(payload.name ?? "A security key");
+      const what = payload.kind === "totp" ? "authenticator app" : "security key";
+      const name = esc(payload.name ?? `A ${what}`);
       const when = ukWhen(payload.at);
       return {
-        subject: "A security key was removed from your account",
-        text: `The security key "${payload.name ?? "unnamed"}" was removed from your Tony Klinger account on ${when}.\n\nIf this was you, there's nothing to do. If it wasn't, sign in, sign out your other devices and check your keys: ${url}`,
+        subject: `A${what === "authenticator app" ? "n" : ""} ${what} was removed from your account`,
+        text: `The ${what} "${payload.name ?? "unnamed"}" was removed from your Tony Klinger account on ${when}.\n\nIf this was you, there's nothing to do. If it wasn't, sign in, sign out your other devices and check how you sign in: ${url}`,
         html: wrap(
-          "A security key was removed",
-          `<p>The security key <strong>${name}</strong> was removed from your account on ${when}.</p>
+          `A${what === "authenticator app" ? "n" : ""} ${what} was removed`,
+          `<p>The ${what} <strong>${name}</strong> was removed from your account on ${when}.</p>
            <p>If this was you, there's nothing to do.</p>
-           <p>If it wasn't, sign in now, sign out your other devices and check your keys.</p>
-           ${button(url, "Review your security keys")}`,
+           <p>If it wasn't, sign in now, sign out your other devices and check how you sign in.</p>
+           ${button(url, "Review how you sign in")}`,
         ),
       };
     }

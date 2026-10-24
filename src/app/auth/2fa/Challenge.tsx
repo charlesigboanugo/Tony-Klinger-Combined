@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { AppCode } from "@/app/auth/2fa/AppCode";
+import { useVerifiedElsewhere } from "@/app/auth/2fa/useVerifiedElsewhere";
 import { KeyIcon } from "@/app/auth/AuthParts";
 import { Button } from "@/components/ui/Button";
 import { FormMessage } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/cn";
 
-type Factor = { id: string; name: string };
+type Factor = { id: string; name: string; kind: "key" | "app" };
 
 /**
  * The second step of signing in — note 05 §11.1.
@@ -35,23 +37,41 @@ type Factor = { id: string; name: string };
  * so a staff account holding the required spare (note 06 §25.1) would otherwise
  * be stuck if the first key were the one left at home. Every registered key is
  * offered by name.
+ *
+ * AN AUTHENTICATOR APP IS THE OTHER WAY IN (2026-10-24). With no key, the code
+ * box is the whole step and nothing is prompted; with both, the key leads and
+ * "Use your authenticator app instead" switches over. Either raises the
+ * session to aal2. `factors` holds only the kinds this site can challenge.
  */
 export function Challenge({
   factors,
   rpId,
   origin,
   next,
+  reconfirm = false,
 }: {
   factors: Factor[];
   rpId: string;
   origin: string;
   next: string;
+  /** A deliberate re-confirmation: already aal2, so another tab proves nothing. */
+  reconfirm?: boolean;
 }) {
   const router = useRouter();
+  const keys = factors.filter((f) => f.kind === "key");
+  const apps = factors.filter((f) => f.kind === "app");
+  const [mode, setMode] = useState<"key" | "app">(keys.length > 0 ? "key" : "app");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const attempted = useRef(false);
+
+  // Confirmed in another tab: go where this one was heading.
+  const leave = useCallback(() => {
+    router.replace(next);
+    router.refresh();
+  }, [router, next]);
+  useVerifiedElsewhere(leave, !reconfirm && !done);
 
   const verify = useCallback(
     async (factorId: string) => {
@@ -116,7 +136,7 @@ export function Challenge({
           cancelled
             ? "That was cancelled, or your key didn't respond. Try again when you're ready."
             : factors.length > 1
-              ? "We couldn't confirm that key. Try it again, or use your other key."
+              ? "We couldn't confirm that key. Try it again, or use another way below."
               : "We couldn't confirm that key. Try again.",
         );
       } finally {
@@ -136,17 +156,31 @@ export function Challenge({
     the first timer and the second one wins — firing exactly one prompt in
     development and in production alike.
   */
+  const firstKey = keys[0]?.id;
   useEffect(() => {
-    if (typeof window === "undefined" || !window.PublicKeyCredential) return;
+    if (!firstKey || typeof window === "undefined" || !window.PublicKeyCredential) return;
 
     const timer = window.setTimeout(() => {
       if (attempted.current) return;
       attempted.current = true;
-      void verify(factors[0].id);
+      void verify(firstKey);
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [verify, factors]);
+  }, [verify, firstKey]);
+
+  if (mode === "app") {
+    return (
+      <div className="space-y-4">
+        <AppCode apps={apps} next={next} />
+        {keys.length > 0 ? (
+          <Button variant="outline" size="lg" className="w-full" onClick={() => setMode("key")}>
+            Use your security key instead
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
 
   if (done) {
     return (
@@ -179,22 +213,22 @@ export function Challenge({
       </div>
 
       <Button
-        onClick={() => verify(factors[0].id)}
+        onClick={() => verify(keys[0].id)}
         disabled={busy}
         aria-busy={busy}
         size="lg"
         className="w-full"
       >
-        {busy ? "Waiting for your key…" : `Use ${factors[0].name}`}
+        {busy ? "Waiting for your key…" : `Use ${keys[0].name}`}
       </Button>
 
-      {factors.length > 1 ? (
+      {keys.length > 1 ? (
         <div className="border-t border-border pt-4">
           <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
             Or use another key
           </p>
           <ul className="mt-2 space-y-2">
-            {factors.slice(1).map((factor) => (
+            {keys.slice(1).map((factor) => (
               <li key={factor.id}>
                 <Button
                   variant="outline"
@@ -209,6 +243,12 @@ export function Challenge({
             ))}
           </ul>
         </div>
+      ) : null}
+
+      {apps.length > 0 ? (
+        <Button variant="outline" size="lg" className="w-full" disabled={busy} onClick={() => setMode("app")}>
+          Use your authenticator app instead
+        </Button>
       ) : null}
     </div>
   );

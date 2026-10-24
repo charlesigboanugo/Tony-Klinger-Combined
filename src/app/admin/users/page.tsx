@@ -92,7 +92,7 @@ export default async function AdminUsersPage({
       <AdminPageHeader
         title="Users"
         meta={matching.length < everyone.length ? `${matching.length} of ${everyone.length}` : `${everyone.length} accounts`}
-        description="Everyone with an account — customers and staff. Open a person to see their access, orders, roles and security keys."
+        description="Everyone with an account — customers and staff. Open a person to see their access, orders, roles and two-step verification."
       />
 
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">

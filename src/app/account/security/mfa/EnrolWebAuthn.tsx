@@ -182,7 +182,10 @@ export function EnrolWebAuthn({
           ? "That was cancelled, or the key didn't respond in time."
           : /already registered|InvalidStateError/i.test(raw)
             ? "That device is already registered on this account. Use a different device for a spare key."
-            : "We couldn't register that security key. Please try again.";
+            : /webauthn_enroll_not_enabled|enroll is disabled/i.test(raw)
+              ? // The project's Supabase Auth has WebAuthn switched off: no retry will help.
+                "Security keys aren't switched on for this site yet. Please tell the site administrator."
+              : "We couldn't register that security key. Please try again.";
       setError(message);
     } finally {
       setBusy(false);

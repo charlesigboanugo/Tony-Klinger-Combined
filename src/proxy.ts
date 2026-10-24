@@ -325,8 +325,17 @@ export async function proxy(request: NextRequest) {
     // `next` is validated exactly as it would be after signing in (note 05
     // §36), and can never point back into this set, so this cannot loop.
     const target = safeRedirect(searchParams.get("next"));
+    /*
+      Through the second step first, as signing in itself does (2026-10-24).
+      A tab left on sign-in that notices a sign-in made elsewhere — not yet
+      confirmed — was sent straight to `next`, skipping "Confirm it's you".
+      The assurance level is read from the token getUser() just validated.
+    */
+    const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    const unconfirmed = level?.nextLevel === "aal2" && level.currentLevel !== "aal2";
+    const destination = unconfirmed ? `/auth/2fa?next=${encodeURIComponent(target)}` : target;
     const redirectResponse = NextResponse.redirect(
-      new URL(target, requestOrigin(request.headers)),
+      new URL(destination, requestOrigin(request.headers)),
     );
     // Carry over a session refreshed by getUser() above, or the rotated
     // refresh token is lost and the user is signed out.

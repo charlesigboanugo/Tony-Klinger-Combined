@@ -46,7 +46,7 @@ export default async function AcademyLayout({
 
   return (
     <div className="flex min-h-svh flex-col">
-      <SessionSync email={context.email} />
+      <SessionSync email={context.email} verified={context.hasSecondFactor} />
       {/* Identity strip in noir, then the shared workspace header (note 04 §10). */}
       <WorkspaceHeader
         label="Academy"

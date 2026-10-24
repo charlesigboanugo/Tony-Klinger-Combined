@@ -11,24 +11,41 @@ type Fns = Database["public"]["Functions"];
 /**
  * Multi-factor authentication — note 05 §11.1, note 06 §25.1.
  *
- * WebAuthn only. TOTP and SMS are disabled in config: a TOTP code can be typed
- * into a convincing replica of this site, whereas a WebAuthn credential is
- * bound to the origin by the browser and cannot be replayed.
+ * Two kinds of second step, either of which raises a session to aal2:
+ *
+ *   key   WebAuthn — preferred: the browser binds the credential to this
+ *         origin, so it cannot be replayed against a lookalike site
+ *   app   an authenticator app's 6-digit code (TOTP) — can be typed into a
+ *         convincing replica, but hosted Supabase allows it and refuses
+ *         WebAuthn MFA ("not currently supported", owner 2026-10-24)
+ *
+ * SMS stays disabled. Keys are offered only where SECURITY_KEYS=on (local
+ * today); turning it on once Supabase allows them needs no code change.
  */
+
+/** Whether this site offers security keys. Off unless SECURITY_KEYS=on. */
+export const SECURITY_KEYS_ENABLED = process.env.SECURITY_KEYS === "on";
+
+export type FactorKind = "key" | "app";
+
+const kindOf = (factorType: string | null | undefined): FactorKind => (factorType === "totp" ? "app" : "key");
+
+/** The name a factor is shown under when it was given none. */
+const fallbackName = (kind: FactorKind, n: number) => (kind === "app" ? `Authenticator app ${n}` : `Security key ${n}`);
 
 /** Minimum factors a staff account must hold, so losing one is not a lockout. */
 export const REQUIRED_STAFF_FACTORS = 2;
 
 /**
- * How recently a key must have been used on this session before a key can be
- * REMOVED. Mirrors the database gate (migration 0022), which is what enforces
- * it; this copy only decides whether to ask for a key before offering Remove.
+ * How recently a key or app code must have been used on this session before
+ * one can be REMOVED. Mirrors the database gate (migration 0023), which is
+ * what enforces it; this copy only decides whether to ask first.
  */
 export const KEY_RECONFIRM_MINUTES = 10;
 
 export type AalLevel = "aal1" | "aal2";
 
-export type MfaFactor = { id: string; name: string };
+export type MfaFactor = { id: string; name: string; kind: FactorKind };
 
 export type MfaState = {
   /** What this session has actually satisfied. */
@@ -45,7 +62,7 @@ export type MfaState = {
    * why every sign-in registered another redundant credential.
    */
   factors: MfaFactor[];
-  /** This session presented a key within KEY_RECONFIRM_MINUTES. */
+  /** This session presented a key or an app code within KEY_RECONFIRM_MINUTES. */
   keyRecentlyConfirmed: boolean;
 };
 
@@ -111,7 +128,11 @@ export const getMfaState = cache(async (): Promise<MfaState> => {
 
   const token = claims(session?.access_token ?? "");
   const current = token.aal === "aal2" ? "aal2" : "aal1";
-  const keyUse = token.amr?.find((m) => m.method === "mfa/webauthn")?.timestamp;
+  // The most recent use of either kind (`mfa/webauthn` for a key, `totp` for an app).
+  const stamps = (token.amr ?? [])
+    .filter((m) => m.method === "mfa/webauthn" || m.method === "totp")
+    .map((m) => m.timestamp ?? 0);
+  const keyUse = stamps.length > 0 ? Math.max(...stamps) : undefined;
 
   return {
     current,
@@ -120,10 +141,10 @@ export const getMfaState = cache(async (): Promise<MfaState> => {
     next: verified.length > 0 ? "aal2" : "aal1",
     verifiedFactors: verified.length,
     unverifiedFactors: all.length - verified.length,
-    factors: verified.map((f, i) => ({
-      id: f.id,
-      name: f.friendly_name?.trim() || `Security key ${i + 1}`,
-    })),
+    factors: verified.map((f, i) => {
+      const kind = kindOf(f.factor_type);
+      return { id: f.id, name: f.friendly_name?.trim() || fallbackName(kind, i + 1), kind };
+    }),
     // The clock is read here, with the data, not in a component's render.
     keyRecentlyConfirmed:
       current === "aal2" && keyUse !== undefined && Date.now() - keyUse * 1000 < KEY_RECONFIRM_MINUTES * 60_000,
@@ -138,9 +159,10 @@ export type SecurityKey = {
   /** "3 days ago", or null if never used to sign in. */
   lastUsedAgo: string | null;
   aaguid: string | null;
+  kind: FactorKind;
 };
 
-/** The caller's own keys, with model id and last use — migration 0022. */
+/** The caller's own keys and apps, with model id and last use — migration 0023. */
 export async function mySecurityKeys(): Promise<SecurityKey[]> {
   const supabase = await createClient();
   const { data } = await supabase.rpc("my_security_keys");
@@ -148,11 +170,12 @@ export async function mySecurityKeys(): Promise<SecurityKey[]> {
   const now = Date.now();
   return rows.map((k, i) => ({
     id: k.id,
-    name: k.name?.trim() || `Security key ${i + 1}`,
+    name: k.name?.trim() || fallbackName(kindOf(k.kind), i + 1),
     createdAt: k.created_at,
     lastUsedAt: k.last_used_at ?? null,
     lastUsedAgo: timeAgo(k.last_used_at, now),
     aaguid: k.aaguid ?? null,
+    kind: kindOf(k.kind),
   }));
 }
 

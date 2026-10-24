@@ -24,10 +24,16 @@ export async function GET() {
   const { data: staff } = user ? await supabase.rpc("is_staff") : { data: null };
   const admin = staff === true;
 
+  // Whether this session has done its second step — a claim in the token just
+  // validated by getUser(), read locally. SessionSync compares it, so a tab
+  // rendered for a confirmed session notices a sign-in elsewhere that hasn't.
+  const { data: level } = user ? await supabase.auth.mfa.getAuthenticatorAssuranceLevel() : { data: null };
+
   return NextResponse.json(
     {
       email: user?.email ?? null,
       admin,
+      verified: level?.currentLevel === "aal2",
       cartCount: cart.reduce((sum, line) => sum + line.qty, 0),
       // Which products are in the cart, so a product page can say "in your
       // cart" instead of offering to add the same thing again.

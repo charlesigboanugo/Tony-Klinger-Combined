@@ -26,7 +26,7 @@ export async function removeSecurityKeyAction(
   formData: FormData,
 ): Promise<KeyRemovalState> {
   const factorId = formData.get("factorId")?.toString();
-  if (!factorId) return { error: "No key given." };
+  if (!factorId) return { error: "Nothing chosen to remove." };
 
   // requireSession, not requireUser: this page is where a staff account at
   // the second-factor gate manages its keys (see the account layout).
@@ -40,10 +40,10 @@ export async function removeSecurityKeyAction(
   if (error) {
     if (error.hint === "reauth") return { reconfirm: true };
     if (error.hint === "minimum") {
-      return { error: `${error.message.replace(/^./, (c) => c.toUpperCase())}. Add another key first, then remove this one.` };
+      return { error: `${error.message.replace(/^./, (c) => c.toUpperCase())}. Add another first, then remove this one.` };
     }
-    if (error.code === "P0002") return { error: "That key is no longer on your account." };
-    return { error: "We couldn't remove that key. Please try again." };
+    if (error.code === "P0002") return { error: "That's no longer on your account." };
+    return { error: "We couldn't remove that. Please try again." };
   }
 
   // The gate passed and the removal is recorded; now the deletion itself.
@@ -53,7 +53,7 @@ export async function removeSecurityKeyAction(
     id: factorId,
   });
   if (deleteError) {
-    return { error: "The removal was recorded but the key could not be deleted. Please try again." };
+    return { error: "The removal was recorded but it could not be deleted. Please try again." };
   }
 
   revalidatePath("/account/security");

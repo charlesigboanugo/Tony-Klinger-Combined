@@ -137,8 +137,8 @@ export default async function AdminUserPage({ params }: PageProps<"/admin/users/
           that a customer who registers a key is asked for it at sign-in:
           losing the key means losing the account until this is done. */}
       <AdminSection
-        title="Security keys"
-        description="What this account signs in with, and how to hand it back if the key is lost."
+        title="Two-step verification"
+        description="The security keys and authenticator apps this account signs in with, and how to hand it back if one is lost."
       >
         <KeysForm userId={id} keys={keys} />
       </AdminSection>

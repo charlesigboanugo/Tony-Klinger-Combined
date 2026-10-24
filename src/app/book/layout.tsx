@@ -23,7 +23,7 @@ export default async function BookingsLayout({ children }: LayoutProps<"/book">)
 
   return (
     <div className="flex min-h-svh flex-col">
-      <SessionSync email={context.email} />
+      <SessionSync email={context.email} verified={context.hasSecondFactor} />
       <WorkspaceHeader
         label="Book"
         home="/book"

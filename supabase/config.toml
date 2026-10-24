@@ -339,10 +339,12 @@ auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 # Control how many MFA factors can be enrolled at once per user.
 max_enrolled_factors = 10
 
-# Control MFA via App Authenticator (TOTP)
+# Control MFA via App Authenticator (TOTP). On (owner, 2026-10-24): hosted
+# Supabase refuses WebAuthn MFA ("not currently supported"), so an authenticator
+# app is the second step there; on here too so local matches — note 05 §11.1.
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+enroll_enabled = true
+verify_enabled = true
 
 # Configure MFA via Phone Messaging
 [auth.mfa.phone]
@@ -352,9 +354,10 @@ otp_length = 6
 template = "Your code is {{ .Code }}"
 max_frequency = "5s"
 
-# MFA is WebAuthn only — note 05 §11.1. TOTP and phone above stay disabled
-# deliberately: a TOTP code can be phished into a replica of this site, a
-# WebAuthn credential is bound to the origin and cannot be replayed.
+# Security keys — note 05 §11.1. Preferred where available (a WebAuthn
+# credential is bound to the origin; a TOTP code can be phished), but only the
+# local stack allows them today. The site shows them where SECURITY_KEYS=on.
+# Phone above stays disabled.
 [auth.mfa.web_authn]
 enroll_enabled = true
 verify_enabled = true

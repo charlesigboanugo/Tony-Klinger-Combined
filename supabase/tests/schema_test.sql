@@ -6,7 +6,7 @@
 -- Runs inside a transaction that is rolled back, so tests never leave state.
 
 begin;
-select plan(187);
+select plan(191);
 
 -- ---------------------------------------------------------------------------
 -- Schema
@@ -1690,6 +1690,51 @@ select is(
   'an unpublished event is hidden from the public'
 );
 reset role;
+
+-- 0023: an authenticator app counts as a second step. Listed with its kind,
+-- and an app code on this session satisfies the "confirmed recently" gate.
+select set_config('test.app_user', gen_random_uuid()::text, true);
+select set_config('test.app_session', gen_random_uuid()::text, true);
+select set_config('test.app_factor', gen_random_uuid()::text, true);
+insert into auth.users (id, email, aud, role)
+values (current_setting('test.app_user')::uuid, 'app-user@test.local', 'authenticated', 'authenticated');
+insert into auth.sessions (id, user_id, aal, created_at, updated_at)
+values (current_setting('test.app_session')::uuid, current_setting('test.app_user')::uuid, 'aal2', now(), now());
+insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at, secret)
+values (current_setting('test.app_factor')::uuid, current_setting('test.app_user')::uuid, 'My phone', 'totp', 'verified', now(), now(), 'x');
+select set_config('request.jwt.claim.sub', current_setting('test.app_user'), true);
+select set_config('request.jwt.claims', json_build_object(
+  'sub', current_setting('test.app_user'), 'aal', 'aal2', 'session_id', current_setting('test.app_session'), 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is(
+  (select kind from public.my_security_keys() where id = current_setting('test.app_factor')::uuid),
+  'totp',
+  'an authenticator app is listed with its kind'
+);
+select throws_ok(
+  $$select public.authorise_security_key_removal(current_setting('test.app_factor')::uuid)$$,
+  '42501', 'reauthentication required',
+  'removing one without a recent second step asks for one'
+);
+reset role;
+insert into auth.mfa_amr_claims (id, session_id, created_at, updated_at, authentication_method)
+values (gen_random_uuid(), current_setting('test.app_session')::uuid, now(), now(), 'totp');
+set local role authenticated;
+select is(
+  public.authorise_security_key_removal(current_setting('test.app_factor')::uuid) ->> 'kind',
+  'totp',
+  'an app code in the last 10 minutes passes the removal gate'
+);
+reset role;
+select is(
+  (select count(*)::int from public.email_messages
+    where idempotency_key = 'security_key_removed:' || current_setting('test.app_factor')
+      and payload ->> 'kind' = 'totp'),
+  1,
+  'the removal email says it was an authenticator app'
+);
+select set_config('request.jwt.claims', '', true);
+select set_config('request.jwt.claim.sub', '', true);
 
 select * from finish();
 rollback;

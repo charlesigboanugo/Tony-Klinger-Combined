@@ -120,7 +120,7 @@ export default async function AdminSettingsPage() {
         <ul className="grid gap-4 sm:grid-cols-2">
           {[
             { href: "/admin/roles", icon: "shield" as IconName, label: "Roles and permissions", text: "What each staff role can do, and who holds it." },
-            { href: "/admin/users", icon: "users" as IconName, label: "People", text: "Accounts, their access, roles and security keys." },
+            { href: "/admin/users", icon: "users" as IconName, label: "People", text: "Accounts, their access, roles and two-step verification." },
             { href: "/admin/emails", icon: "mail" as IconName, label: "Email outbox", text: "Every transactional email and its delivery." },
             ...(can(context, "audit.read")
               ? [{ href: "/admin/audit", icon: "history" as IconName, label: "Audit log", text: "Every privileged change, who made it and why." }]

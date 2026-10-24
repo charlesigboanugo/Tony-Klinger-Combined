@@ -1,10 +1,9 @@
-import { headers } from "next/headers";
 
 import { AccountNav } from "@/components/account/AccountNav";
 import { Container } from "@/components/layout/Container";
 import { WorkspaceHeader } from "@/components/navigation/WorkspaceHeader";
 import { SessionSync } from "@/components/navigation/SessionSync";
-import { requireSession, requireUser } from "@/lib/permissions";
+import { requireSession } from "@/lib/permissions";
 
 /**
  * Account layout — note 04 §13, §31.
@@ -23,27 +22,22 @@ export default async function AccountLayout({
   children,
 }: LayoutProps<"/account">) {
   /*
-    ONE PATH IS EXEMPT from the second-factor gate: the key management page.
+    THE LAYOUT ONLY ASKS FOR A SESSION; each page asks for the second factor
+    (`requireUser`), and the key page itself does not (2026-10-24).
 
-    A staff account with no keys is sent there to enrol, and enrolling is the
-    only way it can ever reach `aal2` — gating it would be a closed loop with no
-    door. Everything else under /account asks for the factor, so a customer who
-    registered a key is challenged rather than quietly let past it.
-
-    The path comes from the proxy's own header (note 04 §32.1); a layout cannot
-    otherwise see which page it is rendering.
+    It used to redirect key-less staff from here, exempting the key page by
+    path. A redirect thrown by this layout to a page under this same layout,
+    during an in-browser navigation (the account menu's Orders, say), sent the
+    router into a loop: the key page was fetched without end and the screen
+    stayed blank. Redirects thrown by a page, or by another layout, do not do
+    this, so the gate now lives in the pages, where every one already had it.
   */
-  const pathname = (await headers()).get("x-pathname") ?? "";
-  const enrolling = pathname.startsWith("/account/security/mfa");
-
-  const context = enrolling
-    ? await requireSession("/account/security/mfa")
-    : await requireUser("/account");
+  const context = await requireSession("/account");
 
 
   return (
     <div className="flex min-h-svh flex-col">
-      <SessionSync email={context.email} />
+      <SessionSync email={context.email} verified={context.hasSecondFactor} />
       <WorkspaceHeader
         label="Account"
         home="/account"

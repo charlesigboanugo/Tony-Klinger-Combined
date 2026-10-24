@@ -45,7 +45,8 @@ export function SpareKeyBanner({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
-  const keys = `${verifiedFactors} security key${verifiedFactors === 1 ? "" : "s"}`;
+  // A key or an authenticator app — either counts (2026-10-24).
+  const keys = `${verifiedFactors} verification method${verifiedFactors === 1 ? "" : "s"}`;
 
   return (
     <div
@@ -69,10 +70,10 @@ export function SpareKeyBanner({
         <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning motion-safe:animate-[key-blink_1.4s_ease-in-out_infinite]" />
         {/* Shortest on the narrowest phones, longer as room allows; the full
             sentence from `sm` (owner, 2026-10-15). */}
-        <span className="min-[22.5rem]:hidden">{isOwner ? "2nd key" : "Key"}</span>
-        <span className="hidden min-[22.5rem]:inline sm:hidden">{isOwner ? "Second key" : "Spare key"}</span>
+        <span className="min-[22.5rem]:hidden">{isOwner ? "2nd" : "Backup"}</span>
+        <span className="hidden min-[22.5rem]:inline sm:hidden">{isOwner ? "Add a second" : "Add a backup"}</span>
         <span className="hidden sm:inline">
-          {isOwner ? "Register a second security key to continue" : "Add a spare security key"}
+          {isOwner ? "Add a second verification method to continue" : "Add a backup verification method"}
         </span>
       </Link>
 
@@ -89,24 +90,24 @@ export function SpareKeyBanner({
       >
         <div className="rounded-(--radius-lg) border border-border bg-surface p-4 text-sm shadow-lift">
           <p className="font-semibold text-foreground">
-            {isOwner ? "Why the owner needs two keys" : "Why add a second key?"}
+            {isOwner ? "Why the owner needs two" : "Why add a backup?"}
           </p>
           <p className="mt-2 leading-relaxed text-muted-foreground">
             {isOwner
-              ? `This account has ${keys}, and nobody else can recover an owner account. If that key is lost or the device breaks, the only way back in is direct work on the database.`
-              : `You have ${keys}. If that device is lost, broken or replaced, you are locked out of Admin until another administrator clears it for you.`}
+              ? `This account has ${keys}, and nobody else can recover an owner account. If that phone or key is lost or breaks, the only way back in is direct work on the database.`
+              : `You have ${keys}. If that phone or key is lost, broken or replaced, you are locked out of Admin until another administrator clears it for you.`}
           </p>
           <p className="mt-2 leading-relaxed text-muted-foreground">
             {isOwner
-              ? "With a second key you simply use the other one. Until it is registered, privileged actions are refused."
-              : "With a second key you simply sign in with the other one and carry on. It takes about a minute to add."}
+              ? "With a second one set up, you simply use the other. Until it is, privileged actions are refused."
+              : "With a second one set up, you simply sign in with the other and carry on. It takes about a minute to add."}
           </p>
           <Link
             href="/account/security/mfa"
             onClick={() => setOpen(false)}
             className="group mt-3 inline-flex items-center gap-1.5 rounded-sm font-medium text-primary underline decoration-current/40 underline-offset-4 transition-colors hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
-            Register a key
+            Add one
             <span
               aria-hidden="true"
               className="transition-transform duration-(--dur-base) ease-expo group-hover:translate-x-1 motion-reduce:transform-none"

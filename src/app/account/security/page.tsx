@@ -6,7 +6,7 @@ import { signOutOtherSessionsAction, signOutSessionAction } from "@/app/account/
 import { AccountHeader } from "@/components/account/AccountHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import { IconTile, type IconName, type IconTone } from "@/components/ui/Icon";
-import { REQUIRED_STAFF_FACTORS, getMfaState, mySecurityKeys, mySessions } from "@/lib/auth/mfa";
+import { REQUIRED_STAFF_FACTORS, SECURITY_KEYS_ENABLED, getMfaState, mySecurityKeys, mySessions } from "@/lib/auth/mfa";
 import { requireUser } from "@/lib/permissions";
 import { cn } from "@/lib/utils/cn";
 import { describeAuthenticator, describeDevice } from "@/lib/utils/device";
@@ -143,18 +143,25 @@ export default async function SecurityPage() {
         <SecurityCard
           id="keys"
           icon="key"
-          title="Security keys"
-          description="Your phone, computer or a hardware key confirms it's you — nothing to type, nothing to steal."
+          title="Two-step verification"
+          description={
+            SECURITY_KEYS_ENABLED
+              ? "After your password, a security key or an app on your phone confirms it's you."
+              : "After your password, a code from an app on your phone confirms it's you."
+          }
           state={keyState}
         >
           {count > 0 ? (
             <ul className="divide-y divide-border border-y border-border">
               {keys.map((key) => {
-                const where = describeAuthenticator(key.aaguid);
+                const where =
+                  key.kind === "app"
+                    ? key.name.startsWith("Authenticator app") ? null : "Authenticator app"
+                    : describeAuthenticator(key.aaguid);
                 return (
                   <ItemRow
                     key={key.id}
-                    icon="key"
+                    icon={key.kind === "app" ? "phone" : "key"}
                     tone="accent"
                     title={key.name}
                     meta={
@@ -171,8 +178,8 @@ export default async function SecurityPage() {
           ) : (
             <p className="rounded-(--radius) border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
               {context.isStaff
-                ? "No keys yet. Staff accounts need one before reaching the admin area."
-                : "No keys yet. Optional, but far stronger than a password alone."}
+                ? "Not set up yet. Staff accounts need it before reaching the admin area."
+                : "Not set up yet. Optional, but far stronger than a password alone."}
             </p>
           )}
 
@@ -181,18 +188,18 @@ export default async function SecurityPage() {
               {count === 0
                 ? "Takes under a minute."
                 : shortOfSpare
-                  ? `${count} key registered — add a spare on a second device so losing one isn't a lockout.`
-                  : `${count} key${count === 1 ? "" : "s"} registered.`}
+                  ? `${count} set up — add a backup (${SECURITY_KEYS_ENABLED ? "a second phone or a key" : "an app on a second phone"}) so losing one isn't a lockout.`
+                  : `${count} set up.`}
               {/* Whether THIS session presented a key is different from
                   whether the account has one, and staff are gated on it. */}
               {context.isStaff && count > 0
                 ? mfa.current === "aal2"
                   ? " This session is verified."
-                  : " You'll be asked for a key when you open the admin area."
+                  : " You'll be asked to confirm it's you when you open the admin area."
                 : ""}
             </p>
             <ButtonLink href="/account/security/mfa" variant={count === 0 ? "primary" : "outline"} size="sm">
-              {count === 0 ? "Set up a security key" : "Manage security keys"}
+              {count === 0 ? "Set it up" : "Manage"}
             </ButtonLink>
           </div>
         </SecurityCard>
@@ -241,7 +248,7 @@ export default async function SecurityPage() {
                       {" · signed in "}
                       {ukDay(session.createdAt)}
                       {session.ip ? ` · ${session.ip}` : ""}
-                      {session.verifiedWithKey ? " · confirmed with a key" : ""}
+                      {session.verifiedWithKey ? " · confirmed with a second step" : ""}
                     </>
                   }
                   trailing={
@@ -293,10 +300,10 @@ export default async function SecurityPage() {
 
       {context.isStaff ? (
         <p className="mt-6 text-sm text-muted-foreground">
-          Lost every key? Recovery is performed by another administrator and is
-          recorded in the audit log. There is deliberately no self-service
-          reset, since that would make a security key only as strong as the
-          email account behind it.
+          Lost your phone or key? Recovery is performed by another administrator
+          and is recorded in the audit log. There is deliberately no
+          self-service reset, since that would make the second step only as
+          strong as the email account behind it.
         </p>
       ) : null}
     </>

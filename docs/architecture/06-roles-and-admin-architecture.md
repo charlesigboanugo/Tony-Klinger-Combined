@@ -1031,14 +1031,16 @@ For resource-specific operations, perform an additional resource ownership/scope
 ## 25.1 Staff Multi-Factor Authentication
 
 Every staff account — `owner`, `admin` and every operational role — must hold a verified
-WebAuthn factor. Customers may enrol one but are never required to (note 05 §11.1).
+second factor: a security key (WebAuthn) or, since 2026-10-24, an authenticator app (TOTP),
+because hosted Supabase refuses WebAuthn MFA. Customers may enrol one but are never
+required to (note 05 §11.1).
 
 Admin access therefore requires three things, not two:
 
 ```text
 Authenticated user
         +
-Verified WebAuthn factor for this session   (aal2)
+Verified key or app code for this session  (aal2)
         +
 Appropriate permission
 ```

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { DEFAULT_REDIRECT, safeRedirect } from "@/lib/auth/safe-redirect";
 import { getMfaState } from "@/lib/auth/mfa";
+import { getAuthContext, secondFactorDestination } from "@/lib/permissions";
 import { claimWelcome } from "@/lib/auth/welcome";
 import { queueEmail } from "@/lib/email/send";
 import { publicEnv } from "@/lib/env/public";
@@ -86,8 +87,19 @@ export async function signInAction(
  */
 async function afterPassword(destination: string): Promise<string> {
   const { current, next } = await getMfaState();
-  if (current === "aal2" || next !== "aal2") return destination;
-  return `/auth/2fa?next=${encodeURIComponent(destination)}`;
+  if (current === "aal2") return destination;
+  if (next === "aal2") return `/auth/2fa?next=${encodeURIComponent(destination)}`;
+
+  /*
+    STAFF WITH NO KEY YET go straight to registering one (2026-10-24). They
+    used to land on the destination — for a first sign-in, the welcome page —
+    which then redirected them to the key page; that second redirect, straight
+    after this one, left a blank screen. The key page returns them to where
+    they were going once a key is registered.
+  */
+  const context = await getAuthContext();
+  if (context?.mfaRequired) return secondFactorDestination(context, destination);
+  return destination;
 }
 
 export async function signUpAction(

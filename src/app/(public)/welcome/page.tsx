@@ -179,8 +179,8 @@ export default async function WelcomePage({
 
           {context.isStaff ? (
             <div className="mx-auto mt-14 max-w-2xl rounded-(--radius) border border-warning bg-warning/10 p-5 text-center text-sm">
-              This account holds a staff role, which needs a security key before
-              the admin workspace will open.{" "}
+              This account holds a staff role, which needs two-step verification
+              before the admin workspace will open.{" "}
               <Link
                 href="/account/security"
                 className="font-semibold underline underline-offset-4 hover:text-accent"

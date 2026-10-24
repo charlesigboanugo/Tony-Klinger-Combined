@@ -151,7 +151,7 @@ export class AccessDeniedError extends Error {
  *   no keys   -> ENROL. Only then is the settings page the right destination,
  *                because there is genuinely something to set up.
  */
-function secondFactorDestination(
+export function secondFactorDestination(
   context: AuthContext,
   returnTo?: string,
 ): string {

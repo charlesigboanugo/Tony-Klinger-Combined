@@ -4,6 +4,7 @@ import { ClaimForm } from "@/app/account/claim/ClaimForm";
 import { AccountHeader } from "@/components/account/AccountHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { requireUser } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Claim your purchase", robots: { index: false } };
 
@@ -17,6 +18,9 @@ export const metadata: Metadata = { title: "Claim your purchase", robots: { inde
 export default async function ClaimPage({ searchParams }: PageProps<"/account/claim">) {
   const params = await searchParams;
   const token = typeof params.token === "string" ? params.token : null;
+  // The account layout asks only for a session; the second factor is each
+  // page's to ask (2026-10-24). Returns here with the token once it is given.
+  await requireUser(`/account/claim${token ? `?token=${encodeURIComponent(token)}` : ""}`);
   // Set on a gift's link (lib/commerce/notify): wording only — the recipient
   // did not buy it (owner, 2026-10-23). The token decides what is claimed.
   const gift = params.gift === "1";
