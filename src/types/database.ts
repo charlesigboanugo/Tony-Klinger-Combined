@@ -3029,6 +3029,7 @@ export type Database = {
         Args: { p_id: string; p_provider_id: string }
         Returns: undefined
       }
+      marketing_opted_out: { Args: { p_email: string }; Returns: boolean }
       membership_grace_days: { Args: never; Returns: number }
       membership_of: {
         Args: { p_user_id: string }
@@ -3185,6 +3186,15 @@ export type Database = {
           p_user_id?: string
         }
         Returns: string
+      }
+      record_soft_opt_in: {
+        Args: {
+          p_consent_text?: string
+          p_consent_url?: string
+          p_email: string
+          p_user_id?: string
+        }
+        Returns: boolean
       }
       register_for_event: { Args: { p_event_id: string }; Returns: Json }
       register_for_run: { Args: { p_run_id: string }; Returns: Json }

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
-import { removeFromList } from "@/lib/email/contacts";
+import { removeFromAllLists } from "@/lib/email/audience";
+import { addToList } from "@/lib/email/contacts";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/supabase/server";
 
@@ -31,15 +32,23 @@ export async function updateMarketingPreference(formData: FormData) {
       p_consent_url: "/account/notifications",
       p_user_id: user.id,
     });
+
+    // Recorded first, as on the newsletter form: our database is the evidence
+    // and the list only the sending audience. A failed add is retried by the
+    // daily sync from the consent row (owner, 2026-10-25 — this page used to
+    // record the opt-in and never tell Brevo).
+    // `resubscribe`: if they unsubscribed with the link in an email, Brevo
+    // holds them as unsubscribed, and this press is their own fresh opt-in.
+    const sync = await addToList("newsletter", user.email, undefined, { resubscribe: true });
+    if (!sync.ok) console.error("newsletter list sync failed", { error: sync.error });
   } else {
     await admin.rpc("withdraw_marketing_consent", { p_email: user.email });
 
     // Removed from the marketing audiences immediately rather than waiting for
     // a scheduled sync — somebody who has just opted out should not receive a
-    // campaign sent in the meantime.
-    await removeFromList("newsletter", user.email);
-    await removeFromList("customers", user.email);
-    await removeFromList("members", user.email);
+    // campaign sent in the meantime. A removal that fails is retried by the
+    // daily sync, and nothing adds them back while the withdrawal stands.
+    await removeFromAllLists(user.email);
   }
 
   revalidatePath("/account/notifications");

@@ -4,6 +4,7 @@ import { updateMarketingPreference } from "@/app/account/notifications/actions";
 import { AccountHeader } from "@/components/account/AccountHeader";
 import { IconTile } from "@/components/ui/Icon";
 import { SubmitButton } from "@/components/ui/SubmitButton";
+import { unsubscribedInBrevo } from "@/lib/email/contacts";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireUser } from "@/lib/permissions";
 
@@ -23,7 +24,16 @@ export default async function Page() {
     .eq("email", (context.email ?? "").toLowerCase());
 
   const rows = data ?? [];
-  const optedIn = rows.some((r) => !r.withdrawn_at);
+  let optedIn = rows.some((r) => !r.withdrawn_at);
+
+  // Unsubscribed with the link in one of our emails: Brevo knows, our record
+  // did not. Recorded here so the page tells the truth and the daily sync
+  // stops trying to add them (owner, 2026-10-25).
+  const unsubscribedByLink = optedIn && (await unsubscribedInBrevo(context.email ?? "")) === true;
+  if (unsubscribedByLink) {
+    await admin.rpc("withdraw_marketing_consent", { p_email: context.email ?? "" });
+    optedIn = false;
+  }
 
   return (
     <>
@@ -91,7 +101,9 @@ export default async function Page() {
                 ? `Recorded ${new Date(
                     rows.find((r) => !r.withdrawn_at)!.granted_at,
                   ).toLocaleDateString("en-GB")}.`
-                : "You will still receive service emails about your account."}
+                : unsubscribedByLink
+                  ? "You unsubscribed using the link in one of our emails. You will still receive service emails about your account."
+                  : "You will still receive service emails about your account."}
             </p>
           ) : null}
           </div>

@@ -62,14 +62,16 @@ export async function notifyPaidOrder(
         queued += 1;
       }
     }
-  } else if (payer) {
-    // Soft opt-in: details obtained in the course of a sale. The opt-out shown
-    // at checkout and in every message is what makes this lawful, and
-    // addToList skips anyone who has since unsubscribed.
-    await recordCustomer(payer);
   }
 
   if (payer) {
+    // Soft opt-in: details obtained in the course of a sale. The opt-out shown
+    // at checkout and in every message is what makes this lawful, and
+    // recordCustomer skips anyone who has opted out. It is the PAYER, for a
+    // guest or gift order too (owner, 2026-10-25): they bought and saw the
+    // notice. Never a gift's recipient, who did neither.
+    await recordCustomer(payer);
+
     if (
       await queueEmail({
         idempotencyKey: `receipt:${orderId}`,

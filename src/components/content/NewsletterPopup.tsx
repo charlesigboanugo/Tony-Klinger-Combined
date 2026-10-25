@@ -20,7 +20,11 @@ import { Wordmark } from "@/components/navigation/Wordmark";
  *   - not on checkout, cart or sign-in pages, where it would get in the way
  *     of the thing the visitor came to do;
  *   - never for someone who subscribed in this browser, and not again for 30
- *     days after it was closed.
+ *     days after it was closed;
+ *   - never for a signed-in visitor already getting the letters (owner,
+ *     2026-10-25). Opened by hand, it tells them so instead of the form.
+ *     Asked from /api/session only when it is about to open, so no extra
+ *     request per page view.
  *
  * WHY LOCAL STORAGE, NOT THE SERVER. Subscription lives with the email
  * provider and is keyed by address, and an anonymous visitor has no address
@@ -63,6 +67,16 @@ function write(value: Stored) {
   }
 }
 
+/** Whether the signed-in visitor is already subscribed. False when unknown. */
+async function alreadySubscribed(): Promise<boolean> {
+  try {
+    const r = await fetch("/api/session", { cache: "no-store" });
+    return r.ok ? (await r.json()).subscribed === true : false;
+  } catch {
+    return false;
+  }
+}
+
 /** Opens the popup from anywhere — the footer button uses this. */
 export function openNewsletter() {
   window.dispatchEvent(new Event(OPEN_EVENT));
@@ -71,11 +85,15 @@ export function openNewsletter() {
 export function NewsletterPopup() {
   const dialog = useRef<HTMLDialogElement | null>(null);
   const [open, setOpen] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
   const pathname = usePathname();
 
   const show = useCallback(() => {
     const el = dialog.current;
     if (!el || el.open) return;
+    // Opened by hand: show at once, and swap the form for "already
+    // subscribed" if the answer says so.
+    void alreadySubscribed().then(setSubscribed);
     el.showModal();
     // Next frame, so the closed styles are painted first and the transition
     // has something to run from.
@@ -120,7 +138,10 @@ export function NewsletterPopup() {
     const maybeOpen = () => {
       if (seconds && scrolled) {
         cleanup();
-        show();
+        void alreadySubscribed().then((yes) => {
+          if (yes) write({ state: "subscribed" });
+          else show();
+        });
       }
     };
     const timer = window.setTimeout(() => {
@@ -181,7 +202,17 @@ export function NewsletterPopup() {
         </p>
 
         <div className="mt-8">
-          <NewsletterSignup variant="compact" heading="Your email" onSubscribed={onSubscribed} />
+          {subscribed ? (
+            <p role="status" className="font-medium text-foreground">
+              You&apos;re already getting Tony&apos;s letters. You can change that in{" "}
+              <a href="/account/notifications" className="underline underline-offset-4">
+                your notification settings
+              </a>
+              .
+            </p>
+          ) : (
+            <NewsletterSignup variant="compact" heading="Your email" onSubscribed={onSubscribed} />
+          )}
         </div>
       </div>
     </dialog>

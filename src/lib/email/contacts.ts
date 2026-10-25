@@ -14,8 +14,10 @@ import { requireServerEnv } from "@/lib/env/server";
  *      not one of ours is refused, so the client's lists are unreachable even
  *      by a caller that passes the wrong number.
  *   2. Nothing here deletes a contact or a list.
- *   3. `emailBlacklisted` is NEVER sent. Clearing it would resurrect somebody
- *      who unsubscribed.
+ *   3. `emailBlacklisted` is never sent, with ONE exception: `resubscribe`,
+ *      when the person themselves presses Subscribe while signed in (owner,
+ *      2026-10-25). Anywhere else, clearing it would resurrect somebody who
+ *      unsubscribed.
  *
  * AN UNSUBSCRIBE IN BREVO IS FINAL AND WINS OVER ANYTHING WE WANT TO DO.
  *
@@ -103,15 +105,41 @@ async function isUnsubscribed(email: string): Promise<boolean> {
 }
 
 /**
+ * Whether Brevo holds this address as unsubscribed, for SHOWING it — Account →
+ * Notifications, so an unsubscribe made with the link in an email is not shown
+ * as "Subscribed" (owner, 2026-10-25).
+ *
+ * `undefined` when we cannot tell (syncing off, Brevo unreachable): the page
+ * then goes by our own record. Adding to a list still uses `isUnsubscribed`,
+ * which fails closed.
+ */
+export async function unsubscribedInBrevo(email: string): Promise<boolean | undefined> {
+  if (!enabled()) return undefined;
+  try {
+    const { status, body } = await api(`/contacts/${encodeURIComponent(email)}`);
+    if (status === 404) return false;
+    if (status !== 200) return undefined;
+    return body.emailBlacklisted === true;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Add somebody to one of our lists, creating the contact if needed.
  *
  * Refuses silently and safely when: syncing is off, the list is not configured,
- * or the person has unsubscribed.
+ * or the person has unsubscribed — unless `resubscribe` is set (see rule 3).
  */
 export async function addToList(
   list: ManagedList,
   email: string,
   attributes?: Record<string, unknown>,
+  options: {
+    /** ONLY for the person's own Subscribe press while signed in: clears a
+     *  Brevo unsubscribe, because this is their fresh opt-in. */
+    resubscribe?: boolean;
+  } = {},
 ): Promise<ContactResult> {
   if (!enabled()) return { ok: true, skipped: "transport_off" };
 
@@ -119,7 +147,7 @@ export async function addToList(
   if (!id) return { ok: true, skipped: "not_configured" };
 
   try {
-    if (await isUnsubscribed(email)) {
+    if (!options.resubscribe && (await isUnsubscribed(email))) {
       return { ok: true, skipped: "unsubscribed" };
     }
 
@@ -131,8 +159,10 @@ export async function addToList(
         // Updates the contact if it already exists rather than failing.
         updateEnabled: true,
         ...(attributes ? { attributes } : {}),
-        // emailBlacklisted is deliberately absent. Sending it — even as false —
-        // could clear somebody's unsubscribe.
+        // emailBlacklisted is deliberately absent unless the person is
+        // re-subscribing themselves. Sending it — even as false — clears an
+        // unsubscribe.
+        ...(options.resubscribe ? { emailBlacklisted: false } : {}),
       }),
     });
 
@@ -178,8 +208,11 @@ export async function removeFromList(
       body: JSON.stringify({ emails: [email] }),
     });
 
-    // 404 means they were not on it, which is the state we wanted anyway.
+    // Not on it is the state we wanted anyway. Brevo says so with a 404, or —
+    // as it actually answers (checked 2026-10-25) — a 400 "Contact already
+    // removed from list and/or does not exist".
     if (status === 201 || status === 204 || status === 404) return { ok: true };
+    if (status === 400 && /already removed/i.test(String(body.message ?? ""))) return { ok: true };
 
     return { ok: false, error: `brevo list remove ${status}: ${JSON.stringify(body).slice(0, 160)}` };
   } catch (error) {

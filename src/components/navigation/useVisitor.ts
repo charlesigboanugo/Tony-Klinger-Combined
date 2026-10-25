@@ -6,6 +6,8 @@ export type Visitor = {
   email: string | null;
   /** Holds a staff role, so the account menu offers Admin. Display only. */
   admin: boolean;
+  /** Signed in and getting the letters (a live marketing consent). */
+  subscribed: boolean;
   cartCount: number;
   cartSlugs: string[];
 };

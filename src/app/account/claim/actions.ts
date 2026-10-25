@@ -3,7 +3,10 @@
 import { redirect } from "next/navigation";
 
 import { hashToken } from "@/lib/commerce/claim";
+import { addToList } from "@/lib/email/contacts";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { NEWSLETTER_CONSENT_TEXT } from "@/lib/validation/newsletter-copy";
 
 export type ClaimState = { error?: string };
 
@@ -44,6 +47,7 @@ export async function claimOrderAction(
 
   switch (result?.status) {
     case "ok":
+      if (formData.get("news") === "on" && user.email) await joinNewsletter(user.id, user.email);
       redirect("/account/orders?claimed=1");
     case "expired":
       return {
@@ -61,6 +65,30 @@ export async function claimOrderAction(
           "That claim link isn't valid. If you've already claimed this purchase, it's in your orders.",
       };
   }
+}
+
+/**
+ * The news box a gift's recipient can tick when claiming (owner, 2026-10-25).
+ *
+ * Explicit opt-in, recorded with the wording shown before Brevo is told, as on
+ * the newsletter form. `resubscribe`, as on Account → Notifications: they are
+ * signed in and ticked it themselves, so it is a fresh opt-in. Never fails the
+ * claim it rides on.
+ */
+async function joinNewsletter(userId: string, email: string) {
+  const { error } = await createAdminClient().rpc("record_marketing_consent", {
+    p_email: email,
+    p_source: "newsletter_form",
+    p_consent_text: NEWSLETTER_CONSENT_TEXT,
+    p_consent_url: "/account/claim",
+    p_user_id: userId,
+  });
+  if (error) {
+    console.error("consent record failed", { message: error.message });
+    return;
+  }
+  const sync = await addToList("newsletter", email, undefined, { resubscribe: true });
+  if (!sync.ok) console.error("newsletter list sync failed", { error: sync.error });
 }
 
 /**

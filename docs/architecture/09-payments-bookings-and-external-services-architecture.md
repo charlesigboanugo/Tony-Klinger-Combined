@@ -1469,6 +1469,42 @@ event from the platform welcome in note 05 §7.3, which follows first sign-in an
 transactionally — subscribing to a newsletter and creating an account are not the same act,
 and one does not imply the other.
 
+### 42.4 When people join and leave the lists (implemented, 2026-10-25)
+
+`src/lib/email/audience.ts`, Brevo only where `EMAIL_TRANSPORT=brevo`. Our
+`marketing_consents` table is the evidence; the lists are only sending audiences.
+
+```text
+Newsletter   newsletter form, Subscribe in Account → Notifications, or the unticked
+             news box a gift's recipient sees when claiming (explicit opt-in)
+Customers    every paid order's PAYER (soft opt-in) — guest, gift buyer or account
+             holder alike; never a gift's recipient, who neither bought nor saw the
+             notice. A 'checkout' consent row is written first, so the buyer shows
+             as subscribed and can leave from the page
+Members      a Stripe subscription becomes active; removed when it ends.
+             Empty while nothing is sold as a subscription
+Unsubscribe  Account → Notifications: every consent row withdrawn, off all three lists
+```
+
+An unsubscribe made with the link in a Brevo email is picked up when the person next opens
+Account → Notifications: the page asks Brevo, and if the address is unsubscribed there it
+records the withdrawal and shows "Not subscribed". Pressing Subscribe on that page is the
+one place the site clears Brevo's unsubscribe flag (`addToList(…, { resubscribe: true })`),
+because it is the person's own fresh opt-in; the gift-claim news box does the same.
+Everywhere else the flag is never sent.
+
+The newsletter popup does not open by itself for a signed-in visitor already getting the
+letters, and opened by hand it says so instead of showing the form. `/api/session` answers
+`subscribed` (a live consent row for their email); the popup asks only when about to open.
+
+**An opt-out on the site holds against every list.** Every add checks
+`marketing_opted_out` (migration 0024: the address has consent rows and none is live) as
+well as Brevo's own unsubscribe flag. A later purchase does not undo it
+(`record_soft_opt_in` writes no row for an opted-out address); only a fresh opt-in the
+person makes does. The daily `sync-audiences` job re-adds active members (skipping opt-outs)
+and retries the last 7 days of Newsletter / Customers adds and opt-out removals that failed
+at the time.
+
 ---
 
 ---
@@ -1514,7 +1550,7 @@ reconcile-stripe     every 15 minutes   fulfil orders Stripe says were paid (§4
 expire-entitlements  hourly             transition lapsed access to expired
 cleanup-tokens       daily              remove spent one-time tokens
 cleanup-uploads      daily              remove Media uploads never saved (2026-10-15)
-sync-audiences       daily              reconcile the Members email list with who holds access
+sync-audiences       daily              reconcile Members; retry the last week's list adds and opt-outs (§42.4)
 sync-stripe          hourly             mirror products and prices to Stripe (§12.1)
 event-reminders      every 15 minutes   event tickets: day-before reminder, link again at the start
 session-reminders    every 15 minutes   coaching sessions: the same two reminders (2026-10-16)
@@ -2026,3 +2062,4 @@ at every stage of the customer and administrative workflows.
 | 2026-10-24 | §44: test-deploy scheduler moved from GitHub Actions (late and mostly skipped runs) to Google Apps Script (`scripts/apps-script/scheduled-jobs.gs`); workflow deleted. |
 | 2026-10-23 | §44: test deploy scheduled by GitHub Actions (`.github/workflows/scheduled-jobs.yml`, same schedules as `vercel.json.test`) while Vercel is on Hobby; removed when Vercel Cron is switched on at launch. |
 | 2026-10-23 | §28.1: sale status `ended`, and `past`/`unscheduled` for series without a run to start (migration 0022). §42: one `notifyPaidOrder` for webhook and reconciliation; guest and gift payers get a receipt; recovered gifts' claim links go to the recipient; applicants get `retreat_application_sent`. |
+| 2026-10-25 | §42.4 (new): when people join and leave the Newsletter, Customers and Members lists. An opt-out made on the site now holds against every list (migration 0024: `marketing_opted_out`, `record_soft_opt_in`); buyers get a `checkout` consent row; Subscribe in Account → Notifications now adds to Newsletter; `sync-audiences` retries the last week's failed adds and removals. Unsubscribes made with the link in a Brevo email are picked up on the Notifications page, and Subscribe there clears Brevo's flag (the only place that does). Customers now takes every payer (guest and gift buyers too), never a gift's recipient. A gift's recipient can tick an unticked news box when claiming; the newsletter popup stays closed for signed-in subscribers (`/api/session` `subscribed`). |

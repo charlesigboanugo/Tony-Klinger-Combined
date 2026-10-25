@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { readCart } from "@/lib/commerce/cart";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -29,9 +30,23 @@ export async function GET() {
   // rendered for a confirmed session notices a sign-in elsewhere that hasn't.
   const { data: level } = user ? await supabase.auth.mfa.getAuthenticatorAssuranceLevel() : { data: null };
 
+  // Already getting the letters, so the newsletter popup neither opens by
+  // itself nor offers the form again (owner, 2026-10-25). Keyed on email with
+  // the service role, as Account → Notifications reads it: a buyer's or
+  // newsletter row may carry no user id.
+  const { data: consents } = user?.email
+    ? await createAdminClient()
+        .from("marketing_consents")
+        .select("id")
+        .eq("email", user.email.toLowerCase())
+        .is("withdrawn_at", null)
+        .limit(1)
+    : { data: null };
+
   return NextResponse.json(
     {
       email: user?.email ?? null,
+      subscribed: (consents ?? []).length > 0,
       admin,
       verified: level?.currentLevel === "aal2",
       cartCount: cart.reduce((sum, line) => sum + line.qty, 0),

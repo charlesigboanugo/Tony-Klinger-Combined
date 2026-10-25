@@ -147,7 +147,8 @@ export async function reconcileStripeOrders() {
 
 /** The registry the cron route dispatches on. */
 /**
- * Reconcile the Members list against active subscriptions.
+ * Reconcile the marketing lists: Members against active subscriptions, and
+ * the last week's Newsletter / Customers adds and opt-outs retried.
  *
  * Event-driven syncing from the webhook is the primary path; this catches what
  * that misses, because Vercel Cron does not retry and a webhook can be dropped.
