@@ -76,10 +76,14 @@ export default async function MfaPage({
   // A key where keys are switched off can't be challenged (Supabase refuses).
   const usable = mfa.factors.filter((f) => f.kind === "app" || SECURITY_KEYS_ENABLED).length;
 
-  // The same minimum the database enforces on removal (migration 0022):
-  // an owner keeps two, other staff one, customers none.
+  // The same minimum the database enforces on removal (migrations 0022,
+  // 0025): an owner keeps two, other staff one, customers none — counting
+  // only methods that can sign in here. A key where keys are switched off
+  // protects nothing, so it can always be removed.
   const minimum = context.roles.includes("owner") ? 2 : context.isStaff ? 1 : 0;
-  const atMinimum = keys.length <= minimum;
+  const atMinimum = usableCount <= minimum;
+  const keyUnusable = (kind: string) => kind === "key" && !SECURITY_KEYS_ENABLED;
+  const removable = (kind: string) => !(atMinimum && minimum > 0) || keyUnusable(kind);
   const recentlyConfirmed = mfa.keyRecentlyConfirmed;
 
   /*
@@ -230,7 +234,7 @@ export default async function MfaPage({
                       </div>
                       {/* Nothing to remove with until this session is confirmed: the
                           database would refuse it, so the button isn't offered. */}
-                      {needsVerification ? null : atMinimum && minimum > 0 ? (
+                      {needsVerification ? null : !removable(key.kind) ? (
                         <span className="text-xs text-muted-foreground">Required — add another to remove</span>
                       ) : (
                         <RemoveKey factorId={key.id} name={key.name} />
@@ -242,7 +246,7 @@ export default async function MfaPage({
             </ul>
           )}
 
-          {keys.length > 0 && !needsVerification && !recentlyConfirmed && !atMinimum ? (
+          {keys.some((k) => removable(k.kind)) && !needsVerification && !recentlyConfirmed ? (
             <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
               Removing one asks you to confirm it&apos;s you first, if you haven&apos;t in the last{" "}
               {KEY_RECONFIRM_MINUTES} minutes.

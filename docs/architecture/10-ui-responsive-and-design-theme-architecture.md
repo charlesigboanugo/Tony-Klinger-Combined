@@ -550,6 +550,12 @@ On a phone the screen is already narrow, so nothing should narrow it further:
   visitor page.
 - Settings cards with a long description (Account → Notifications) put the icon above the text,
   as Security, Billing and Profile do.
+- The same holds for button-like controls that are not `Button`: the option switch (retreat
+  levels, session counts) shrinks under 380px and wraps a label inside its segment as a last
+  resort; the Admin header's backup-method prompt is a round key button on phones, a short label
+  from `sm` and the full sentence from `md` (its words ran under the Account button). Checked at
+  320px over every visitor, customer and Admin page, headers included; controls inside a region
+  built to scroll sideways (Admin tables, carousels) are exempt.
 
 ---
 
@@ -2458,3 +2464,4 @@ ABOVE the heading instead. The same holds in navigation trees: a group's pages s
 group name's text (Admin nav).
 | 2026-10-15 | Responsive sweep at 320px over every reachable visitor (140), customer (120) and admin (160) page; all fit. Fixes: product-page and blog grids held to the screen (`grid-cols-1` below their breakpoints: an implicit column grew to its widest child); purchase panel and phone buy bar wrap/shrink; Notifications button short label on phones; admin filter/sort menus anchor right by default (a closed panel off the right edge widened the page); admin header on phones shows the spare-key chip as a dot and drops the logo under 24rem (owner). |
 | 2026-10-26 | §15.1 (new): phones use the width — no reading caps or heavy padding below `sm`, headings balanced from `sm` only, tile/text/action rows wrap the action under the text, icon cards stack, list names wrap; buttons never overflow their card or the screen (one line when it fits, smaller under 380px); Notifications icons above the text. Applied across Account and Academy. |
+| 2026-10-26 | §15.1: option switch and Admin header backup prompt brought under the no-overflow rule; Give-Get-Go section links step down under 380px. Checked at 320px on every visitor, customer and Admin page, headers included. |

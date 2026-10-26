@@ -267,7 +267,7 @@ function IndexLink({
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className="group block outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
     >
-      <span className="flex items-center gap-2 font-display text-xl font-semibold transition-colors duration-(--dur-fast) group-hover:text-accent sm:text-2xl">
+      <span className="flex items-center gap-2 font-display text-xl font-semibold transition-colors duration-(--dur-fast) group-hover:text-accent max-[380px]:text-base sm:text-2xl">
         {label}
         {external ? (
           <ExternalMark className="h-3.5 w-3.5 shrink-0 opacity-80" />

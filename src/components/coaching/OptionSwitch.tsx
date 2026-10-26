@@ -64,10 +64,14 @@ export function OptionSwitch({
 
   const item = (active: boolean) =>
     cn(
-      "flex min-w-0 flex-col items-center justify-center rounded-full text-center font-semibold whitespace-nowrap",
+      // Labels stay inside their segment (owner, 2026-10-26): smaller under
+      // 380px, and as a last resort a label wraps rather than running out.
+      "flex min-w-0 flex-col items-center justify-center rounded-full text-center leading-tight font-semibold text-balance",
       "transition-[background-color,color,box-shadow] duration-(--dur-base) ease-expo",
       "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-      size === "sm" ? "min-h-8 px-3.5 py-1 text-xs" : "min-h-10 px-4 py-1.5 text-sm sm:px-5",
+      size === "sm"
+        ? "min-h-8 px-3.5 py-1 text-xs max-[380px]:px-2.5"
+        : "min-h-10 px-4 py-1.5 text-sm max-[380px]:px-2 max-[380px]:text-[0.8125rem] sm:px-5",
       stretch && "flex-1",
       active
         ? "bg-button text-button-foreground shadow-card"

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { SECURITY_KEYS_ENABLED } from "@/lib/auth/mfa";
 import { requireSession } from "@/lib/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -35,12 +36,19 @@ export async function removeSecurityKeyAction(
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("authorise_security_key_removal", {
     p_factor_id: factorId,
+    // Where keys are switched off only authenticator apps count towards the
+    // minimum, and a key can always go (migration 0025).
+    p_keys_usable: SECURITY_KEYS_ENABLED,
   });
 
   if (error) {
     if (error.hint === "reauth") return { reconfirm: true };
     if (error.hint === "minimum") {
-      return { error: `${error.message.replace(/^./, (c) => c.toUpperCase())}. Add another first, then remove this one.` };
+      return {
+        error: SECURITY_KEYS_ENABLED
+          ? `${error.message.replace(/^./, (c) => c.toUpperCase())}. Add another first, then remove this one.`
+          : `${error.message.replace(/^./, (c) => c.toUpperCase())} that can sign in here. Add another authenticator app first, then remove this one.`,
+      };
     }
     if (error.code === "P0002") return { error: "That's no longer on your account." };
     return { error: "We couldn't remove that. Please try again." };

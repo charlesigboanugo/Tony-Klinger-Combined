@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 
+import { Icon } from "@/components/ui/Icon";
+
 /**
  * Prompt for a second security key — note 05 §11.1.
  *
@@ -47,6 +49,7 @@ export function SpareKeyBanner({
 
   // A key or an authenticator app — either counts (2026-10-24).
   const keys = `${verifiedFactors} verification method${verifiedFactors === 1 ? "" : "s"}`;
+  const label = isOwner ? "Add a second verification method to continue" : "Add a backup verification method";
 
   return (
     <div
@@ -60,21 +63,28 @@ export function SpareKeyBanner({
       onFocus={() => setOpen(true)}
       onBlur={() => setOpen(false)}
     >
+      {/* Phones: a round key button the size of the Account button, the
+          blinking dot as its badge — the words ran out of the pill and under
+          the Account button there (owner, 2026-10-26). A short label from `sm`,
+          the full sentence from `md`. The label carries the sentence for screen readers at every
+          size. */}
       <Link
         href="/account/security/mfa"
         aria-describedby={cardId}
-        className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full border border-warning bg-warning/10 px-2.5 py-1.5 text-sm font-medium whitespace-nowrap text-warning transition-colors tiny:gap-1 tiny:px-2 tiny:py-1 tiny:text-xs sm:gap-2 sm:px-3 hover:bg-warning/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        aria-label={label}
+        className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-warning bg-warning/10 text-sm font-medium text-warning transition-colors sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-1.5 sm:whitespace-nowrap hover:bg-warning/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
         {/* Blinks to draw the eye (owner, 2026-10-15); still for anyone who
             has asked their device for less motion. */}
-        <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning motion-safe:animate-[key-blink_1.4s_ease-in-out_infinite]" />
-        {/* Shortest on the narrowest phones, longer as room allows; the full
-            sentence from `sm` (owner, 2026-10-15). */}
-        <span className="min-[22.5rem]:hidden">{isOwner ? "2nd" : "Backup"}</span>
-        <span className="hidden min-[22.5rem]:inline sm:hidden">{isOwner ? "Add a second" : "Add a backup"}</span>
-        <span className="hidden sm:inline">
-          {isOwner ? "Add a second verification method to continue" : "Add a backup verification method"}
-        </span>
+        <span
+          aria-hidden="true"
+          className="absolute top-1 right-1 h-2 w-2 shrink-0 rounded-full bg-warning ring-2 ring-background motion-safe:animate-[key-blink_1.4s_ease-in-out_infinite] sm:static sm:h-1.5 sm:w-1.5 sm:ring-0"
+        />
+        <Icon name="key" className="h-4.5 w-4.5 sm:hidden" />
+        {/* The sentence needs about 290px; between sm and md the header has
+            room only for the short form (it ran out of the pill at 640px). */}
+        <span className="hidden sm:inline md:hidden">{isOwner ? "Add a second" : "Add a backup"}</span>
+        <span className="hidden md:inline">{label}</span>
       </Link>
 
       {/* Kept mounted so the close animates too. The gap under the pill is

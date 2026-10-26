@@ -412,8 +412,14 @@ MFA uses **security keys (WebAuthn) or authenticator apps (TOTP)**. SMS is disab
 >   projects, setting the variable brings keys back with no code change.
 > - Either raises the session to `aal2`, so every RLS rule, Server Action and gate that asks
 >   for `aal2` accepts both unchanged. Only one is needed per sign-in.
-> - The staff minimums (owner 2, other staff 1) count both kinds. Removal needs a key **or
+> - The staff minimums (owner 2, other staff 1) count both kinds where keys can be used (see
+>   the next point). Removal needs a key **or
 >   an app code** used in the last 10 minutes (migration 0023). Admin recovery clears both.
+> - **Only methods that can sign in count** (owner, 2026-10-26; migration 0025). Where keys
+>   are switched off (`SECURITY_KEYS`, and hosted Supabase), a key cannot be challenged, so it
+>   does not count towards the minimum and can always be removed; removing the last
+>   authenticator app below the minimum is refused. Counting the key had let a staff member
+>   keep only an unusable key and be locked out of Admin at the next sign-in.
 > - The phishing argument below still holds: keys are the stronger option and are presented
 >   first wherever they are available. Apps are the accepted compromise, with copy telling
 >   people to type the code only on this site.
@@ -1624,3 +1630,4 @@ The architecture must be secure by design and must not rely on client-side check
 | 2026-10-24 | §37.3: tabs also catch up on the second step — `SessionSync` compares `verified` (aal2) as well as the email; `/auth/2fa` and the setup page move on when another tab confirms. |
 | 2026-10-24 | §11.1: authenticator apps (TOTP) allowed beside security keys (deviation recorded in §11.1: hosted Supabase refuses WebAuthn MFA). Keys shown only where `SECURITY_KEYS=on`. Removal gate and key list cover both kinds (migration 0023). Supersedes the "hosted projects must enable WebAuthn MFA" line below. |
 | 2026-10-24 | §11.1: second-factor redirects moved out of the account layout into the pages (layout→same-layout redirect looped during client navigation); key-less staff go from sign-in straight to the key page; Academy dashboard checks the factor; hosted projects must enable WebAuthn MFA. |
+| 2026-10-26 | §11.1: the verification-method minimum counts only methods that can sign in here — with keys switched off, a key does not count and can always be removed, and the last authenticator app cannot go below the minimum (migration 0025, `authorise_security_key_removal(p_factor_id, p_keys_usable)`). |

@@ -2853,7 +2853,7 @@ export type Database = {
         Returns: undefined
       }
       authorise_security_key_removal: {
-        Args: { p_factor_id: string }
+        Args: { p_factor_id: string; p_keys_usable?: boolean }
         Returns: Json
       }
       book_group_session: { Args: { p_session_id: string }; Returns: Json }
