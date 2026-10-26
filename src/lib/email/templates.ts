@@ -1,7 +1,7 @@
 import "server-only";
 
 import { formatPrice } from "@/lib/commerce/pricing";
-import { layout } from "@/lib/email/layout.mjs";
+import { EMAIL, layout } from "@/lib/email/layout.mjs";
 import { absoluteUrl } from "@/lib/urls";
 
 /**
@@ -94,8 +94,41 @@ const sessionKindLabel = (payload: Record<string, unknown>) => {
   }
 };
 
+/*
+  THE PIECES EVERY EMAIL IS BUILT FROM (owner, 2026-10-26), so one change
+  restyles them all. Tables and inline styles, as the layout explains.
+*/
+
+/** The one action button: the site's red pill, white text. The table cell
+ *  carries the colour too, which is what Outlook paints. */
 const button = (href: string, label: string) =>
-  `<p><a href="${href}" style="display:inline-block;background:#A8500A;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">${label}</a></p>`;
+  `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 6px"><tr><td style="border-radius:999px;background:${EMAIL.red}"><a href="${href}" style="display:inline-block;padding:13px 28px;font-family:${EMAIL.sans};font-size:15px;font-weight:600;line-height:1.2;color:#ffffff;text-decoration:none;border-radius:999px">${label}</a></td></tr></table>`;
+
+/** The facts of a message — what, when, where, the reference — set apart in
+ *  a box, a small label over each value. Empty rows are left out. Values are
+ *  HTML: escape anything a person typed before passing it. */
+const details = (rows: Array<[string, string] | null | false | undefined>) => {
+  const shown = rows.filter((r): r is [string, string] => !!r && r[1] !== "");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 4px;background:${EMAIL.ground};border-radius:10px">${shown
+    .map(
+      ([label, value], i) =>
+        `<tr><td style="padding:${i === 0 ? "16px" : "12px"} 20px ${i === shown.length - 1 ? "16px" : "12px"};${i > 0 ? `border-top:1px solid ${EMAIL.line};` : ""}font-family:${EMAIL.sans}"><div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:${EMAIL.muted}">${label}</div><div style="padding-top:2px;font-size:15px;font-weight:600;line-height:1.45;color:${EMAIL.ink}">${value}</div></td></tr>`,
+    )
+    .join("")}</table>`;
+};
+
+/** Small print under the main message. */
+const note = (html: string) =>
+  `<p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${EMAIL.muted}">${html}</p>`;
+
+/** Words someone wrote — an enquiry, an application, a staff note — set
+ *  apart so they read as theirs. Escape before passing. */
+const quote = (html: string) =>
+  `<div style="margin:14px 0 4px;padding:14px 18px;background:${EMAIL.ground};border-left:3px solid ${EMAIL.red};border-radius:4px;white-space:pre-wrap">${html}</div>`;
+
+/** A reference to read out or type: spaced, monospaced. */
+const mono = (html: string) =>
+  `<span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:1.5px">${html}</span>`;
 
 export function render(
   template: TemplateName,
@@ -114,8 +147,8 @@ export function render(
           "Your account is ready",
           `<p>Hello ${esc(name)},</p>
            <p>Everything you buy is delivered in one place — courses, coaching sessions, cohort workshops and resources.</p>
-           <p><a href="${absoluteUrl("/academy")}" style="display:inline-block;background:#A8500A;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Go to the Academy</a></p>
-           <p style="font-size:13px;color:#56506B">Nothing is unlocked yet — access appears here as soon as you have it.</p>`,
+           ${button(absoluteUrl("/academy"), "Go to the Academy")}
+           ${note("Nothing is unlocked yet — access appears here as soon as you have it.")}`,
         ),
       };
     }
@@ -128,9 +161,12 @@ export function render(
         text: `${String(payload.name ?? "Someone")} <${String(payload.email ?? "")}> applied for ${String(payload.retreat ?? "")}, ${String(payload.batch ?? "")}.\n\n${String(payload.message ?? "")}\n\nRead and answer it: ${absoluteUrl("/admin/retreat-applications")}`,
         ...page(
           "New retreat application",
-          `<p><strong>${esc(payload.name ?? "Someone")}</strong><br>${esc(payload.email)}</p>
-           <p>For <strong>${esc(payload.retreat)}</strong>, ${esc(payload.batch)}.</p>
-           <p style="white-space:pre-wrap">${esc(payload.message)}</p>
+          `${details([
+            ["From", `${esc(payload.name ?? "Someone")}<br><span style="font-weight:400">${esc(payload.email)}</span>`],
+            ["Retreat", esc(payload.retreat)],
+            ["Dates", esc(payload.batch)],
+          ])}
+           ${payload.message ? quote(esc(payload.message)) : ""}
            ${button(absoluteUrl("/admin/retreat-applications"), "Open the applications")}`,
         ),
       };
@@ -178,7 +214,7 @@ export function render(
         ...page(
           "Your retreat application",
           `<p>Thank you for applying for <strong>${esc(payload.retreat)}</strong> (${esc(payload.batch)}). Your application for these dates won't be going ahead.</p>
-           ${note ? `<p style="white-space:pre-wrap;border-left:3px solid #a3162f;padding-left:12px">${esc(note)}</p>` : ""}
+           ${note ? quote(esc(note)) : ""}
            <p>You're welcome to apply again for other dates, or <a href="${absoluteUrl("/contact")}">get in touch</a> if you'd like to talk it over.</p>
            ${button(url, "See the retreat")}`,
         ),
@@ -199,9 +235,12 @@ export function render(
         ...page(
           "New enquiry",
           // Everything here was typed by a visitor, so all of it is escaped.
-          `<p><strong>${esc(name)}</strong><br>${esc(from)}</p>
-           <p><strong>${esc(subject)}</strong></p>
-           <p style="white-space:pre-wrap">${esc(message)}</p>`,
+          `${details([
+            ["From", `${esc(name)}<br><span style="font-weight:400">${esc(from)}</span>`],
+            ["Subject", esc(subject)],
+          ])}
+           ${quote(esc(message))}
+           ${button(absoluteUrl("/admin/enquiries"), "Open the enquiries")}`,
         ),
       };
     }
@@ -220,8 +259,8 @@ export function render(
           `Your ${tier} is active`,
           `<p>Your <strong>${tier}</strong> is now active.${renews ? ` It renews on ${renews}.` : ""}</p>
            <p>Everything it includes is in your Academy.</p>
-           <p><a href="${absoluteUrl("/academy")}" style="display:inline-block;background:#A8500A;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Open the Academy</a></p>
-           <p style="font-size:13px;color:#56506B">Register for a Group Coaching series in your Academy and your seat is kept in all eight sessions.</p>`,
+           ${button(absoluteUrl("/academy"), "Open the Academy")}
+           ${note("Register for a Group Coaching series in your Academy and your seat is kept in all eight sessions.")}`,
         ),
       };
     }
@@ -236,8 +275,9 @@ export function render(
         text: `Thank you. Your payment of ${total} has been received and your access is ready.\n\nView your order: ${absoluteUrl("/account/orders")}`,
         ...page(
           "Your order is confirmed",
-          `<p>Thank you. Your payment of <strong>${total}</strong> has been received and your access is ready.</p>
-           <p><a href="${absoluteUrl("/account/orders")}">View your order</a></p>`,
+          `<p style="margin-top:0">Thank you. Your payment has been received and your access is ready.</p>
+           ${details([["Amount paid", total]])}
+           ${button(absoluteUrl("/account/orders"), "View your order")}`,
         ),
       };
     }
@@ -259,8 +299,8 @@ export function render(
             "You've been given a gift",
             `<p>Someone has bought you ${items ? `<strong>${items}</strong>` : "a gift"} from Tony Klinger.</p>
              <p>Set up your account and receive it with this one-time link:</p>
-             <p><a href="${url}" style="display:inline-block;background:#A8500A;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Add my gift</a></p>
-             <p style="font-size:13px;color:#56506B">${later}</p>`,
+             ${button(url, "Add my gift")}
+             ${note(later)}`,
           ),
         };
       }
@@ -270,8 +310,8 @@ export function render(
         ...page(
           "Add your purchase to an account",
           `<p>You checked out as a guest. Use this one-time link to add the purchase to an account:</p>
-           <p><a href="${url}" style="display:inline-block;background:#A8500A;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Claim your purchase</a></p>
-           <p style="font-size:13px;color:#56506B">The link expires in 72 hours and can be used once. ${later}</p>`,
+           ${button(url, "Claim your purchase")}
+           ${note(`The link expires in 72 hours and can be used once. ${later}`)}`,
         ),
       };
     }
@@ -290,8 +330,11 @@ export function render(
         text: `Your place is booked for ${when}.\n\nManage your bookings: ${absoluteUrl("/account/bookings")}`,
         ...page(
           "Your place is booked",
-          `<p><strong>${esc(payload.title ?? "Your session")}</strong><br>${when}</p>
-           <p><a href="${absoluteUrl("/account/bookings")}">Manage your bookings</a></p>`,
+          `${details([
+            ["Session", esc(payload.title ?? "Your session")],
+            ["When", `${when} (UK time)`],
+          ])}
+           ${button(absoluteUrl("/account/bookings"), "Manage your bookings")}`,
         ),
       };
     }
@@ -304,8 +347,12 @@ export function render(
         text: `Your place is confirmed.\n\n${payload.title}\n${ukWhen(payload.startsAt)}\n${payload.location ?? ""}\n\nTicket reference: ${payload.reference}\n\nYour ticket${online ? " and joining link" : ""}: ${ticketUrl}`,
         ...page(
           "Your place is confirmed",
-          `<p><strong>${esc(payload.title)}</strong><br>${ukWhen(payload.startsAt)}${payload.location ? `<br>${esc(payload.location)}` : ""}</p>
-           <p>Ticket reference<br><strong style="font-size:22px;letter-spacing:2px;font-family:ui-monospace,monospace">${esc(payload.reference)}</strong></p>
+          `${details([
+            ["Event", esc(payload.title)],
+            ["When", ukWhen(payload.startsAt)],
+            payload.location ? ["Where", esc(payload.location)] : null,
+            ["Ticket reference", `<span style="font-size:20px">${mono(esc(payload.reference))}</span>`],
+          ])}
            <p>${online ? "Your joining link is on your ticket, and we will email it again before the start." : "Show the QR code on your ticket, or this reference, at the door."}</p>
            ${button(ticketUrl, "View your ticket")}`,
         ),
@@ -319,7 +366,11 @@ export function render(
         text: `Good news: a place has opened for ${payload.title} on ${ukWhen(payload.startsAt)}.\n\nPlaces go to whoever takes them first: ${eventUrl}`,
         ...page(
           "A place has opened",
-          `<p>You are on the waiting list for <strong>${esc(payload.title)}</strong>, ${ukWhen(payload.startsAt)}, and a place has just come free.</p>
+          `<p style="margin-top:0">You are on the waiting list, and a place has just come free.</p>
+           ${details([
+            ["Event", esc(payload.title)],
+            ["When", ukWhen(payload.startsAt)],
+          ])}
            <p>It is not held for you: places go to whoever takes them first.</p>
            ${button(eventUrl, payload.isFree ? "Register now" : "Get your ticket")}`,
         ),
@@ -343,10 +394,15 @@ export function render(
         text: `${payload.title}\n${ukWhen(payload.startsAt)}\n${where}\n\nTicket reference: ${payload.reference}\n${ticketUrl}`,
         ...page(
           soon ? "Starting soon" : "See you soon",
-          `<p><strong>${esc(payload.title)}</strong><br>${ukWhen(payload.startsAt)}</p>
-           ${join ? button(join, "Join the event") : payload.venueAddress ? `<p>${esc(payload.venueAddress)}</p>` : payload.location ? `<p>${esc(payload.location)}</p>` : ""}
+          `${details([
+            ["Event", esc(payload.title)],
+            ["When", ukWhen(payload.startsAt)],
+            !join && payload.venueAddress ? ["Venue", esc(payload.venueAddress)] : !join && payload.location ? ["Where", esc(payload.location)] : null,
+            ["Ticket reference", mono(esc(payload.reference))],
+          ])}
            ${payload.joiningNotes ? `<p>${esc(payload.joiningNotes)}</p>` : ""}
-           <p>Ticket reference: <strong style="font-family:ui-monospace,monospace">${esc(payload.reference)}</strong> · <a href="${ticketUrl}">your ticket</a></p>`,
+           ${join ? button(join, "Join the event") : button(ticketUrl, "View your ticket")}
+           ${join ? note(`Your ticket is <a href="${ticketUrl}">here</a>.`) : ""}`,
         ),
       };
     }
@@ -365,10 +421,13 @@ export function render(
         text: `${what}: ${title}\n${ukWhen(payload.startsAt)}\n${join ? `Join here: ${join}\n` : ""}\nIn your Academy: ${sessionUrl}`,
         ...page(
           soon ? "Starting soon" : "See you soon",
-          `<p>${esc(what)}<br><strong>${esc(title)}</strong><br>${ukWhen(payload.startsAt)}</p>
-           ${join ? button(join, "Join the session") : `<p>The joining link will be in your Academy before the start.</p>`}
-           ${payload.notes ? `<p style="white-space:pre-wrap">${esc(payload.notes)}</p>` : ""}
-           <p><a href="${sessionUrl}">Open it in your Academy</a></p>`,
+          `${details([
+            [esc(what), esc(title)],
+            ["When", ukWhen(payload.startsAt)],
+          ])}
+           ${payload.notes ? quote(esc(payload.notes)) : ""}
+           ${join ? button(join, "Join the session") : `<p>The joining link will be in your Academy before the start.</p>${button(sessionUrl, "Open it in your Academy")}`}
+           ${join ? note(`It's also in <a href="${sessionUrl}">your Academy</a>.`) : ""}`,
         ),
       };
     }
@@ -384,7 +443,11 @@ export function render(
         text: `Your ${tier} ends on ${ends}. After that, its Group Coaching, playlists and other benefits close. You can buy your next year now, and it starts when this one ends: ${url}`,
         ...page(
           "Your pass ends soon",
-          `<p>Your <strong>${esc(tier)}</strong> ends on <strong>${ends}</strong>. After that, its Group Coaching, playlists and other benefits close.</p>
+          `${details([
+            ["Your pass", esc(tier)],
+            ["Ends on", ends],
+          ])}
+           <p>After that, its Group Coaching, playlists and other benefits close.</p>
            <p>You can buy your next year now, and it starts when this one ends.</p>
            ${button(url, "Buy your next year")}`,
         ),
@@ -405,7 +468,7 @@ export function render(
         ...page(
           "Booking cancelled",
           `<p>Your booking has been cancelled. ${returned}</p>
-           <p><a href="${absoluteUrl("/account/bookings")}">Your bookings</a></p>`,
+           ${button(absoluteUrl("/account/bookings"), "Your bookings")}`,
         ),
       };
     }
@@ -423,7 +486,10 @@ export function render(
         text: `The ${what} "${payload.name ?? "unnamed"}" was removed from your Tony Klinger account on ${when}.\n\nIf this was you, there's nothing to do. If it wasn't, sign in, sign out your other devices and check how you sign in: ${url}`,
         ...page(
           `A${what === "authenticator app" ? "n" : ""} ${what} was removed`,
-          `<p>The ${what} <strong>${name}</strong> was removed from your account on ${when}.</p>
+          `${details([
+            ["Removed", `${name}<br><span style="font-weight:400">${what === "authenticator app" ? "Authenticator app" : "Security key"}</span>`],
+            ["When", when],
+          ])}
            <p>If this was you, there's nothing to do.</p>
            <p>If it wasn't, sign in now, sign out your other devices and check how you sign in.</p>
            ${button(url, "Review how you sign in")}`,
@@ -445,7 +511,7 @@ export function render(
           `<p>Someone, probably you, just tried to create an account with this email address. You already have one, so nothing new was created.</p>
            ${button(signIn, "Sign in")}
            <p>Forgotten your password? <a href="${reset}">Reset it here</a>. You can also sign in with an email link, or with Google if it uses this address.</p>
-           <p style="color:#56506B">If this wasn't you, you can ignore this email. Your account has not changed.</p>`,
+           ${note("If this wasn't you, you can ignore this email. Your account has not changed.")}`,
         ),
       };
     }
@@ -461,7 +527,7 @@ export function render(
           "Please choose a new time",
           `<p>Thank you for your payment for <strong>${esc(payload.title ?? "private coaching")}</strong>.</p>
            <p>The time you chose was taken before your payment completed, so your session is waiting in your account. You won't be charged again.</p>
-           <p><a href="${url}">Choose another time</a></p>`,
+           ${button(url, "Choose another time")}`,
         ),
       };
     }
