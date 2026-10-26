@@ -1,7 +1,7 @@
 import "server-only";
 
 import { formatPrice } from "@/lib/commerce/pricing";
-import { EMAIL, layout } from "@/lib/email/layout.mjs";
+import { button, details, layout, mono, note, quote } from "@/lib/email/layout.mjs";
 import { absoluteUrl } from "@/lib/urls";
 
 /**
@@ -94,41 +94,8 @@ const sessionKindLabel = (payload: Record<string, unknown>) => {
   }
 };
 
-/*
-  THE PIECES EVERY EMAIL IS BUILT FROM (owner, 2026-10-26), so one change
-  restyles them all. Tables and inline styles, as the layout explains.
-*/
-
-/** The one action button: the site's red pill, white text. The table cell
- *  carries the colour too, which is what Outlook paints. */
-const button = (href: string, label: string) =>
-  `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 6px"><tr><td style="border-radius:999px;background:${EMAIL.red}"><a href="${href}" style="display:inline-block;padding:13px 28px;font-family:${EMAIL.sans};font-size:15px;font-weight:600;line-height:1.2;color:#ffffff;text-decoration:none;border-radius:999px">${label}</a></td></tr></table>`;
-
-/** The facts of a message — what, when, where, the reference — set apart in
- *  a box, a small label over each value. Empty rows are left out. Values are
- *  HTML: escape anything a person typed before passing it. */
-const details = (rows: Array<[string, string] | null | false | undefined>) => {
-  const shown = rows.filter((r): r is [string, string] => !!r && r[1] !== "");
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 4px;background:${EMAIL.ground};border-radius:10px">${shown
-    .map(
-      ([label, value], i) =>
-        `<tr><td style="padding:${i === 0 ? "16px" : "12px"} 20px ${i === shown.length - 1 ? "16px" : "12px"};${i > 0 ? `border-top:1px solid ${EMAIL.line};` : ""}font-family:${EMAIL.sans}"><div style="font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:${EMAIL.muted}">${label}</div><div style="padding-top:2px;font-size:15px;font-weight:600;line-height:1.45;color:${EMAIL.ink}">${value}</div></td></tr>`,
-    )
-    .join("")}</table>`;
-};
-
-/** Small print under the main message. */
-const note = (html: string) =>
-  `<p style="margin:18px 0 0;font-size:13px;line-height:1.6;color:${EMAIL.muted}">${html}</p>`;
-
-/** Words someone wrote — an enquiry, an application, a staff note — set
- *  apart so they read as theirs. Escape before passing. */
-const quote = (html: string) =>
-  `<div style="margin:14px 0 4px;padding:14px 18px;background:${EMAIL.ground};border-left:3px solid ${EMAIL.red};border-radius:4px;white-space:pre-wrap">${html}</div>`;
-
-/** A reference to read out or type: spaced, monospaced. */
-const mono = (html: string) =>
-  `<span style="font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:1.5px">${html}</span>`;
+/* The pieces every email is built from live in layout.mjs, shared with the
+   Supabase sign-in emails (scripts/auth-email-templates.mjs). */
 
 export function render(
   template: TemplateName,

@@ -238,10 +238,13 @@ recipient is permitted.
    project: Supabase refuses WebAuthn MFA (`Enabling of MFA with WebAuthn not currently
    supported`, checked 2026-10-24). Keep `SECURITY_KEYS` unset on Vercel; set it to `on`
    only if Supabase starts allowing WebAuthn there.
-6. **Auth → Email Templates → Invite user**: paste the body of
-   `supabase/templates/invite.html`. `config.toml` sets it locally only. The hosted default
-   links to GoTrue's own page, which puts the session where the callback cannot see it,
-   so every invitation would look like a broken link.
+6. **Auth emails**: `pnpm auth:templates --env .env.production.local` sets Supabase's own
+   emails (confirm signup, magic link, reset password, invitation, password/email changed
+   notices) in the site's look through the Management API — no pasting into the dashboard.
+   It needs a Supabase access token (`supabase login`, or `SUPABASE_ACCESS_TOKEN`). The
+   invitation must use `token_hash`, which this sets: the hosted default links to GoTrue's
+   own page, which puts the session where the callback cannot see it, so every invitation
+   would look like a broken link. Run with `--dry-run` first.
 
 ## Stripe
 

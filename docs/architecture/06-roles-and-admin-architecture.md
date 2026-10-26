@@ -622,7 +622,8 @@ code and bounced every invitation to sign-in as a broken link.
 The invite template therefore uses `{{ .TokenHash }}`, and the callback verifies it
 server-side into a cookie session (note 05 §11). A hosted project keeps its templates in
 the dashboard rather than in `config.toml`, so **that change must be mirrored on the
-project** or production invitations break in exactly this way.
+project** or production invitations break in exactly this way. `pnpm auth:templates --env <file>` sets it (with the other Supabase emails) through
+the Management API (2026-10-26).
 
 The link lands on the password form rather than on the account: accepting an invitation
 means setting a password, and without that the new person arrives holding a session and no
@@ -1500,3 +1501,4 @@ No user should gain privileged access merely by manipulating the browser, URL, c
 | 2026-10-23 | §34: admins hold `roles.manage` (migration 0020) and manage every role except owner; owner stays owner-only in `admin_set_role` and the Roles form. pgTAP 186 tests. |
 | 2026-10-23 | §14.2: accepting an invitation no longer requires a password; "Skip for now" signs the invitee in, who uses an email link or Google afterwards. Invite email and form wording updated. |
 | 2026-10-23 | §14.4, §38: former staff who gave access can be deleted (migration 0021); staff opening an admin page their role doesn't cover see Access denied inside Admin, not an error page. pgTAP 187. |
+| 2026-10-26 | §14.2: the invite template (with the other Supabase auth emails) is set on a hosted project by `pnpm auth:templates --env <file>` through the Management API, instead of pasting into the dashboard; the token_hash link is unchanged. |

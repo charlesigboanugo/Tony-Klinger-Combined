@@ -20,6 +20,7 @@
     "images:import": "node scripts/import-images.mjs",
     "images:compress": "node scripts/compress-images.mjs",
     "audio:import": "node scripts/import-audio.mjs",
+    "auth:templates": "node scripts/auth-email-templates.mjs",
     "brevo:templates": "node scripts/brevo-templates.mjs",
     "content:setup": "node scripts/setup-content.mjs",
     "dev:samples": "node scripts/dev-samples.mjs",

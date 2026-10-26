@@ -1449,6 +1449,15 @@ Outlook). Every message is built from shared pieces in `templates.ts`: one red p
 the facts (what, when, where, reference, amount), `note` small print and a `quote` box for
 words someone wrote. The 21 Brevo templates were re-published with it.
 
+**Supabase's own emails match (2026-10-26, owner).** Confirm signup, magic link, reset
+password, staff invitation, and the password-changed and email-changed notices (on in the
+hosted test project, off locally) are sent by Supabase Auth, not by `templates.ts`.
+`scripts/auth-email-templates.mjs` (`pnpm auth:templates`) builds them from the same layout
+and pieces: `--local` writes `supabase/templates/*.html` (wired in `config.toml`; restart
+local Supabase), `--env <file>` sets a hosted project through the Management API. Links
+are Supabase's own and unchanged — `{{ .ConfirmationURL }}`, and `token_hash` for the
+invitation (note 06 §14.2).
+
 - `body` is inserted with `{{ params.body | safe }}`. Checked against Brevo with a real
   send: plain `{{ params.x }}` is HTML-escaped, `| safe` is not — so the site escapes
   everything a visitor typed before it gets there (contact enquiry, welcome name and
@@ -2074,3 +2083,4 @@ at every stage of the customer and administrative workflows.
 | 2026-10-23 | §28.1: sale status `ended`, and `past`/`unscheduled` for series without a run to start (migration 0022). §42: one `notifyPaidOrder` for webhook and reconciliation; guest and gift payers get a receipt; recovered gifts' claim links go to the recipient; applicants get `retreat_application_sent`. |
 | 2026-10-25 | §42.4 (new): when people join and leave the Newsletter, Customers and Members lists. An opt-out made on the site now holds against every list (migration 0024: `marketing_opted_out`, `record_soft_opt_in`); buyers get a `checkout` consent row; Subscribe in Account → Notifications now adds to Newsletter; `sync-audiences` retries the last week's failed adds and removals. Unsubscribes made with the link in a Brevo email are picked up on the Notifications page, and Subscribe there clears Brevo's flag (the only place that does). Customers now takes every payer (guest and gift buyers too), never a gift's recipient. A gift's recipient can tick an unticked news box when claiming; the newsletter popup stays closed for signed-in subscribers (`/api/session` `subscribed`). |
 | 2026-10-26 | §42.3: emails redesigned in the site's look — masthead, card with oxblood strip, warm ground, footer; tables and inline styles with font fallbacks; shared `button` / `details` / `note` / `quote` pieces, every action a red button. Wording unchanged. All 21 Brevo templates re-published and verified. |
+| 2026-10-26 | §42.3: Supabase's six auth emails (confirm, magic link, reset, invite, password/email changed notices) in the same look, built by `pnpm auth:templates` from the shared layout; set locally (config.toml) and on the hosted test project (Management API). Links unchanged. |
