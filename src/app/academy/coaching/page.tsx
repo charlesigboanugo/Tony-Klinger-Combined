@@ -265,15 +265,20 @@ export default async function AcademyCoachingPage({ searchParams }: PageProps<"/
                   <AccountGroup key={g.key} title={g.key} count={g.items.length}>
                     <ul className="divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface">
                       {g.items.map((s) => (
-                        <li key={s.id} className="flex flex-wrap items-center gap-4 p-4">
+                        <li key={s.id} className="flex items-center gap-4 p-4">
                           <DateBadge value={s.startsAt} />
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium">{s.title}</p>
-                            <p className="text-sm text-muted-foreground">{formatSlot(s.startsAt, s.endsAt)}</p>
+                          {/* Text and action share the column beside the date, so on a
+                              phone the action wraps under the TEXT and the title keeps
+                              its width (owner, 2026-10-26). */}
+                          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                            <div className="min-w-0 flex-1 basis-48">
+                              <p className="font-medium">{s.title}</p>
+                              <p className="text-sm text-muted-foreground">{formatSlot(s.startsAt, s.endsAt)}</p>
+                            </div>
+                            <ButtonLink href={`/book/${s.id}`} size="sm" variant="outline">
+                              Book
+                            </ButtonLink>
                           </div>
-                          <ButtonLink href={`/book/${s.id}`} size="sm" variant="outline">
-                            Book
-                          </ButtonLink>
                         </li>
                       ))}
                     </ul>
@@ -290,13 +295,18 @@ export default async function AcademyCoachingPage({ searchParams }: PageProps<"/
                   <AccountGroup key={g.key} title={g.key} count={g.items.length}>
                     <ul className="divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface">
                       {g.items.map((s) => (
-                        <li key={s.id} className="flex flex-wrap items-center gap-4 p-4">
+                        <li key={s.id} className="flex items-center gap-4 p-4">
                           <DateBadge value={s.startsAt} />
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium">{s.title}</p>
-                            <p className="text-sm text-muted-foreground">{formatSlot(s.startsAt, s.endsAt)}</p>
+                          {/* Text and action share the column beside the date, so on a
+                              phone the action wraps under the TEXT and the title keeps
+                              its width (owner, 2026-10-26). */}
+                          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                            <div className="min-w-0 flex-1 basis-48">
+                              <p className="font-medium">{s.title}</p>
+                              <p className="text-sm text-muted-foreground">{formatSlot(s.startsAt, s.endsAt)}</p>
+                            </div>
+                            <StaffOnly />
                           </div>
-                          <StaffOnly />
                         </li>
                       ))}
                     </ul>
@@ -314,7 +324,9 @@ export default async function AcademyCoachingPage({ searchParams }: PageProps<"/
                     <ul className="divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface">
                       {g.items.map((s) => (
                         <li key={s.id} className="flex flex-wrap items-center gap-4 p-4">
-                          <div className="min-w-0 flex-1">
+                          {/* basis-48: on a phone the recording link wraps under the text
+                              rather than squeezing it (owner, 2026-10-26). */}
+                          <div className="min-w-0 flex-1 basis-48">
                             <p className="font-medium">{s.title}</p>
                             <p className="text-sm text-muted-foreground">{formatSlot(s.startsAt)}</p>
                           </div>

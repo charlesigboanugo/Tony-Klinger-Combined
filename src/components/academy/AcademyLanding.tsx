@@ -47,7 +47,7 @@ export function AcademyLanding() {
           <Reveal>
             <Eyebrow align="center">The Academy</Eyebrow>
           </Reveal>
-          <Reveal as="h1" delay={60} className="font-display text-balance">
+          <Reveal as="h1" delay={60} className="font-display sm:text-balance">
             Where your learning lives
           </Reveal>
           <Reveal as="p" delay={120} className="mx-auto max-w-2xl text-xl leading-relaxed text-pretty text-block-foreground/85">
@@ -69,7 +69,7 @@ export function AcademyLanding() {
         <Container>
           <div className="mx-auto max-w-2xl text-center">
             <Eyebrow align="center">Inside</Eyebrow>
-            <h2 className="mt-4 font-display text-balance">Three ways to learn</h2>
+            <h2 className="mt-4 font-display sm:text-balance">Three ways to learn</h2>
           </div>
           <ul className="mt-10 grid gap-5 md:grid-cols-3">
             {AREAS.map((area, index) => (
@@ -106,7 +106,7 @@ export function AcademyLanding() {
           <div className="grid gap-10 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-16">
             <div>
               <Eyebrow>How access works</Eyebrow>
-              <h2 className="mt-4 font-display text-balance">Buy once, find it here</h2>
+              <h2 className="mt-4 font-display sm:text-balance">Buy once, find it here</h2>
             </div>
             <ul className="grid gap-5 sm:grid-cols-3">
               {STEPS.map((s, index) => (
@@ -123,7 +123,7 @@ export function AcademyLanding() {
       <Section>
         <Container>
           <div className="flex flex-col items-center gap-6 rounded-(--radius-lg) bg-block-noir px-6 py-12 text-center text-block-foreground sm:px-10">
-            <h2 className="max-w-2xl font-display text-balance">Already with us?</h2>
+            <h2 className="max-w-2xl font-display sm:text-balance">Already with us?</h2>
             <p className="max-w-xl text-block-foreground/80">
               Sign in to carry on where you left off. New here? A Coaching Pass gives you a year of
               coaching from the first day.

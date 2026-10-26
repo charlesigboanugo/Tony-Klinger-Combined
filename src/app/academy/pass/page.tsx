@@ -284,14 +284,19 @@ export default async function AcademyMembershipPage() {
             {qa.upcoming.length > 0 ? (
               <ul className="divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface">
                 {qa.upcoming.map((q) => (
-                  <li key={q.id} className="flex flex-wrap items-center gap-4 p-4">
+                  <li key={q.id} className="flex items-center gap-4 p-4">
                     <DateBadge value={q.startsAt} />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">{q.title}</p>
-                      <p className="text-sm text-muted-foreground">{formatSlot(q.startsAt, q.endsAt)}</p>
-                      {q.description ? <p className="mt-1 text-sm text-muted-foreground">{q.description}</p> : null}
+                    {/* Text and action share the column beside the date, so on a
+                        phone the action wraps under the TEXT and the title keeps
+                        its width (owner, 2026-10-26). */}
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                      <div className="min-w-0 flex-1 basis-48">
+                        <p className="font-medium">{q.title}</p>
+                        <p className="text-sm text-muted-foreground">{formatSlot(q.startsAt, q.endsAt)}</p>
+                        {q.description ? <p className="mt-1 text-sm text-muted-foreground">{q.description}</p> : null}
+                      </div>
+                      {staffOnly ? <StaffOnly /> : <JoinAction join={q.join} />}
                     </div>
-                    {staffOnly ? <StaffOnly /> : <JoinAction join={q.join} />}
                   </li>
                 ))}
               </ul>
@@ -313,7 +318,9 @@ export default async function AcademyMembershipPage() {
                 <ul className="divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface">
                   {qa.past.map((q) => (
                     <li key={q.id} className="flex flex-wrap items-center gap-4 p-4">
-                      <div className="min-w-0 flex-1">
+                      {/* basis-48: on a phone the recording link wraps under the text
+                          rather than squeezing it (owner, 2026-10-26). */}
+                      <div className="min-w-0 flex-1 basis-48">
                         <p className="font-medium">{q.title}</p>
                         <p className="text-sm text-muted-foreground">{formatSlot(q.startsAt)}</p>
                       </div>

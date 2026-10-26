@@ -48,9 +48,9 @@ export default async function Page() {
           switched off. Presenting them as one setting would either promise to
           stop receipts we must send, or imply marketing cannot be refused.
         */}
-        <section className="flex flex-wrap items-start gap-4 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:p-6">
+        <section className="flex flex-col items-start gap-4 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:p-6">
           <IconTile name="receipt" tone="success" size="lg" />
-          <div className="min-w-0 flex-1">
+          <div className="w-full min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg">Service emails</h2>
               <span className="rounded-full border border-success/40 bg-success/10 px-3 py-1 text-xs font-medium text-success">
@@ -65,9 +65,9 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="flex flex-wrap items-start gap-4 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:p-6">
+        <section className="flex flex-col items-start gap-4 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:p-6">
           <IconTile name="megaphone" tone={optedIn ? "accent" : "neutral"} size="lg" />
-          <div className="min-w-0 flex-1">
+          <div className="w-full min-w-0">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg">News and offers</h2>
             <span

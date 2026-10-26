@@ -176,7 +176,7 @@ export default async function AcademyPage() {
         <div className="space-y-14 sm:space-y-16">
           {resume ? (
             <Reveal as="section" aria-labelledby="resume">
-              <div className="relative isolate overflow-hidden rounded-(--radius-lg) bg-block-noir p-6 text-block-foreground shadow-lift sm:p-8">
+              <div className="relative isolate overflow-hidden rounded-(--radius-lg) bg-block-noir p-5 text-block-foreground shadow-lift sm:p-8">
                 {resume.course.storagePath ? (
                   <div aria-hidden="true" className="absolute inset-y-0 right-0 -z-10 w-full sm:w-3/5">
                     <StoredImage path={resume.course.storagePath} alt="" fill sizes="(min-width: 640px) 50vw, 100vw" className="opacity-40" />
@@ -186,7 +186,7 @@ export default async function AcademyPage() {
                 <Eyebrow id="resume">
                   {resume.p!.completed > 0 ? "Pick up where you left off" : "Ready when you are"}
                 </Eyebrow>
-                <p className="mt-4 max-w-2xl font-display text-3xl leading-tight font-semibold text-balance sm:text-4xl">
+                <p className="mt-4 max-w-2xl font-display text-3xl leading-tight font-semibold sm:text-balance sm:text-4xl">
                   {resume.course.title}
                 </p>
                 <p className="mt-3 text-block-foreground/80">
@@ -244,7 +244,7 @@ export default async function AcademyPage() {
                 href={membership || staffView ? "/academy/pass" : "/coaching/passes"}
                 size="sm"
                 variant={membership || staffView ? "primary" : "outline"}
-                className="shrink-0 self-start sm:self-auto"
+                className="ml-14 shrink-0 self-start sm:ml-0 sm:self-auto"
               >
                 {membership ? "Open your pass" : staffView ? "Open the pass" : "Compare the passes"}
               </ButtonLink>
@@ -270,15 +270,20 @@ export default async function AcademyPage() {
                     <AccountGroup key={g.key} title={g.key} count={g.items.length}>
                       <ul className="divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface">
                         {g.items.map((item) => (
-                          <li key={item.key} className="flex flex-wrap items-center gap-4 p-4">
+                          <li key={item.key} className="flex items-center gap-4 p-4">
                             <DateBadge value={item.startsAt} />
-                            <div className="min-w-0 flex-1">
-                              <Link href={item.href} className="font-medium hover:underline hover:underline-offset-4">
-                                {item.title}
-                              </Link>
-                              <p className="text-sm text-muted-foreground">{formatSlot(item.startsAt, item.endsAt)}</p>
+                            {/* Text and action share the column beside the date, so on a
+                                phone the action wraps under the TEXT and the title keeps
+                                its width (owner, 2026-10-26). */}
+                            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                              <div className="min-w-0 flex-1 basis-48">
+                                <Link href={item.href} className="font-medium hover:underline hover:underline-offset-4">
+                                  {item.title}
+                                </Link>
+                                <p className="text-sm text-muted-foreground">{formatSlot(item.startsAt, item.endsAt)}</p>
+                              </div>
+                              {item.join ? <JoinAction join={item.join} /> : item.viewOnly ? <StaffOnly /> : null}
                             </div>
-                            {item.join ? <JoinAction join={item.join} /> : item.viewOnly ? <StaffOnly /> : null}
                           </li>
                         ))}
                       </ul>
@@ -400,7 +405,7 @@ function ExploreAreas() {
           </Reveal>
         ))}
       </ul>
-      <div className="flex flex-col gap-4 rounded-(--radius-lg) bg-block-noir p-6 text-block-foreground sm:flex-row sm:items-center sm:justify-between sm:p-8">
+      <div className="flex flex-col gap-4 rounded-(--radius-lg) bg-block-noir p-5 text-block-foreground sm:flex-row sm:items-center sm:justify-between sm:p-8">
         <div>
           <p className="font-display text-2xl font-semibold">Coaching, every month</p>
           <p className="mt-1 text-block-foreground/80">Group Coaching, a growing video library and a monthly Q&amp;A with Tony.</p>

@@ -87,7 +87,7 @@ export default async function LessonPage({
       <article className="min-w-0">
 
         <Eyebrow>{moduleTitle}</Eyebrow>
-        <h1 className="mt-4 font-display text-balance">{lesson.title}</h1>
+        <h1 className="mt-4 font-display sm:text-balance">{lesson.title}</h1>
         {/* What the lesson covers, in a sentence or two (owner, 2026-10-15). */}
         {lesson.description ? (
           <p className="mt-3 max-w-[68ch] text-lg leading-relaxed text-pretty text-muted-foreground">{lesson.description}</p>

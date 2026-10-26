@@ -67,7 +67,9 @@ export function AccessRow({
     >
       {/* What it is, with the one action beside it. */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
-        <div className="flex min-w-0 items-center gap-4">
+        {/* Icon above the title on a phone, beside it from sm, so the title
+            and its action have the card's full width (owner, 2026-10-26). */}
+        <div className="flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
           <IconTile name={KIND_ICON[item.resourceType] ?? "key"} tone={ended ? "neutral" : "accent"} />
           <div className="min-w-0">
             {showKind ? (
@@ -80,7 +82,7 @@ export function AccessRow({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3 pl-14 sm:pl-0">
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
           {ended && item.endedReason ? <StatusPill>{item.endedReason}</StatusPill> : null}
           {item.href && item.actionLabel ? (
             <ButtonLink href={item.href} size="sm" variant={ended ? "outline" : "primary"}>

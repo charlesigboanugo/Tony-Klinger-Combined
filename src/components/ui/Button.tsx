@@ -45,7 +45,11 @@ const base = [
   // small-radius rectangle reads as a panel with a label in it — and the
   // surfaces around it already use a sharp radius, so the contrast between
   // "surface" and "thing you press" does real work.
-  "overflow-hidden rounded-full font-semibold tracking-[0.01em] whitespace-nowrap",
+  "overflow-hidden rounded-full font-semibold tracking-[0.01em]",
+  // Never wider than its card or the screen (owner, 2026-10-26). `min-w-fit`
+  // keeps the label on one line whenever there is room for it; only a label
+  // longer than the space it is in wraps, centred, and the pill grows taller.
+  "max-w-full min-w-fit text-center leading-tight text-balance",
   "transition-[transform,filter,box-shadow,background-color,border-color,color] duration-200 ease-out",
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
   "active:scale-96",
@@ -84,10 +88,13 @@ const variants: Record<ButtonVariant, string> = {
     "border border-block-foreground/55 bg-transparent text-block-foreground hover:border-block-foreground hover:bg-block-foreground hover:text-secondary hover:shadow-[0_0_0_4px_color-mix(in_oklab,var(--block-foreground)_22%,transparent)] active:shadow-none",
 };
 
+/** Heights are minimums, so a wrapped label has room. Under 380px (the
+ *  smallest phones) padding and type step down a little, so long labels fit
+ *  on one line there too. */
 const sizes: Record<ButtonSize, string> = {
-  sm: "h-9 px-4 text-sm",
-  md: "h-11 px-6 text-[0.9375rem]",
-  lg: "h-13 px-8 text-base",
+  sm: "min-h-9 px-4 py-1.5 text-sm max-[380px]:px-3 max-[380px]:text-[0.8125rem]",
+  md: "min-h-11 px-6 py-2 text-[0.9375rem] max-[380px]:px-5 max-[380px]:text-sm",
+  lg: "min-h-13 px-8 py-2.5 text-base max-[380px]:px-6 max-[380px]:text-[0.9375rem]",
 };
 
 type BaseProps = {

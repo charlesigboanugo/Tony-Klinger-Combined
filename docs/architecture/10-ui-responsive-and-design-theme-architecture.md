@@ -529,6 +529,28 @@ Mobile single/appropriate column
 
 Tables, cards, forms and schedules should receive specific responsive treatment where necessary.
 
+### 15.1 Phones use the width (owner, 2026-10-26)
+
+On a phone the screen is already narrow, so nothing should narrow it further:
+
+- Text in heroes, cards and image-backed panels runs the available width; a reading-width cap
+  applies from `sm` only. Panel padding is lighter on phones (`p-5`, larger from `sm`).
+- `h1`/`h2` are balanced (`text-wrap: balance`) from `sm` only. Balancing splits a heading
+  into even halves and left the right of every phone line empty.
+- A row of icon or date tile, text and an action puts the text and the action in one column
+  beside the tile, the text with a minimum width (`basis-48`/`basis-56`), so on a phone the
+  action wraps under the text instead of squeezing the title into a sliver.
+- Cards with an icon beside a title stack the icon above on phones; what follows starts at the
+  title's text from `sm` (§ icon alignment above).
+- Names in lists (orders, billing history, verification methods, bookings) wrap; they are not
+  truncated.
+- Buttons never run past their card or the screen: one line whenever the label fits
+  (`min-w-fit`), wrapping centred only when it does not (`max-w-full`), heights as minimums.
+  Under 380px padding and type step down a little. Checked at 320px over every customer and
+  visitor page.
+- Settings cards with a long description (Account → Notifications) put the icon above the text,
+  as Security, Billing and Profile do.
+
 ---
 
 ## 16. Responsive Images and Media
@@ -2435,3 +2457,4 @@ large tile, `pl-11` small, `pl-13` medium). Where a phone has no room to indent,
 ABOVE the heading instead. The same holds in navigation trees: a group's pages start at the
 group name's text (Admin nav).
 | 2026-10-15 | Responsive sweep at 320px over every reachable visitor (140), customer (120) and admin (160) page; all fit. Fixes: product-page and blog grids held to the screen (`grid-cols-1` below their breakpoints: an implicit column grew to its widest child); purchase panel and phone buy bar wrap/shrink; Notifications button short label on phones; admin filter/sort menus anchor right by default (a closed panel off the right edge widened the page); admin header on phones shows the spare-key chip as a dot and drops the logo under 24rem (owner). |
+| 2026-10-26 | §15.1 (new): phones use the width — no reading caps or heavy padding below `sm`, headings balanced from `sm` only, tile/text/action rows wrap the action under the text, icon cards stack, list names wrap; buttons never overflow their card or the screen (one line when it fits, smaller under 380px); Notifications icons above the text. Applied across Account and Academy. |

@@ -256,7 +256,7 @@ export default async function BillingPage({ searchParams }: PageProps<"/account/
                   <li key={h.id} className="py-3 sm:flex sm:items-center sm:gap-6">
                     <div className="flex items-start justify-between gap-4 sm:flex-1 sm:items-center">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{h.title}</p>
+                        <p className="text-sm font-medium break-words">{h.title}</p>
                         <p className="text-xs text-muted-foreground">{formatDate(h.date)}</p>
                       </div>
                       <div className="flex shrink-0 items-center gap-3">

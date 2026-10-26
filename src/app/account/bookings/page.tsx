@@ -222,20 +222,25 @@ export default async function AccountBookingsPage() {
                       {g.items.map((b) => (
                   <li key={b.id} className="flex items-center gap-4 p-4">
                     <DateBadge value={b.starts_at} muted />
-                    <div className="min-w-0 flex-1">
-                      <p className={cn("truncate text-sm font-medium text-muted-foreground", !b.title && "capitalize")}>
-                        {title(b)}
-                      </p>
-                      {b.bookable_type === "event" && b.status !== "cancelled" ? (
-                        <Link
-                          href={`/account/tickets/${b.id}`}
-                          className="text-xs text-muted-foreground underline underline-offset-4 hover:text-accent"
-                        >
-                          Ticket
-                        </Link>
-                      ) : null}
+                    {/* Text and action share the column beside the date, so on a
+                        phone the action wraps under the TEXT and the title keeps
+                        its width (owner, 2026-10-26). */}
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                      <div className="min-w-0 flex-1 basis-48">
+                        <p className={cn("text-sm font-medium break-words text-muted-foreground", !b.title && "capitalize")}>
+                          {title(b)}
+                        </p>
+                        {b.bookable_type === "event" && b.status !== "cancelled" ? (
+                          <Link
+                            href={`/account/tickets/${b.id}`}
+                            className="text-xs text-muted-foreground underline underline-offset-4 hover:text-accent"
+                          >
+                            Ticket
+                          </Link>
+                        ) : null}
+                      </div>
+                      <StatusPill>{BOOKING_STATUS[b.status] ?? b.status}</StatusPill>
                     </div>
-                    <StatusPill>{BOOKING_STATUS[b.status] ?? b.status}</StatusPill>
                   </li>
                       ))}
                     </ul>

@@ -29,7 +29,7 @@ export function AccountHeader({
       )}
     >
       <div className="min-w-0 space-y-2">
-        <h1 className="font-display text-balance">{title}</h1>
+        <h1 className="font-display sm:text-balance">{title}</h1>
         {description ? (
           <div className="measure text-[0.9375rem] leading-relaxed text-muted-foreground text-pretty sm:text-base">
             {description}

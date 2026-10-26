@@ -56,10 +56,10 @@ export default async function AcademyCoursePage({
     return (
       <>
         <BackLink href="/academy/courses">Your courses</BackLink>
-        <div className="relative isolate overflow-hidden rounded-(--radius-lg) bg-block-noir p-6 text-block-foreground shadow-lift sm:p-10">
+        <div className="relative isolate overflow-hidden rounded-(--radius-lg) bg-block-noir p-5 text-block-foreground shadow-lift sm:p-10">
           <CoverBackdrop path={course.storagePath} />
           <Eyebrow>{expired ? "Access ended" : "Not in your Academy"}</Eyebrow>
-          <h1 className="mt-4 font-display text-balance">{course.title}</h1>
+          <h1 className="mt-4 font-display sm:text-balance">{course.title}</h1>
           <p className="measure mt-4 text-lg text-block-foreground/80 text-pretty">
             {expired
               ? "Your access to this course has ended. Renew to pick up where you left off — your progress is kept."
@@ -90,10 +90,10 @@ export default async function AcademyCoursePage({
     <>
       <BackLink href="/academy/courses">Your courses</BackLink>
 
-      <section className="relative isolate overflow-hidden rounded-(--radius-lg) bg-block-noir p-6 text-block-foreground shadow-lift sm:p-10">
+      <section className="relative isolate overflow-hidden rounded-(--radius-lg) bg-block-noir p-5 text-block-foreground shadow-lift sm:p-10">
         <CoverBackdrop path={course.storagePath} />
         <Eyebrow>{staffOnly ? "Course" : progress.done ? "Course complete" : progress.completed > 0 ? "In progress" : "Course"}</Eyebrow>
-        <h1 className="mt-4 max-w-3xl font-display text-balance">{course.title}</h1>
+        <h1 className="mt-4 max-w-3xl font-display sm:text-balance">{course.title}</h1>
         {course.description ? (
           <p className="measure mt-4 text-lg leading-relaxed text-block-foreground/80 text-pretty">
             {course.description}
@@ -199,26 +199,31 @@ export default async function AcademyCoursePage({
                         )}
                       >
                         <StateMark done={isDone} current={isNext} />
-                        <span className="min-w-0 flex-1">
-                          <span className={cn("block leading-snug", isDone ? "text-muted-foreground" : "font-medium")}>
-                            {lesson.title}
+                        {/* On phones "Up next" and the duration sit under the
+                            title, so the title has the row's whole width
+                            (owner, 2026-10-26); beside it from sm. */}
+                        <span className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-4">
+                          <span className="min-w-0 flex-1">
+                            <span className={cn("block leading-snug", isDone ? "text-muted-foreground" : "font-medium")}>
+                              {lesson.title}
+                            </span>
+                            {isDone ? <span className="sr-only"> — completed</span> : null}
                           </span>
-                          {isDone ? <span className="sr-only"> — completed</span> : null}
-                        </span>
-                        <span className="flex shrink-0 items-center gap-3 pt-px text-xs text-muted-foreground">
-                          {isNext ? (
-                            <span className="rounded-full bg-accent px-2 py-0.5 font-medium text-accent-foreground">
-                              Up next
-                            </span>
-                          ) : null}
-                          {lesson.hasVideo ? (
-                            <span className="flex items-center gap-1.5">
-                              <svg viewBox="0 0 12 12" aria-hidden="true" className="h-2.5 w-2.5">
-                                <path d="M3 2v8l7-4z" fill="currentColor" />
-                              </svg>
-                              {lesson.durationSeconds ? formatDuration(lesson.durationSeconds) : "Video"}
-                            </span>
-                          ) : null}
+                          <span className="flex shrink-0 items-center gap-3 pt-px text-xs text-muted-foreground empty:hidden">
+                            {isNext ? (
+                              <span className="rounded-full bg-accent px-2 py-0.5 font-medium text-accent-foreground">
+                                Up next
+                              </span>
+                            ) : null}
+                            {lesson.hasVideo ? (
+                              <span className="flex items-center gap-1.5">
+                                <svg viewBox="0 0 12 12" aria-hidden="true" className="h-2.5 w-2.5">
+                                  <path d="M3 2v8l7-4z" fill="currentColor" />
+                                </svg>
+                                {lesson.durationSeconds ? formatDuration(lesson.durationSeconds) : "Video"}
+                              </span>
+                            ) : null}
+                          </span>
                         </span>
                       </Link>
                     </li>

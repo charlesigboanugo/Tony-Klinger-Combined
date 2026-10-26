@@ -59,7 +59,7 @@ export default async function TicketPage({ params }: PageProps<"/account/tickets
             <span aria-hidden="true" className="h-px w-8 bg-primary" />
             {cancelled ? "Cancelled" : ticket.checkedInAt ? "Checked in" : "Admit one"} · {FORMAT_LABEL[event.format]}
           </p>
-          <h1 className="mt-4 font-display text-3xl leading-tight font-semibold text-balance sm:text-4xl">
+          <h1 className="mt-4 font-display text-3xl leading-tight font-semibold sm:text-balance sm:text-4xl">
             <Link href={`/events/${event.slug}`} className="hover:text-accent">
               {event.name}
             </Link>

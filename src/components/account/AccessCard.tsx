@@ -68,9 +68,11 @@ export function AccessCard({ item }: { item: AccessItem }) {
       )}
     >
       <div className="flex flex-1 flex-col p-5 sm:p-6">
-        <div className="flex items-start gap-3">
+        {/* Icon above on a phone, beside the title from sm; what follows
+            starts at the title's text from sm (owner, 2026-10-26). */}
+        <div className="flex flex-col items-start gap-3 sm:flex-row">
           <IconTile name={KIND_ICON[item.resourceType] ?? "key"} tone={ended ? "neutral" : "accent"} />
-          <div className="min-w-0 flex-1">
+          <div className="w-full min-w-0 flex-1">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">{item.kind}</p>
               {ended ? <StatusPill>{item.endedReason}</StatusPill> : null}
@@ -83,7 +85,7 @@ export function AccessCard({ item }: { item: AccessItem }) {
           </div>
         </div>
 
-        <div className="mt-4 pl-13">
+        <div className="mt-4 sm:pl-13">
           <dl className="divide-y divide-border border-y border-border text-sm">
             {facts.map((fact) => (
               <div key={fact.label} className="flex items-baseline justify-between gap-4 py-2.5">
@@ -123,7 +125,7 @@ export function AccessCard({ item }: { item: AccessItem }) {
 
       {item.href && item.actionLabel ? (
         <div className="border-t border-border px-5 py-4 sm:px-6">
-          <div className="pl-13">
+          <div className="sm:pl-13">
             <ButtonLink href={item.href} size="sm" variant={ended ? "outline" : "primary"}>
               {item.actionLabel}
             </ButtonLink>

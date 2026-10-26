@@ -14,7 +14,7 @@ export default function AcademyNotFound() {
   return (
     <div className="rounded-(--radius-lg) border border-border bg-surface px-6 py-14 text-center sm:px-10">
       <Eyebrow align="center">Not here</Eyebrow>
-      <h1 className="mt-4 font-display text-balance">We couldn&apos;t open that</h1>
+      <h1 className="mt-4 font-display sm:text-balance">We couldn&apos;t open that</h1>
       <p className="mx-auto mt-4 max-w-md text-muted-foreground">
         It may have moved, or it isn&apos;t part of your Academy. Everything you have access to is
         on your dashboard.

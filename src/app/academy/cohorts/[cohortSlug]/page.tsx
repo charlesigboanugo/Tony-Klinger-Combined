@@ -52,7 +52,7 @@ export default async function AcademyCohortPage({
         : "Dates to be announced";
 
   const hero = (
-    <section className="relative isolate overflow-hidden rounded-(--radius-lg) bg-block-noir p-6 text-block-foreground shadow-lift sm:p-10">
+    <section className="relative isolate overflow-hidden rounded-(--radius-lg) bg-block-noir p-5 text-block-foreground shadow-lift sm:p-10">
       {cohort.storagePath ? (
         <div aria-hidden="true" className="absolute inset-y-0 right-0 -z-10 w-full sm:w-2/3">
           <StoredImage path={cohort.storagePath} alt="" fill sizes="(min-width: 640px) 60vw, 100vw" className="opacity-35" />
@@ -60,7 +60,7 @@ export default async function AcademyCohortPage({
         </div>
       ) : null}
       <Eyebrow>{level} cohort</Eyebrow>
-      <h1 className="mt-4 max-w-3xl font-display text-balance">{cohort.name}</h1>
+      <h1 className="mt-4 max-w-3xl font-display sm:text-balance">{cohort.name}</h1>
       {cohort.description ? (
         <p className="measure mt-4 text-lg leading-relaxed text-block-foreground/80 text-pretty">
           {cohort.description}
@@ -104,7 +104,7 @@ export default async function AcademyCohortPage({
               <div className="flex flex-col gap-5 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card sm:flex-row sm:items-center sm:p-6">
                 <DateBadge value={next.startsAt} large />
                 <div className="min-w-0 flex-1">
-                  <p className="font-display text-xl font-semibold text-balance">{next.title}</p>
+                  <p className="font-display text-xl font-semibold sm:text-balance">{next.title}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{formatSlot(next.startsAt, next.endsAt)}</p>
                 </div>
                 {cohort.staffOnly ? <StaffOnly /> : <JoinAction join={next.join} />}
@@ -144,7 +144,9 @@ export default async function AcademyCohortPage({
               <ul className="divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface">
                 {cohort.past.map((w) => (
                   <li key={w.id} className="flex flex-wrap items-center gap-4 p-4">
-                    <div className="min-w-0 flex-1">
+                    {/* basis-48: on a phone the recording link wraps under the text
+                        rather than squeezing it (owner, 2026-10-26). */}
+                    <div className="min-w-0 flex-1 basis-48">
                       <p className="font-medium">{w.title}</p>
                       <p className="text-sm text-muted-foreground">{formatSlot(w.startsAt)}</p>
                     </div>

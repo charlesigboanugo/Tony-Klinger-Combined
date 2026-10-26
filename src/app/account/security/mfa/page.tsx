@@ -204,33 +204,38 @@ export default async function MfaPage({
                     : describeAuthenticator(key.aaguid);
                 const used = key.lastUsedAgo;
                 return (
-                  <li key={key.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+                  <li key={key.id} className="flex items-start gap-4 px-5 py-4">
                     <span
                       aria-hidden="true"
                       className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-surface-muted text-muted-foreground"
                     >
                       <Icon name={key.kind === "app" ? "phone" : "key"} className="h-5 w-5" />
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{key.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {where ? `${where} · ` : ""}
-                        Added{" "}
-                        {new Date(key.createdAt).toLocaleDateString("en-GB", {
-                          day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London",
-                        })}
-                        {" · "}
-                        {used ? `last used ${used}` : "not used to sign in yet"}
-                        {key.kind === "key" && !SECURITY_KEYS_ENABLED ? " · security keys can't be used on this site" : ""}
-                      </p>
+                    {/* Details and the action share the column beside the icon,
+                        so on a phone the action wraps under the TEXT, not the
+                        icon (owner, 2026-10-26). */}
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                      <div className="min-w-0 flex-1 basis-56">
+                        <p className="font-medium break-words">{key.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {where ? `${where} · ` : ""}
+                          Added{" "}
+                          {new Date(key.createdAt).toLocaleDateString("en-GB", {
+                            day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London",
+                          })}
+                          {" · "}
+                          {used ? `last used ${used}` : "not used to sign in yet"}
+                          {key.kind === "key" && !SECURITY_KEYS_ENABLED ? " · security keys can't be used on this site" : ""}
+                        </p>
+                      </div>
+                      {/* Nothing to remove with until this session is confirmed: the
+                          database would refuse it, so the button isn't offered. */}
+                      {needsVerification ? null : atMinimum && minimum > 0 ? (
+                        <span className="text-xs text-muted-foreground">Required — add another to remove</span>
+                      ) : (
+                        <RemoveKey factorId={key.id} name={key.name} />
+                      )}
                     </div>
-                    {/* Nothing to remove with until this session is confirmed: the
-                        database would refuse it, so the button isn't offered. */}
-                    {needsVerification ? null : atMinimum && minimum > 0 ? (
-                      <span className="text-xs text-muted-foreground">Required — add another to remove</span>
-                    ) : (
-                      <RemoveKey factorId={key.id} name={key.name} />
-                    )}
                   </li>
                 );
               })}
