@@ -71,8 +71,9 @@ export function LoopingStrip({
   const reducedRef = useRef(false);
   const stepModeRef = useRef(false);
   const lastStep = useRef(0);
-  // A finger on the strip (phones): where it went down, and the offset then.
-  const drag = useRef<{ x: number; base: number } | null>(null);
+  // A finger on the strip (phones): where it went down, the offset then, and
+  // which way the gesture turned out to go (null until it has moved enough).
+  const drag = useRef<{ x: number; y: number; base: number; axis: "x" | "y" | null } | null>(null);
   // Set by the loop's effect, which owns the offset it moves.
   const stepFn = useRef<(dir: 1 | -1 | 0, instant?: boolean) => void>(() => {});
 
@@ -232,27 +233,44 @@ export function LoopingStrip({
         ref={viewport}
         className={cn(ready ? "overflow-hidden" : "overflow-x-auto", stepMode && "touch-pan-y")}
         // The strip follows the finger, then settles on the nearest cover —
-        // or the next one along, for a short flick.
+        // or the next one along, for a short flick. The gesture is locked to
+        // its first clear direction: a page scroll that crosses the strip
+        // drifts sideways too, and must never turn into a swipe (owner,
+        // 2026-10-27).
         onTouchStart={(e) => {
           if (!stepMode) return;
-          nudge.current = { to: 0, applied: 0, start: 0, active: false };
-          drag.current = { x: e.touches[0].clientX, base: offset.current };
+          const t = e.touches[0];
+          drag.current = { x: t.clientX, y: t.clientY, base: offset.current, axis: null };
         }}
         onTouchMove={(e) => {
-          if (drag.current) offset.current = drag.current.base - (e.touches[0].clientX - drag.current.x);
+          const d = drag.current;
+          if (!d || d.axis === "y") return;
+          const t = e.touches[0];
+          const dx = t.clientX - d.x;
+          if (d.axis === null) {
+            const dy = t.clientY - d.y;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < 10) return;
+            d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+            if (d.axis === "y") return;
+            // Take hold where the strip is now, mid-step or not.
+            nudge.current = { to: 0, applied: 0, start: 0, active: false };
+            d.base = offset.current + dx;
+          }
+          offset.current = d.base - dx;
         }}
         onTouchEnd={(e) => {
           const d = drag.current;
-          if (!d) return;
           drag.current = null;
+          if (!d || d.axis !== "x") return;
           const dx = e.changedTouches[0].clientX - d.x;
           const unit = (firstSet.current?.firstElementChild as HTMLElement | null)?.offsetWidth ?? 280;
           const flick = Math.abs(dx) > 40 && Math.abs(dx) < unit / 2;
           stepFn.current(flick ? (dx < 0 ? 1 : -1) : 0);
         }}
         onTouchCancel={() => {
+          const wasDragging = drag.current?.axis === "x";
           drag.current = null;
-          stepFn.current(0);
+          if (wasDragging) stepFn.current(0);
         }}
       >
         <div ref={track} className="flex w-max will-change-transform" style={{ gap }}>
