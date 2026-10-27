@@ -142,6 +142,16 @@ const milestones: {
 
 /** The span of the working life, drawn along the foot of the "Six decades"
  *  feature: first credit in the mid-sixties, coaching today. */
+/** Posters that open the catalogue strip — the films people know. */
+const leadPosters = [
+  "The Kids Are Alright",
+  "Deep Purple Rises Over Japan",
+  "The Butterfly Ball",
+  "Gold",
+  "Shout at the Devil",
+  "Riding High",
+];
+
 const decades = ["1960s", "1970s", "1980s", "1990s", "2000s", "2010s", "2020s"];
 
 /** Hero entrance stagger. Short: the whole title card lands inside a second. */
@@ -173,7 +183,12 @@ export default async function HomePage() {
 
   // Only works that actually have a cover: a strip of empty frames is worse
   // than no strip.
-  const featuredWorks = works.filter((w) => w.storage_path).slice(0, 14);
+  // The best-known film posters lead, the rest follow in catalogue order.
+  const withCover = works.filter((w) => w.storage_path);
+  const lead = leadPosters
+    .map((t) => withCover.find((w) => w.title === t))
+    .filter((w): w is CatalogueItem => Boolean(w));
+  const featuredWorks = [...lead, ...withCover.filter((w) => !lead.includes(w))].slice(0, 14);
 
   // The catalogue's real breadth, counted rather than claimed.
   const counts = CATALOGUE_CATEGORIES.map((c) => ({
@@ -427,6 +442,59 @@ export default async function HomePage() {
         </Container>
       </section>
 
+      {/* THE WORK — straight after the title card, so the posters are seen
+          before attention runs out (Tony, 2026-10-27: they are the most
+          arresting thing on the site). The header counts the catalogue rather
+          than describing it. Noir, continuing the hero's field: covers read
+          best on near-black, like a screening room. */}
+      {featuredWorks.length > 0 ? (
+        <Band tone="noir" spacing="balanced">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <div>
+              <p className={cn(eyebrow, "text-block-foreground/70")}>The catalogue</p>
+              <h2 className="mt-5 font-display">
+                Films, books and recordings.
+              </h2>
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-block-foreground/85">
+                The work itself, not a description of it.
+              </p>
+            </div>
+            <dl className="flex flex-wrap gap-x-10 gap-y-6">
+              {counts.slice(0, 4).map((c) => (
+                <div key={c.label}>
+                  <dt className="text-xs font-medium tracking-[0.08em] text-block-foreground/65 uppercase">
+                    {c.label}
+                  </dt>
+                  <dd className="mt-1 font-display text-4xl leading-none font-semibold tabular-nums">
+                    {c.count}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          {/* Keeps gliding, like the "On set with" names, and can still be
+              stepped back and forth (note 10 §37). */}
+          <LoopingStrip
+            label="Works from the catalogue"
+            tone="block"
+            className="mt-16"
+            slideClassName="w-60 sm:w-64 lg:w-66"
+          >
+            {featuredWorks.map((work) => (
+              <WorkCard key={work.id} item={work} tone="ink" />
+            ))}
+          </LoopingStrip>
+
+          <div className="mt-12">
+            <ButtonLink href="/catalogue" variant="onBlockOutline">
+              See the whole catalogue
+              <ButtonArrow />
+            </ButtonLink>
+          </div>
+        </Band>
+      ) : null}
+
       {/* WORKED WITH — the names do the talking, in a line of credits that
           never quite ends. Page ground, so it rests the eye between two
           saturated fields. More room below than above (owner, 2026-09-26),
@@ -463,8 +531,8 @@ export default async function HomePage() {
               across more than thirty countries.
             </p>
             <p>
-              He is also an author, has taught at the Bournemouth Film School and
-              the University of East London, and holds The Queen&apos;s
+              He is also an author, was Course Leader of the Kick Start course
+              at BPCAD (the Bournemouth Film School), and holds The Queen&apos;s
               Anniversary Award for Education. In 2016 he founded Give-Get-Go,
               and in 2019 began coaching directly.
             </p>
@@ -609,57 +677,6 @@ export default async function HomePage() {
         </Container>
         <PhotoCredit src={designPhotos.homeBanner.src} variant="overlay" />
       </section>
-
-      {/* THE WORK — the catalogue, before the coaching that draws on it.
-          The header counts the catalogue rather than describing it. Noir, the
-          hero's field: covers read best on near-black, like a screening room. */}
-      {featuredWorks.length > 0 ? (
-        <Band tone="noir" spacing="balanced">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <div>
-              <p className={cn(eyebrow, "text-block-foreground/70")}>The catalogue</p>
-              <h2 className="mt-5 font-display">
-                Films, books and recordings.
-              </h2>
-              <p className="mt-6 max-w-xl text-lg leading-relaxed text-block-foreground/85">
-                The work itself, not a description of it.
-              </p>
-            </div>
-            <dl className="flex flex-wrap gap-x-10 gap-y-6">
-              {counts.slice(0, 4).map((c) => (
-                <div key={c.label}>
-                  <dt className="text-xs font-medium tracking-[0.08em] text-block-foreground/65 uppercase">
-                    {c.label}
-                  </dt>
-                  <dd className="mt-1 font-display text-4xl leading-none font-semibold tabular-nums">
-                    {c.count}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-
-          {/* Keeps gliding, like the "On set with" names, and can still be
-              stepped back and forth (note 10 §37). */}
-          <LoopingStrip
-            label="Works from the catalogue"
-            tone="block"
-            className="mt-16"
-            slideClassName="w-60 sm:w-64 lg:w-66"
-          >
-            {featuredWorks.map((work) => (
-              <WorkCard key={work.id} item={work} tone="ink" />
-            ))}
-          </LoopingStrip>
-
-          <div className="mt-12">
-            <ButtonLink href="/catalogue" variant="onBlockOutline">
-              See the whole catalogue
-              <ButtonArrow />
-            </ButtonLink>
-          </div>
-        </Band>
-      ) : null}
 
       {/*
         COACHING — a short signpost, not a price list (owner, 2026-09-26: the

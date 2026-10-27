@@ -239,6 +239,7 @@ const awards = [
 const posts = [
   { role: "National Secretary", name: "Association of Media Practice Educators" },
   { role: "Co-founder", name: "Screen Commission Northants" },
+  { role: "Course Leader, Kick Start course", name: "BPCAD · Bournemouth Film School" },
   {
     role: "Lecturer and programme leader, to Masters level",
     name: "Bournemouth Film School · Northern Film School · University of East London",

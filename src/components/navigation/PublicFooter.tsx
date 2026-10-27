@@ -69,10 +69,13 @@ export function PublicFooter() {
         </div>
       </Container>
 
-      {/* The signature: the name across the width, quiet and cropped by the rule below. */}
+      {/* The signature: the name across the width, quiet, resting wholly
+          above the rule. It used to be cropped by the rule, but on phones the
+          descenders crossed into the legal line and read as an overlap (Tony,
+          2026-10-27). */}
       <p
         aria-hidden="true"
-        className="pointer-events-none mb-[-0.16em] px-2 text-center font-display text-[12.5vw] leading-[0.8] font-semibold tracking-[-0.045em] whitespace-nowrap text-foreground/[0.07] select-none"
+        className="pointer-events-none px-2 pb-[0.1em] text-center font-display text-[12.5vw] leading-[1.35] font-semibold tracking-[-0.045em] whitespace-nowrap text-foreground/[0.07] select-none"
       >
         Tony Klinger
       </p>
