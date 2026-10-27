@@ -229,9 +229,12 @@ export function Carousel({
       aria-roledescription="carousel"
       aria-label={label}
       className={className}
-      onMouseEnter={() => setHeld(true)}
-      onMouseLeave={() => setHeld(false)}
-      onFocus={() => setHeld(true)}
+      // Held by a real mouse or by keyboard focus only: a tap on a phone also
+      // fires "mouse enter" and focuses the button, neither of which ever
+      // ends on a touch screen, so autoplay stopped for good after one tap.
+      onPointerEnter={(e) => setHeld(e.pointerType === "mouse")}
+      onPointerLeave={() => setHeld(false)}
+      onFocus={(e) => setHeld(e.target.matches(":focus-visible"))}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHeld(false);
       }}

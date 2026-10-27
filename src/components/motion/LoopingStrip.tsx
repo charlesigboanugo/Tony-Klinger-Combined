@@ -71,9 +71,10 @@ export function LoopingStrip({
   const reducedRef = useRef(false);
   const stepModeRef = useRef(false);
   const lastStep = useRef(0);
-  const touchX = useRef<number | null>(null);
+  // A finger on the strip (phones): where it went down, and the offset then.
+  const drag = useRef<{ x: number; base: number } | null>(null);
   // Set by the loop's effect, which owns the offset it moves.
-  const stepFn = useRef<(dir: 1 | -1 | 0) => void>(() => {});
+  const stepFn = useRef<(dir: 1 | -1 | 0, instant?: boolean) => void>(() => {});
 
   useEffect(() => {
     playingRef.current = playing;
@@ -88,7 +89,7 @@ export function LoopingStrip({
       setStepMode(mq.matches);
       lastStep.current = performance.now();
       // Come to rest on the slide nearest the middle.
-      if (mq.matches) stepFn.current(0);
+      if (mq.matches) stepFn.current(0, true);
     };
     sync();
     const ro = new ResizeObserver(sync);
@@ -114,7 +115,7 @@ export function LoopingStrip({
     const io = new IntersectionObserver(([e]) => (visible.current = e.isIntersecting));
     io.observe(vp);
 
-    const doStep = (dir: 1 | -1 | 0) => {
+    const doStep = (dir: 1 | -1 | 0, instant = false) => {
       const first = firstSet.current?.firstElementChild as HTMLElement | null;
       const unit = (first?.offsetWidth ?? 280) + gap;
       lastStep.current = performance.now();
@@ -127,8 +128,8 @@ export function LoopingStrip({
         const heading = offset.current + nudge.current.to - nudge.current.applied;
         distance = Math.round((heading - centred) / unit) * unit + centred + dir * unit - offset.current;
       }
-      // Re-centring (dir 0, on load or a resize) is instant, not a glide.
-      if (reducedRef.current || dir === 0) {
+      // Re-centring on load or a resize is instant, not a glide.
+      if (reducedRef.current || instant) {
         offset.current += distance;
         nudge.current = { to: 0, applied: 0, start: 0, active: false };
         return;
@@ -136,7 +137,7 @@ export function LoopingStrip({
       nudge.current = { to: distance, applied: 0, start: performance.now(), active: true };
     };
     stepFn.current = doStep;
-    if (stepModeRef.current) doStep(0);
+    if (stepModeRef.current) doStep(0, true);
 
     let raf = 0;
     let last = performance.now();
@@ -151,7 +152,12 @@ export function LoopingStrip({
       const setWidth = set.offsetWidth + gap;
 
       const gliding =
-        playingRef.current && !held.current && visible.current && !document.hidden && !reducedRef.current;
+        playingRef.current &&
+        !held.current &&
+        !drag.current &&
+        visible.current &&
+        !document.hidden &&
+        !reducedRef.current;
       if (gliding && !stepping) offset.current += speed * dt;
       if (!gliding || nudge.current.active) lastStep.current = Math.max(lastStep.current, now);
       if (gliding && stepping && now - lastStep.current > HOLD_MS) doStep(1);
@@ -209,9 +215,13 @@ export function LoopingStrip({
       aria-roledescription="carousel"
       aria-label={label}
       className={className}
-      onMouseEnter={() => (held.current = true)}
-      onMouseLeave={() => (held.current = false)}
-      onFocus={() => (held.current = true)}
+      // Held by a real mouse or by keyboard focus only. A tap on a phone
+      // also fires "mouse enter" and focuses the button, and neither ever
+      // ends on a touch screen — so honouring them froze the strip for good
+      // after one tap on an arrow.
+      onPointerEnter={(e) => (held.current = e.pointerType === "mouse")}
+      onPointerLeave={() => (held.current = false)}
+      onFocus={(e) => (held.current = e.target.matches(":focus-visible"))}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) held.current = false;
       }}
@@ -221,12 +231,28 @@ export function LoopingStrip({
       <div
         ref={viewport}
         className={cn(ready ? "overflow-hidden" : "overflow-x-auto", stepMode && "touch-pan-y")}
-        onTouchStart={(e) => (touchX.current = stepMode ? e.touches[0].clientX : null)}
+        // The strip follows the finger, then settles on the nearest cover —
+        // or the next one along, for a short flick.
+        onTouchStart={(e) => {
+          if (!stepMode) return;
+          nudge.current = { to: 0, applied: 0, start: 0, active: false };
+          drag.current = { x: e.touches[0].clientX, base: offset.current };
+        }}
+        onTouchMove={(e) => {
+          if (drag.current) offset.current = drag.current.base - (e.touches[0].clientX - drag.current.x);
+        }}
         onTouchEnd={(e) => {
-          if (touchX.current === null) return;
-          const dx = e.changedTouches[0].clientX - touchX.current;
-          touchX.current = null;
-          if (Math.abs(dx) > 40) step(dx < 0 ? 1 : -1);
+          const d = drag.current;
+          if (!d) return;
+          drag.current = null;
+          const dx = e.changedTouches[0].clientX - d.x;
+          const unit = (firstSet.current?.firstElementChild as HTMLElement | null)?.offsetWidth ?? 280;
+          const flick = Math.abs(dx) > 40 && Math.abs(dx) < unit / 2;
+          stepFn.current(flick ? (dx < 0 ? 1 : -1) : 0);
+        }}
+        onTouchCancel={() => {
+          drag.current = null;
+          stepFn.current(0);
         }}
       >
         <div ref={track} className="flex w-max will-change-transform" style={{ gap }}>
