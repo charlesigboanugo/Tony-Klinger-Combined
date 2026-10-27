@@ -7,7 +7,7 @@ import { Container } from "@/components/layout/Container";
 import { GeneratedCover } from "@/components/media/GeneratedCover";
 import { StoredImage } from "@/components/media/StoredImage";
 import { Reveal } from "@/components/motion/Reveal";
-import { ButtonArrow, ButtonLink } from "@/components/ui/Button";
+import { ButtonArrow, ButtonLink, HERO_ACTIONS } from "@/components/ui/Button";
 import {
   CATALOGUE_CATEGORIES,
   COVER_FOCUS_CLASS,
@@ -122,7 +122,7 @@ export default async function CataloguePage() {
         </p>
 
         <div
-          className="mt-10 flex flex-wrap justify-center gap-3 animate-[fade-up_0.9s_var(--ease-out-expo)_both] motion-reduce:animate-none"
+          className={cn("mt-10 justify-center animate-[fade-up_0.9s_var(--ease-out-expo)_both] motion-reduce:animate-none", HERO_ACTIONS)}
           style={beat(540)}
         >
           <ButtonLink href="#collections" size="lg">

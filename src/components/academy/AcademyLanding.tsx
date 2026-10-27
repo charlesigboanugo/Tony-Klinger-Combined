@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
 import { Band } from "@/components/layout/Band";
 import { Container, Section } from "@/components/layout/Container";
 import { Reveal } from "@/components/motion/Reveal";
-import { ButtonLink } from "@/components/ui/Button";
+import { ButtonLink, HERO_ACTIONS } from "@/components/ui/Button";
+import { cn } from "@/lib/utils/cn";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { designPhotos } from "@/lib/site/design-photos";
 
@@ -54,7 +55,7 @@ export function AcademyLanding() {
             Tony&apos;s courses, live cohort workshops and Group Coaching, all under one account,
             with your progress kept for you.
           </Reveal>
-          <Reveal delay={180} className="flex flex-wrap justify-center gap-3 pt-2">
+          <Reveal delay={180} className={cn("justify-center pt-2", HERO_ACTIONS)}>
             <ButtonLink href="/auth/sign-in?next=%2Facademy" variant="onBlock" size="lg">
               Sign in
             </ButtonLink>

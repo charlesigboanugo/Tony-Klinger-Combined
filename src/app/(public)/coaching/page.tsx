@@ -7,7 +7,7 @@ import { Carousel } from "@/components/motion/Carousel";
 import { Band } from "@/components/layout/Band";
 import { Container } from "@/components/layout/Container";
 import { Reveal } from "@/components/motion/Reveal";
-import { ButtonArrow, ButtonLink } from "@/components/ui/Button";
+import { ButtonArrow, ButtonLink, HERO_ACTIONS } from "@/components/ui/Button";
 import { leadPrice } from "@/lib/commerce/billing";
 import { formatPrice } from "@/lib/commerce/pricing";
 import {
@@ -216,7 +216,7 @@ export default async function CoachingPage() {
               them in six decades of production, and he will tell you plainly
               what he would do.
             </p>
-            <div className="mt-9 flex flex-wrap gap-3">
+            <div className={cn("mt-9", HERO_ACTIONS)}>
               <ButtonLink href="#ways-in" size="lg">
                 Find your way in
               </ButtonLink>

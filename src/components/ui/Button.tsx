@@ -143,6 +143,13 @@ export function ButtonLink({
 }
 
 /**
+ * A hero's row of buttons. On a phone the buttons stack and stretch to the
+ * full width — bigger targets, and two buttons never wrap onto unequal lines;
+ * from `sm` they sit side by side at their own width (owner, 2026-10-27).
+ */
+export const HERO_ACTIONS = "flex flex-col gap-3 sm:flex-row sm:flex-wrap";
+
+/**
  * Trailing arrow that slides on hover.
  *
  * Separate from the button because it belongs on links that lead somewhere and

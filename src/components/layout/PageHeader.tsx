@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { DesignPhoto, type DesignImage } from "@/components/media/DesignPhoto";
 import { Reveal } from "@/components/motion/Reveal";
 import { cn } from "@/lib/utils/cn";
+import { HERO_ACTIONS } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 
 /**
@@ -70,7 +71,7 @@ export function PageHeader({
             nested
           />
           {actions ? (
-            <Reveal delay={180} className="flex flex-wrap gap-3">
+            <Reveal delay={180} className={HERO_ACTIONS}>
               {actions}
             </Reveal>
           ) : null}
@@ -136,7 +137,7 @@ export function PageHeader({
       </div>
 
       {actions ? (
-        <Reveal delay={180} className="flex shrink-0 flex-wrap gap-3">
+        <Reveal delay={180} className={cn("shrink-0", HERO_ACTIONS)}>
           {actions}
         </Reveal>
       ) : null}

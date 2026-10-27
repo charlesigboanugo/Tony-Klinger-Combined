@@ -23,6 +23,12 @@ import { cn } from "@/lib/utils/cn";
  * tab is hidden; a pause button covers phones and WCAG 2.2.2. Under
  * `prefers-reduced-motion` it never glides — the buttons still step through
  * it, instantly — and without JavaScript it is a plain scrollable row.
+ *
+ * ON A PHONE IT STEPS, IT DOES NOT GLIDE (owner, 2026-10-27): a glide on a
+ * narrow screen never rests with a whole cover in view. Below `sm` the strip
+ * moves one slide at a time — on a timer, by the buttons or by a swipe — and
+ * always comes to rest with one complete cover in the middle, its
+ * neighbours showing at either side.
  */
 export function LoopingStrip({
   children,
@@ -51,6 +57,8 @@ export function LoopingStrip({
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(true);
   const [reduced, setReduced] = useState(false);
+  // Phone mode: true once measured below `sm`.
+  const [stepMode, setStepMode] = useState(false);
 
   // Mutable loop state lives in refs: the loop reads it every frame, and
   // re-rendering React 60 times a second to move one transform would be waste.
@@ -61,10 +69,36 @@ export function LoopingStrip({
   const visible = useRef(false);
   const playingRef = useRef(true);
   const reducedRef = useRef(false);
+  const stepModeRef = useRef(false);
+  const lastStep = useRef(0);
+  const touchX = useRef<number | null>(null);
+  // Set by the loop's effect, which owns the offset it moves.
+  const stepFn = useRef<(dir: 1 | -1 | 0) => void>(() => {});
 
   useEffect(() => {
     playingRef.current = playing;
   }, [playing]);
+
+  useEffect(() => {
+    const vp = viewport.current;
+    if (!vp) return;
+    const mq = window.matchMedia("(max-width: 639.98px)");
+    const sync = () => {
+      stepModeRef.current = mq.matches;
+      setStepMode(mq.matches);
+      lastStep.current = performance.now();
+      // Come to rest on the slide nearest the middle.
+      if (mq.matches) stepFn.current(0);
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(vp);
+    mq.addEventListener("change", sync);
+    return () => {
+      ro.disconnect();
+      mq.removeEventListener("change", sync);
+    };
+  }, []);
 
   useEffect(() => {
     const vp = viewport.current;
@@ -80,18 +114,47 @@ export function LoopingStrip({
     const io = new IntersectionObserver(([e]) => (visible.current = e.isIntersecting));
     io.observe(vp);
 
+    const doStep = (dir: 1 | -1 | 0) => {
+      const first = firstSet.current?.firstElementChild as HTMLElement | null;
+      const unit = (first?.offsetWidth ?? 280) + gap;
+      lastStep.current = performance.now();
+      let distance = dir * unit;
+      if (stepModeRef.current) {
+        // The offset that puts a slide's centre on the strip's centre, then
+        // the nearest such resting place (counting a jump still easing in)
+        // plus `dir` slides — so every stop shows one whole cover, centred.
+        const centred = -(vp.clientWidth - (first?.offsetWidth ?? 280)) / 2;
+        const heading = offset.current + nudge.current.to - nudge.current.applied;
+        distance = Math.round((heading - centred) / unit) * unit + centred + dir * unit - offset.current;
+      }
+      // Re-centring (dir 0, on load or a resize) is instant, not a glide.
+      if (reducedRef.current || dir === 0) {
+        offset.current += distance;
+        nudge.current = { to: 0, applied: 0, start: 0, active: false };
+        return;
+      }
+      nudge.current = { to: distance, applied: 0, start: performance.now(), active: true };
+    };
+    stepFn.current = doStep;
+    if (stepModeRef.current) doStep(0);
+
     let raf = 0;
     let last = performance.now();
     const NUDGE_MS = 650;
+    // How long a phone rests on each cover before stepping on.
+    const HOLD_MS = 3500;
 
     const frame = (now: number) => {
       const dt = Math.min(now - last, 64) / 1000;
       last = now;
+      const stepping = stepModeRef.current;
       const setWidth = set.offsetWidth + gap;
 
       const gliding =
         playingRef.current && !held.current && visible.current && !document.hidden && !reducedRef.current;
-      if (gliding) offset.current += speed * dt;
+      if (gliding && !stepping) offset.current += speed * dt;
+      if (!gliding || nudge.current.active) lastStep.current = Math.max(lastStep.current, now);
+      if (gliding && stepping && now - lastStep.current > HOLD_MS) doStep(1);
 
       const n = nudge.current;
       if (n.active) {
@@ -114,15 +177,7 @@ export function LoopingStrip({
     };
   }, [gap, speed]);
 
-  const step = (dir: 1 | -1) => {
-    const first = firstSet.current?.firstElementChild as HTMLElement | null;
-    const distance = (first?.offsetWidth ?? 280) + gap;
-    if (reducedRef.current) {
-      offset.current += dir * distance;
-      return;
-    }
-    nudge.current = { to: dir * distance, applied: 0, start: performance.now(), active: true };
-  };
+  const step = (dir: 1 | -1) => stepFn.current(dir);
 
   const onBlock = tone === "block";
   const control = cn(
@@ -163,7 +218,17 @@ export function LoopingStrip({
     >
       {/* Before hydration this is an ordinary scrollable row; once the loop
           owns the transform, scrolling is switched off so the two never fight. */}
-      <div ref={viewport} className={cn(ready ? "overflow-hidden" : "overflow-x-auto")}>
+      <div
+        ref={viewport}
+        className={cn(ready ? "overflow-hidden" : "overflow-x-auto", stepMode && "touch-pan-y")}
+        onTouchStart={(e) => (touchX.current = stepMode ? e.touches[0].clientX : null)}
+        onTouchEnd={(e) => {
+          if (touchX.current === null) return;
+          const dx = e.changedTouches[0].clientX - touchX.current;
+          touchX.current = null;
+          if (Math.abs(dx) > 40) step(dx < 0 ? 1 : -1);
+        }}
+      >
         <div ref={track} className="flex w-max will-change-transform" style={{ gap }}>
           {set(false)}
           {ready ? set(true) : null}

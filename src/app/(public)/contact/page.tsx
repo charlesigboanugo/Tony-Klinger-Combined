@@ -100,7 +100,7 @@ export default function ContactPage() {
               <em className="text-block-foreground/75">Write, and the studio replies.</em>
             </p>
             <div
-              className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4 animate-[fade-up_0.9s_var(--ease-out-expo)_both] motion-reduce:animate-none"
+              className="mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-8 animate-[fade-up_0.9s_var(--ease-out-expo)_both] motion-reduce:animate-none"
               style={{ animationDelay: "650ms" }}
             >
               <ButtonLink href="#write" size="lg" variant="onBlock" className="group/btn">

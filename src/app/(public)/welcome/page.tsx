@@ -7,7 +7,8 @@ import { Container, Section } from "@/components/layout/Container";
 import { Band } from "@/components/layout/Band";
 import { PhotoCredit } from "@/components/media/PhotoCredit";
 import { Reveal } from "@/components/motion/Reveal";
-import { ButtonLink } from "@/components/ui/Button";
+import { ButtonLink, HERO_ACTIONS } from "@/components/ui/Button";
+import { cn } from "@/lib/utils/cn";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { DEFAULT_REDIRECT, safeRedirect } from "@/lib/auth/safe-redirect";
 import { requireUser } from "@/lib/permissions";
@@ -132,7 +133,7 @@ export default async function WelcomePage({
             membership, now lives in one account.
           </Reveal>
 
-          <Reveal delay={180} className="mt-9">
+          <Reveal delay={180} className={cn("mt-9", HERO_ACTIONS)}>
             <ButtonLink href={next} variant="primary" size="lg">
               {goingSomewhere ? "Continue where you were" : "Start exploring"}
             </ButtonLink>

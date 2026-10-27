@@ -13,7 +13,7 @@ import { LoopingStrip } from "@/components/motion/LoopingStrip";
 import { Marquee } from "@/components/motion/Marquee";
 import { Reveal } from "@/components/motion/Reveal";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { ButtonArrow, ButtonLink } from "@/components/ui/Button";
+import { ButtonArrow, ButtonLink, HERO_ACTIONS } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/commerce/pricing";
 import { leadPrice } from "@/lib/commerce/billing";
 import {
@@ -390,7 +390,7 @@ export default async function HomePage() {
             </p>
 
             <div
-              className="mt-9 flex flex-wrap gap-3 animate-[fade-up_0.9s_var(--ease-out-expo)_both] motion-reduce:animate-none"
+              className={cn("mt-9 animate-[fade-up_0.9s_var(--ease-out-expo)_both] motion-reduce:animate-none", HERO_ACTIONS)}
               style={beat(840)}
             >
               <ButtonLink href="/coaching" size="lg">
@@ -459,13 +459,17 @@ export default async function HomePage() {
                 The work itself, not a description of it.
               </p>
             </div>
-            <dl className="flex flex-wrap gap-x-10 gap-y-6">
+            {/* Two by two on a phone, matching the credits grid above, so a
+                long label never drops onto a line of its own; each number is
+                pushed to the foot of its cell so a row's numbers share a
+                baseline when one label wraps. One row from `sm`. */}
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-8 sm:flex sm:flex-wrap sm:gap-x-10 sm:gap-y-6">
               {counts.slice(0, 4).map((c) => (
-                <div key={c.label}>
+                <div key={c.label} className="flex flex-col">
                   <dt className="text-xs font-medium tracking-[0.08em] text-block-foreground/65 uppercase">
                     {c.label}
                   </dt>
-                  <dd className="mt-1 font-display text-4xl leading-none font-semibold tabular-nums">
+                  <dd className="mt-auto pt-1 font-display text-4xl leading-none font-semibold tabular-nums">
                     {c.count}
                   </dd>
                 </div>
