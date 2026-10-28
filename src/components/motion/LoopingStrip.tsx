@@ -24,11 +24,16 @@ import { cn } from "@/lib/utils/cn";
  * `prefers-reduced-motion` it never glides — the buttons still step through
  * it, instantly — and without JavaScript it is a plain scrollable row.
  *
- * ON A PHONE IT STEPS, IT DOES NOT GLIDE (owner, 2026-10-27): a glide on a
- * narrow screen never rests with a whole cover in view. Below `sm` the strip
- * moves one slide at a time — on a timer, by the buttons or by a swipe — and
- * always comes to rest with one complete cover in the middle, its
- * neighbours showing at either side.
+ * Every jump — a button, a swipe let go — is carried by one spring rather
+ * than a fixed animation: it starts gently, keeps its speed when a second
+ * press lands mid-move, and eases to a stop, so the motion never hiccups
+ * (owner, 2026-10-28).
+ *
+ * ON A PHONE (below `sm`) it glides the same way, but a press or swipe lands
+ * one complete cover in the middle, its neighbours either side, and holds it
+ * there for a few seconds before easing back into the glide (owner,
+ * 2026-10-27/28). The strip follows the finger; a swipe carries on, with its
+ * momentum, to the next cover in the direction it went.
  */
 export function LoopingStrip({
   children,
@@ -63,8 +68,8 @@ export function LoopingStrip({
   // Mutable loop state lives in refs: the loop reads it every frame, and
   // re-rendering React 60 times a second to move one transform would be waste.
   const offset = useRef(0);
-  // A button press: `to` px to add over NUDGE_MS, `applied` px added so far.
-  const nudge = useRef({ to: 0, applied: 0, start: 0, active: false });
+  // The spring carrying a jump: `left` px still to travel, `v` its speed.
+  const spring = useRef({ left: 0, v: 0 });
   const held = useRef(false);
   const visible = useRef(false);
   const playingRef = useRef(true);
@@ -73,9 +78,20 @@ export function LoopingStrip({
   const lastStep = useRef(0);
   // A finger on the strip (phones): where it went down, the offset then, and
   // which way the gesture turned out to go (null until it has moved enough).
-  const drag = useRef<{ x: number; y: number; base: number; axis: "x" | "y" | null } | null>(null);
+  const drag = useRef<{
+    x: number;
+    y: number;
+    base: number;
+    axis: "x" | "y" | null;
+    // The finger's last position and time, for its speed on release.
+    lastX: number;
+    lastT: number;
+    vx: number;
+  } | null>(null);
   // Set by the loop's effect, which owns the offset it moves.
   const stepFn = useRef<(dir: 1 | -1 | 0, instant?: boolean) => void>(() => {});
+  // Set with it: ends a swipe, given its direction and the finger's speed.
+  const releaseFn = useRef<(dir: 1 | -1 | 0, v: number) => void>(() => {});
 
   useEffect(() => {
     playingRef.current = playing;
@@ -116,60 +132,94 @@ export function LoopingStrip({
     const io = new IntersectionObserver(([e]) => (visible.current = e.isIntersecting));
     io.observe(vp);
 
-    const doStep = (dir: 1 | -1 | 0, instant = false) => {
+    const slot = () => {
       const first = firstSet.current?.firstElementChild as HTMLElement | null;
-      const unit = (first?.offsetWidth ?? 280) + gap;
+      const width = first?.offsetWidth ?? 280;
+      // `centred`: the offset that puts a slide's centre on the strip's.
+      return { unit: width + gap, centred: -(vp.clientWidth - width) / 2 };
+    };
+
+    // Send the strip `distance` px further, on the spring (or at once).
+    const travel = (distance: number, instant: boolean, v?: number) => {
       lastStep.current = performance.now();
-      let distance = dir * unit;
-      if (stepModeRef.current) {
-        // The offset that puts a slide's centre on the strip's centre, then
-        // the nearest such resting place (counting a jump still easing in)
-        // plus `dir` slides — so every stop shows one whole cover, centred.
-        const centred = -(vp.clientWidth - (first?.offsetWidth ?? 280)) / 2;
-        const heading = offset.current + nudge.current.to - nudge.current.applied;
-        distance = Math.round((heading - centred) / unit) * unit + centred + dir * unit - offset.current;
-      }
-      // Re-centring on load or a resize is instant, not a glide.
       if (reducedRef.current || instant) {
         offset.current += distance;
-        nudge.current = { to: 0, applied: 0, start: 0, active: false };
+        spring.current = { left: 0, v: 0 };
         return;
       }
-      nudge.current = { to: distance, applied: 0, start: performance.now(), active: true };
+      spring.current = { left: distance, v: v ?? spring.current.v };
     };
+
+    const doStep = (dir: 1 | -1 | 0, instant = false) => {
+      const { unit, centred } = slot();
+      if (!stepModeRef.current) return travel(spring.current.left + dir * unit, instant);
+      // The cover nearest where the strip is heading, plus `dir` covers —
+      // so every stop shows one whole cover, centred.
+      const heading = offset.current + spring.current.left;
+      const target = Math.round((heading - centred) / unit) * unit + centred + dir * unit;
+      travel(target - offset.current, instant);
+    };
+
+    // A swipe let go: on to the next cover in the direction it went (or back
+    // to the nearest, for a touch that hardly moved), keeping its speed.
+    const release = (dir: 1 | -1 | 0, v: number) => {
+      const { unit, centred } = slot();
+      const k = (offset.current - centred) / unit;
+      const index = dir > 0 ? Math.ceil(k - 0.05) : dir < 0 ? Math.floor(k + 0.05) : Math.round(k);
+      travel(index * unit + centred - offset.current, false, v);
+    };
+
     stepFn.current = doStep;
+    releaseFn.current = release;
     if (stepModeRef.current) doStep(0, true);
 
     let raf = 0;
     let last = performance.now();
-    const NUDGE_MS = 650;
-    // How long a phone rests on each cover before stepping on.
+    // The spring's stiffness: critically damped, it settles in about 0.7s.
+    // Its push is capped, so a jump builds up over a few frames instead of
+    // setting off at a kick.
+    const OMEGA = 9;
+    const MAX_ACCEL = 9000;
+    // How long a phone holds a cover it was moved to before gliding again,
+    // and how long the glide takes to come back up to speed.
     const HOLD_MS = 3500;
+    const RAMP_MS = 900;
 
     const frame = (now: number) => {
       const dt = Math.min(now - last, 64) / 1000;
       last = now;
       const stepping = stepModeRef.current;
       const setWidth = set.offsetWidth + gap;
+      const sp = spring.current;
+      const moving = sp.left !== 0;
 
-      const gliding =
+      const free =
         playingRef.current &&
         !held.current &&
         !drag.current &&
         visible.current &&
         !document.hidden &&
         !reducedRef.current;
-      if (gliding && !stepping) offset.current += speed * dt;
-      if (!gliding || nudge.current.active) lastStep.current = Math.max(lastStep.current, now);
-      if (gliding && stepping && now - lastStep.current > HOLD_MS) doStep(1);
+      // A phone holds still while a jump lands and for HOLD_MS after.
+      if (stepping && (moving || drag.current)) lastStep.current = now;
+      const since = now - lastStep.current;
+      if (free && (!stepping || since > HOLD_MS)) {
+        // Ease back up to speed rather than lurching off.
+        const ramp = stepping ? Math.min((since - HOLD_MS) / RAMP_MS, 1) : 1;
+        offset.current += speed * dt * (ramp * ramp * (3 - 2 * ramp));
+      }
 
-      const n = nudge.current;
-      if (n.active) {
-        const t = Math.min((now - n.start) / NUDGE_MS, 1);
-        const applied = n.to * (1 - Math.pow(1 - t, 3)); // ease-out cubic
-        offset.current += applied - n.applied;
-        n.applied = applied;
-        if (t >= 1) n.active = false;
+      if (moving) {
+        const accel = OMEGA * OMEGA * sp.left - 2 * OMEGA * sp.v;
+        sp.v += Math.max(-MAX_ACCEL, Math.min(MAX_ACCEL, accel)) * dt;
+        let move = sp.v * dt;
+        if (Math.abs(move) > Math.abs(sp.left)) move = sp.left;
+        offset.current += move;
+        sp.left -= move;
+        if (Math.abs(sp.left) < 0.5 && Math.abs(sp.v) < 20) {
+          offset.current += sp.left;
+          spring.current = { left: 0, v: 0 };
+        }
       }
 
       if (setWidth > 0) offset.current = ((offset.current % setWidth) + setWidth) % setWidth;
@@ -227,59 +277,9 @@ export function LoopingStrip({
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) held.current = false;
       }}
     >
-      {/* Before hydration this is an ordinary scrollable row; once the loop
-          owns the transform, scrolling is switched off so the two never fight. */}
-      <div
-        ref={viewport}
-        className={cn(ready ? "overflow-hidden" : "overflow-x-auto", stepMode && "touch-pan-y")}
-        // The strip follows the finger, then settles on the nearest cover —
-        // or the next one along, for a short flick. The gesture is locked to
-        // its first clear direction: a page scroll that crosses the strip
-        // drifts sideways too, and must never turn into a swipe (owner,
-        // 2026-10-27).
-        onTouchStart={(e) => {
-          if (!stepMode) return;
-          const t = e.touches[0];
-          drag.current = { x: t.clientX, y: t.clientY, base: offset.current, axis: null };
-        }}
-        onTouchMove={(e) => {
-          const d = drag.current;
-          if (!d || d.axis === "y") return;
-          const t = e.touches[0];
-          const dx = t.clientX - d.x;
-          if (d.axis === null) {
-            const dy = t.clientY - d.y;
-            if (Math.max(Math.abs(dx), Math.abs(dy)) < 10) return;
-            d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-            if (d.axis === "y") return;
-            // Take hold where the strip is now, mid-step or not.
-            nudge.current = { to: 0, applied: 0, start: 0, active: false };
-            d.base = offset.current + dx;
-          }
-          offset.current = d.base - dx;
-        }}
-        onTouchEnd={(e) => {
-          const d = drag.current;
-          drag.current = null;
-          if (!d || d.axis !== "x") return;
-          const dx = e.changedTouches[0].clientX - d.x;
-          const unit = (firstSet.current?.firstElementChild as HTMLElement | null)?.offsetWidth ?? 280;
-          const flick = Math.abs(dx) > 40 && Math.abs(dx) < unit / 2;
-          stepFn.current(flick ? (dx < 0 ? 1 : -1) : 0);
-        }}
-        onTouchCancel={() => {
-          const wasDragging = drag.current?.axis === "x";
-          drag.current = null;
-          if (wasDragging) stepFn.current(0);
-        }}
-      >
-        <div ref={track} className="flex w-max will-change-transform" style={{ gap }}>
-          {set(false)}
-          {ready ? set(true) : null}
-        </div>
-      </div>
-
-      <div className="mt-10 flex items-center justify-end gap-2">
+      {/* Above the strip, so they are seen before the covers (owner,
+          2026-10-28) — on a phone the covers fill the screen. */}
+      <div className="mb-6 flex items-center justify-end gap-2">
         <button type="button" onClick={() => step(-1)} className={control} aria-label="Previous">
           <svg viewBox="0 0 20 20" aria-hidden="true" className="h-4 w-4">
             <path d="M12.5 4.5 7 10l5.5 5.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -309,6 +309,72 @@ export function LoopingStrip({
           </svg>
         </button>
       </div>
+      {/* Before hydration this is an ordinary scrollable row; once the loop
+          owns the transform, scrolling is switched off so the two never fight. */}
+      <div
+        ref={viewport}
+        className={cn(ready ? "overflow-hidden" : "overflow-x-auto", stepMode && "touch-pan-y")}
+        // The strip follows the finger, then settles on the nearest cover —
+        // or the next one along, for a short flick. The gesture is locked to
+        // its first clear direction: a page scroll that crosses the strip
+        // drifts sideways too, and must never turn into a swipe (owner,
+        // 2026-10-27).
+        onTouchStart={(e) => {
+          if (!stepMode) return;
+          const t = e.touches[0];
+          drag.current = {
+            x: t.clientX,
+            y: t.clientY,
+            base: offset.current,
+            axis: null,
+            lastX: t.clientX,
+            lastT: e.timeStamp,
+            vx: 0,
+          };
+        }}
+        onTouchMove={(e) => {
+          const d = drag.current;
+          if (!d || d.axis === "y") return;
+          const t = e.touches[0];
+          const dx = t.clientX - d.x;
+          if (d.axis === null) {
+            const dy = t.clientY - d.y;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < 10) return;
+            d.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+            if (d.axis === "y") return;
+            // Take hold where the strip is now, mid-jump or not.
+            spring.current = { left: 0, v: 0 };
+            d.base = offset.current + dx;
+          }
+          offset.current = d.base - dx;
+          const ms = e.timeStamp - d.lastT;
+          if (ms > 0) d.vx = 0.6 * d.vx + 0.4 * (((t.clientX - d.lastX) / ms) * 1000);
+          d.lastX = t.clientX;
+          d.lastT = e.timeStamp;
+        }}
+        onTouchEnd={(e) => {
+          const d = drag.current;
+          drag.current = null;
+          if (!d || d.axis !== "x") return;
+          const dx = e.changedTouches[0].clientX - d.x;
+          // Finger left = strip forward. A drag of a few px is a slip; a
+          // fast flick counts however short.
+          const fast = Math.abs(d.vx) > 250;
+          const dir = Math.abs(dx) > 24 || fast ? (dx < 0 ? 1 : -1) : 0;
+          releaseFn.current(dir, -d.vx);
+        }}
+        onTouchCancel={() => {
+          const d = drag.current;
+          drag.current = null;
+          if (d?.axis === "x") releaseFn.current(d.lastX < d.x ? 1 : d.lastX > d.x ? -1 : 0, -d.vx);
+        }}
+      >
+        <div ref={track} className="flex w-max will-change-transform" style={{ gap }}>
+          {set(false)}
+          {ready ? set(true) : null}
+        </div>
+      </div>
+
     </section>
   );
 }

@@ -239,33 +239,10 @@ export function Carousel({
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setHeld(false);
       }}
     >
-      <div
-        ref={track}
-        aria-live={running ? "off" : "polite"}
-        className={cn(
-          "relative flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain",
-          "scrollbar-none [&::-webkit-scrollbar]:hidden",
-          fitHeight &&
-            "items-start transition-[height] duration-(--dur-base) ease-expo motion-reduce:transition-none",
-          trackClassName,
-        )}
-        style={fitHeight && height ? { height } : undefined}
-      >
-        {slides.map((slide, i) => (
-          <div
-            key={i}
-            role="group"
-            aria-roledescription="slide"
-            aria-label={`${i + 1} of ${slides.length}`}
-            className={cn("shrink-0 snap-start", slideClassName)}
-          >
-            {slide}
-          </div>
-        ))}
-      </div>
-
+      {/* Controls above the slides (owner, 2026-10-28): seen first, and
+          the strip ends cleanly. */}
       {overflows ? (
-        <div className="mt-10 flex items-center gap-6">
+        <div className="mb-6 flex items-center gap-6">
           <div
             aria-hidden="true"
             className={cn(
@@ -317,6 +294,31 @@ export function Carousel({
           </div>
         </div>
       ) : null}
+
+      <div
+        ref={track}
+        aria-live={running ? "off" : "polite"}
+        className={cn(
+          "relative flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain",
+          "scrollbar-none [&::-webkit-scrollbar]:hidden",
+          fitHeight &&
+            "items-start transition-[height] duration-(--dur-base) ease-expo motion-reduce:transition-none",
+          trackClassName,
+        )}
+        style={fitHeight && height ? { height } : undefined}
+      >
+        {slides.map((slide, i) => (
+          <div
+            key={i}
+            role="group"
+            aria-roledescription="slide"
+            aria-label={`${i + 1} of ${slides.length}`}
+            className={cn("shrink-0 snap-start", slideClassName)}
+          >
+            {slide}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
