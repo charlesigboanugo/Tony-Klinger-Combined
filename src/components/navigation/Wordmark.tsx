@@ -53,8 +53,9 @@ export function Wordmark({
         )}
       >
         {/* One line always: at 320px the name wrapped to two when the mark was
-            allowed to shrink beside the Menu toggle. */}
-        <span className="font-display text-[1.125rem] leading-none font-semibold tracking-tight whitespace-nowrap min-[360px]:text-[1.3125rem]">
+            allowed to shrink beside the Menu toggle. Smaller on phones (owner,
+            2026-11-02), full size from sm. */}
+        <span className="font-display text-[1rem] leading-none font-semibold tracking-tight whitespace-nowrap min-[360px]:text-[1.0625rem] sm:text-[1.3125rem]">
           Tony Klinger
         </span>
         {compact ? null : (
