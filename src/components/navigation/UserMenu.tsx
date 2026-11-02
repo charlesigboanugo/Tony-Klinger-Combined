@@ -151,9 +151,11 @@ export function UserMenu({
         <div className="overflow-hidden rounded-(--radius-lg) border border-border bg-surface p-1.5 shadow-lift">
           <p className="truncate px-3 py-2 text-xs text-muted-foreground">{email}</p>
           {[
+            // Where a signed-in person is most likely going comes first (owner,
+            // 2026-11-02): Admin for staff, then the Academy, then the account.
             ...(admin ? [{ href: "/admin", label: "Admin" }] : []),
-            { href: "/account", label: "My account" },
             { href: "/academy", label: "Academy" },
+            { href: "/account", label: "My account" },
             { href: "/account/orders", label: "Orders" },
             { href: "/account/bookings", label: "Bookings" },
             { href: "/account/entitlements", label: "Your access" },

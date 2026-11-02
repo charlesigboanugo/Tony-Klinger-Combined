@@ -148,6 +148,26 @@ export function MobileNav({
         )}
       >
         <nav aria-label="Main" className="mx-auto flex min-h-full max-w-2xl flex-col px-5 pt-6 pb-10 sm:px-8">
+          {/* Signed in, where they are most likely going sits ABOVE the menu
+              (owner, 2026-11-02): Admin for staff, as the one filled button,
+              then the Academy. The account and cart stay at the foot. */}
+          {userEmail ? (
+            <div className="mb-6 grid gap-3 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both] sm:grid-cols-2">
+              {admin ? (
+                <ButtonLink href="/admin" variant="onBlock" onClick={onClose}>
+                  Admin
+                </ButtonLink>
+              ) : null}
+              <ButtonLink
+                href="/academy"
+                variant={admin ? "onBlockOutline" : "onBlock"}
+                onClick={onClose}
+                className={cn(!admin && "sm:col-span-2")}
+              >
+                Academy
+              </ButtonLink>
+            </div>
+          ) : null}
           <ol className="border-t border-border">
             {menuOrder.map((item, i) => (
               <li
@@ -194,7 +214,7 @@ export function MobileNav({
             className="mt-auto grid gap-3 pt-10 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both] sm:grid-cols-2"
           >
             {userEmail ? (
-              <ButtonLink href="/account" variant="onBlock" onClick={onClose}>
+              <ButtonLink href="/account" variant="onBlockOutline" onClick={onClose}>
                 My account
               </ButtonLink>
             ) : (
@@ -205,11 +225,6 @@ export function MobileNav({
             <ButtonLink href="/cart" variant="onBlockOutline" onClick={onClose}>
               {cartCount > 0 ? `Cart (${cartCount})` : "Cart"}
             </ButtonLink>
-            {userEmail && admin ? (
-              <ButtonLink href="/admin" variant="onBlockOutline" onClick={onClose} className="sm:col-span-2">
-                Admin
-              </ButtonLink>
-            ) : null}
           </div>
 
           {userEmail ? (

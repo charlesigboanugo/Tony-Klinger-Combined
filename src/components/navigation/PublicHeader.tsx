@@ -20,7 +20,9 @@ import { cn } from "@/lib/utils/cn";
  *
  * THREE WIDTHS, THREE ARRANGEMENTS:
  *   phone     mark + Coaching + Menu
- *   tablet    mark + Coaching + Sign in (or the account menu) + Menu
+ *   tablet    mark + Coaching + Sign in + Menu (signed in, no account menu:
+ *             the Menu sheet holds Admin, Academy and My account — owner,
+ *             2026-11-02)
  *   desktop   mark · navigation in tracked capitals · cart · Sign in
  *
  * The cart icon carries a count badge when the cart is non-empty, and below
@@ -196,7 +198,7 @@ export function PublicHeader() {
               {visitor === null ? (
                 <span aria-hidden="true" className="hidden h-9 w-21 sm:block" />
               ) : userEmail ? (
-                <div className="hidden sm:block">
+                <div className="hidden lg:block">
                   <UserMenu email={userEmail} admin={visitor?.admin ?? false} />
                 </div>
               ) : (
@@ -214,7 +216,7 @@ export function PublicHeader() {
                   href={featured.href}
                   aria-current={isActive(pathname, featured.href) ? "page" : undefined}
                   className={cn(
-                    "relative flex h-10 items-center rounded-full bg-button px-3 text-button-foreground min-[420px]:ml-1 min-[420px]:px-4 lg:hidden",
+                    "relative flex h-11 items-center rounded-full bg-button px-3 text-button-foreground min-[420px]:ml-1 min-[420px]:px-4 lg:hidden",
                     "transition-[box-shadow,filter,transform] duration-200 ease-out active:scale-96 motion-reduce:transform-none",
                     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                     FILLED_STATES,
@@ -234,24 +236,26 @@ export function PublicHeader() {
                 className={cn(
                   // Below 420px only its icon, beside the Coaching button; the
                   // word "Menu" returns once there is room.
-                  "flex h-10 w-10 shrink-0 items-center justify-center gap-2.5 rounded-full border border-border min-[420px]:ml-1 min-[420px]:w-auto min-[420px]:justify-start min-[420px]:pr-4 min-[420px]:pl-3.5 lg:hidden",
+                  "flex h-11 w-11 shrink-0 items-center justify-center gap-2.5 rounded-full border border-foreground/35 min-[420px]:ml-1 min-[420px]:w-auto min-[420px]:justify-start min-[420px]:pr-4 min-[420px]:pl-3.5 lg:hidden",
                   "transition-colors hover:border-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                   navLinkType,
                   open && "border-foreground bg-foreground text-background",
                 )}
               >
                 {/* Two bars that cross into an X — the state change is visible
-                    rather than requiring the label to be read. */}
-                <span aria-hidden="true" className="relative block h-3 w-4">
+                    rather than requiring the label to be read. Wider and
+                    heavier on phones (owner, 2026-11-02: "a bit bigger and
+                    visible"), in a 44px target. */}
+                <span aria-hidden="true" className="relative block h-3.5 w-5">
                   <span
                     className={cn(
-                      "absolute left-0 block h-px w-4 bg-current transition-all duration-200",
+                      "absolute left-0 block h-0.5 w-5 rounded-full bg-current transition-all duration-200",
                       open ? "top-1.5 rotate-45" : "top-0.5",
                     )}
                   />
                   <span
                     className={cn(
-                      "absolute left-0 block h-px w-4 bg-current transition-all duration-200",
+                      "absolute left-0 block h-0.5 w-5 rounded-full bg-current transition-all duration-200",
                       open ? "top-1.5 -rotate-45" : "top-2.5",
                     )}
                   />
