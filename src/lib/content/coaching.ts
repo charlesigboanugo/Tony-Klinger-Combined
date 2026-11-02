@@ -64,6 +64,8 @@ export type MembershipTier = {
   includesRetreats: boolean;
   /** Retreats are for members paying by the year, not by the month. */
   retreatsRequireYearly: boolean;
+  /** Percent off a single one-to-one session for holders (migration 0026). 0 for none. */
+  oneToOneDiscount: number;
 };
 
 /** An active price on a product. */
@@ -189,12 +191,12 @@ export type Retreat = {
   slug: string;
   description: string | null;
   /**
-   * The dates and places of the batch the page leads with: the one under way,
-   * or else the next to come (migration 0030). Null when no batch is set.
+   * The dates of the batch the page leads with: the one under way, or else
+   * the next to come (migration 0030). Null when no batch is set. Places are
+   * each batch's own, in `batches`.
    */
   starts_at: string | null;
   ends_at: string | null;
-  capacity: number | null;
   /** That batch's name, e.g. "Spring 2027". */
   batchLabel: string | null;
   /** Every batch still to finish, soonest first. */
@@ -209,6 +211,12 @@ export type Retreat = {
   inProgress: boolean;
   /** Its start has passed (under way, or over). Read from the clock here, not in render. */
   begun: boolean;
+  /**
+   * While the lead batch has begun: the start of a later batch already taking
+   * bookings, so the page sells that one rather than saying booking has
+   * closed. Null when the lead has not begun, or no later batch is open.
+   */
+  nextOpenAt: string | null;
   /**
    * With nothing still to come: when the last batch ended, so the page can say
    * it has run rather than "to be announced" (owner, 2026-10-23). Null while a
@@ -226,6 +234,10 @@ export type RetreatBatch = {
   startsAt: string;
   endsAt: string;
   capacity: number | null;
+  /** Counted only while booking is open; null otherwise, or with no limit. */
+  placesLeft: number | null;
+  /** "closed": booking has closed ahead of the start. */
+  state: "upcoming" | "open" | "full" | "closed" | "in_progress";
 };
 
 export type CoachingService = {
@@ -250,7 +262,7 @@ export async function listMembershipTiers(): Promise<MembershipTier[]> {
   const { data } = await supabase
     .from("membership_tiers")
     .select(
-      "id,tier,name,slug,description,rank,benefits,series_allowance,playlist_allowance,includes_qa,includes_retreats,retreats_require_yearly,products(slug,status,prices(amount,currency,billing_type,interval,active))",
+      "id,tier,name,slug,description,rank,benefits,series_allowance,playlist_allowance,includes_qa,includes_retreats,retreats_require_yearly,private_coaching_discount_percent,products(slug,status,prices(amount,currency,billing_type,interval,active))",
     )
     .eq("active", true)
     .order("rank", { ascending: true });
@@ -266,8 +278,10 @@ export async function listMembershipTiers(): Promise<MembershipTier[]> {
         | "includesQa"
         | "includesRetreats"
         | "retreatsRequireYearly"
+        | "oneToOneDiscount"
       > & {
         retreats_require_yearly: boolean;
+        private_coaching_discount_percent: number;
         series_allowance: number | null;
         playlist_allowance: number | null;
         includes_qa: boolean;
@@ -300,6 +314,7 @@ export async function listMembershipTiers(): Promise<MembershipTier[]> {
       includesQa: row.includes_qa,
       includesRetreats: row.includes_retreats,
       retreatsRequireYearly: row.retreats_require_yearly,
+      oneToOneDiscount: row.private_coaching_discount_percent ?? 0,
     };
   });
 }
@@ -628,7 +643,7 @@ const RETREAT_SELECT =
 
 type RetreatRow = Omit<
   Retreat,
-  "prices" | "storagePath" | "productSlug" | "inProgress" | "begun" | "starts_at" | "ends_at" | "capacity" | "batchLabel" | "batches"
+  "prices" | "storagePath" | "productSlug" | "inProgress" | "begun" | "nextOpenAt" | "starts_at" | "ends_at" | "batchLabel" | "batches"
 > & {
   products?: Embedded | Embedded[] | null;
   resources?: CoverEmbed | CoverEmbed[] | null;
@@ -665,6 +680,16 @@ async function batchesFor(
       if (!seen || b.ends_at > seen) lastEnded.set(b.retreat_id, b.ends_at);
       continue;
     }
+    // The same test as the database's place_on_open_retreat_batch.
+    const started = +new Date(b.starts_at) <= now;
+    const opened = +new Date(b.registration_opens_at) <= now;
+    const closed = +new Date(b.registration_closes_at ?? b.starts_at) <= now;
+    // Only an open batch with a limit needs counting.
+    const { data: left } =
+      !started && opened && !closed && b.capacity != null
+        ? await supabase.rpc("retreat_batch_places_left", { p_batch_id: b.id })
+        : { data: null };
+    const placesLeft = typeof left === "number" ? left : null;
     byRetreat.set(b.retreat_id, [
       ...(byRetreat.get(b.retreat_id) ?? []),
       {
@@ -675,6 +700,16 @@ async function batchesFor(
         startsAt: b.starts_at,
         endsAt: b.ends_at,
         capacity: b.capacity,
+        placesLeft,
+        state: started
+          ? "in_progress"
+          : !opened
+            ? "upcoming"
+            : closed
+              ? "closed"
+              : placesLeft === 0
+                ? "full"
+                : "open",
       },
     ]);
   }
@@ -686,14 +721,16 @@ function toRetreat(row: RetreatRow, batches: RetreatBatch[], now: number, lastEn
   // so one under way comes before one to come).
   const lead = batches[0] ?? null;
   const dated = { starts_at: lead?.startsAt ?? null, ends_at: lead?.endsAt ?? null };
+  const begun = Boolean(dated.starts_at && +new Date(dated.starts_at) <= now);
+  const nextOpen = begun ? batches.slice(1).find((b) => b.state === "open") : undefined;
   return {
     ...row,
     ...dated,
-    capacity: lead?.capacity ?? null,
     batchLabel: lead?.label ?? null,
     batches,
     inProgress: isInProgress(dated, now, ASSUMED_RETREAT_MS),
-    begun: Boolean(dated.starts_at && +new Date(dated.starts_at) <= now),
+    begun,
+    nextOpenAt: nextOpen?.startsAt ?? null,
     endedAt: lead ? null : lastEnded,
     benefits: row.benefits ?? [],
     prices: activePrices(row.products),

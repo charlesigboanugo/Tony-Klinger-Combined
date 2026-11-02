@@ -55,7 +55,7 @@ export function RunChooser({
                   "Your seat is kept in all eight sessions. There is nothing to book.",
                   run.uses ?? "This takes the place you have paid for on this series.",
                 ]}
-                note="Once you are registered it cannot be swapped for another series or other dates. If you need to change it, get in touch."
+                note="Once you are registered your place is fixed: it cannot be swapped for another series or other dates, or cancelled."
                 confirmLabel="Yes, register me"
               >
                 Register for these dates

@@ -13,9 +13,11 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
+  hasBothPeriods,
   pickPrice,
   yearlySaving,
   type BillingPeriod,
+  type SelectablePrice,
 } from "@/lib/commerce/billing";
 import { formatPrice } from "@/lib/commerce/pricing";
 import type { ProductPrice } from "@/lib/content/coaching";
@@ -253,11 +255,19 @@ export function TierPrice({ prices }: { prices: ProductPrice[] }) {
  */
 export function PeriodLink({
   href,
+  prices,
   className,
   children,
   overlay = false,
 }: {
   href: string;
+  /**
+   * The product's prices. The period is carried only when it is sold BOTH
+   * ways: a product sold one way (one payment, yearly only, monthly only) has
+   * nothing to choose, and a `?billing=monthly` on a one-payment pass read as
+   * a leftover of the monthly plan (owner, 2026-10-29).
+   */
+  prices: SelectablePrice[];
   className?: string;
   children?: ReactNode;
   /**
@@ -272,7 +282,7 @@ export function PeriodLink({
   const sep = href.includes("?") ? "&" : "?";
   return (
     <Link
-      href={`${href}${sep}billing=${period}`}
+      href={hasBothPeriods(prices) ? `${href}${sep}billing=${period}` : href}
       className={overlay ? `absolute inset-0 ${className ?? ""}` : className}
       {...(overlay ? { "aria-hidden": true, tabIndex: -1 } : {})}
     >

@@ -1,8 +1,10 @@
 /**
  * Photographer credits for the static photos in `public/images/`.
  *
- * The client supplied these and asked that each be credited on the page as
- * "Photos courtesy of Danny Clifford Photographer". The map records who took
+ * The client supplied these and asked that each be credited on the page. Tony's
+ * wording (2026-11-02): "Photos of Tony Klinger by Danny Clifford", replacing
+ * the old sites' "Photos courtesy of Danny Clifford Photographer". The footer
+ * carries the same line once for the whole site. The map records who took
  * each photo, not the sentence: the line is built from the photographer's name
  * so it reads "Photo" under one image and "Photos" when a credit covers
  * several. The list is deliberately explicit, file by file: it covers the
@@ -13,12 +15,18 @@
  * Pages render it with `<PhotoCredit>` — as a caption under a framed photo, or
  * as an overlay in the corner when the photo is a background.
  */
-export type Photographer = { name: string; url?: string };
+export type Photographer = {
+  name: string;
+  url?: string;
+  /** Who the photos are of, where the credit names them: "Photos of Tony Klinger by …". */
+  subject?: string;
+};
 
 /** Linked from every credit — the client asked for the name to reach his site. */
-const DANNY_CLIFFORD: Photographer = {
-  name: "Danny Clifford Photographer",
+export const DANNY_CLIFFORD: Photographer = {
+  name: "Danny Clifford",
   url: "https://www.dannyclifford.com/",
+  subject: "Tony Klinger",
 };
 
 const CREDITS: Record<string, Photographer> = {
@@ -60,7 +68,8 @@ export function photographer(src: string): Photographer | null {
 
 /**
  * The credit owed for one or more photos shown together, or null when none of
- * them is credited: the lead-in ("Photo" or "Photos courtesy of") and each
+ * them is credited: the lead-in ("Photo of Tony Klinger by", or "Photos courtesy
+ * of" where no subject is recorded) and each
  * photographer once, in order, so the caller can link every name.
  */
 export function photoCredit(
@@ -71,8 +80,12 @@ export function photoCredit(
   if (credited.length === 0) return null;
 
   const photographers = [...new Set(credited.map((s) => CREDITS[s]))];
+  const noun = credited.length === 1 ? "Photo" : "Photos";
+  // One subject shared by every photographer named: "Photo of Tony Klinger by".
+  const subjects = [...new Set(photographers.map((p) => p.subject))];
+  const subject = subjects.length === 1 ? subjects[0] : undefined;
   return {
-    lead: `${credited.length === 1 ? "Photo" : "Photos"} courtesy of`,
+    lead: subject ? `${noun} of ${subject} by` : `${noun} courtesy of`,
     photographers,
   };
 }

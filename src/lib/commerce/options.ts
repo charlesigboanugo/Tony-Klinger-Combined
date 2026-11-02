@@ -1,5 +1,6 @@
 import "server-only";
 
+import { formatPrice } from "@/lib/commerce/pricing";
 import { createPublicClient } from "@/lib/supabase/public";
 
 /**
@@ -31,9 +32,14 @@ export type ProductOption = {
   credits: number | null;
   /** Months what it grants stays usable. Null for no expiry. */
   validMonths: number | null;
+  id: string;
+  /** For a pack: the id of the single-session product it is a pack of. */
+  packOf: string | null;
 };
 
 type Row = {
+  id: string;
+  pack_of: string | null;
   slug: string;
   name: string;
   option_group: string | null;
@@ -60,11 +66,13 @@ function toOption(row: Row): ProductOption | null {
     currency: price.currency,
     credits: row.credits,
     validMonths: row.valid_months,
+    id: row.id,
+    packOf: row.pack_of,
   };
 }
 
 const SELECT =
-  "slug,name,option_group,option_label,option_position,credits,valid_months,prices(amount,currency,billing_type,active)";
+  "id,pack_of,slug,name,option_group,option_label,option_position,credits,valid_months,prices(amount,currency,billing_type,active)";
 
 /** Every purchasable option of one offer, in order. */
 export async function optionGroup(group: string): Promise<ProductOption[]> {
@@ -129,6 +137,34 @@ export async function optionsForProducts(slugs: string[]): Promise<Map<string, P
     if (options.length > 1) result.set(slug, options);
   }
   return result;
+}
+
+/**
+ * What a pack saves against the same sessions bought singly, in minor units:
+ * the single (`pack_of`) times the pack's sessions, less the pack. From the
+ * prices on sale, never written in (owner, 2026-10-29), so a price changed in
+ * admin moves it. Zero when there is no single to compare, or no saving.
+ */
+export function packSaving(option: ProductOption, options: ProductOption[]): number {
+  const single = option.packOf ? options.find((o) => o.id === option.packOf) : undefined;
+  const count = option.credits ?? 1;
+  if (!single || count < 2) return 0;
+  return Math.max(single.amount * count - option.amount, 0);
+}
+
+/**
+ * "Save £200 with a pack of 8", for a card or hero: the offer's best saving and
+ * the pack it is on, or null. Worded from the pack's sessions, not its switch
+ * label, so it reads as an offer whatever the label says.
+ */
+export function packSavingOffer(options: ProductOption[]): { label: string; slug: string } | null {
+  const best = options
+    .map((o) => ({ o, saved: packSaving(o, options) }))
+    .filter((x) => x.saved > 0)
+    .sort((a, b) => b.saved - a.saved)[0];
+  return best
+    ? { label: `Save ${formatPrice(best.saved, best.o.currency)} with a pack of ${best.o.credits}`, slug: best.o.slug }
+    : null;
 }
 
 /** "Use within three months", in words, or null when it does not lapse. */

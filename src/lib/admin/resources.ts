@@ -413,6 +413,8 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
         hint: "Holders of this tier see the Q&A sessions, their joining links and recordings." },
       { name: "includes_retreats", label: "Includes the retreat", type: "boolean",
         hint: "Holders of this tier hold a place at retreats that are open without an interview." },
+      { name: "private_coaching_discount_percent", label: "Discount on one-to-one sessions (%)", type: "number",
+        hint: "Percent off a single one-to-one session when a holder of this pass buys one for themselves. Not the pack, and not gifts. 0 for none; at most 90." },
       // No "Retreat for yearly passes only" switch (removed 2026-10-14, owner): a
       // pass is one payment for twelve months, so nobody pays by the month and
       // the setting had nothing to tell apart. The column stays, set on, which

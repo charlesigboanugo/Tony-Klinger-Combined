@@ -2451,7 +2451,8 @@ the library copy. If the owner later wants to change a design image himself, it 
 a design image and moves to the library.
 
 **Old-site image credits follow the old sites (2026-09-26, owner).** `resources.credit`
-carries "Photos courtesy of Danny Clifford Photographer" only where tonydklinger.com or
+carries "Photos of Tony Klinger by Danny Clifford" (Tony's wording since 2026-11-02; the old
+sites said "Photos courtesy of Danny Clifford Photographer") only where tonydklinger.com or
 the coaching site credited Danny Clifford: beside the portraits of Tony from one shoot
 (the camera-named `Z91_…`/`Z92_…` files, matched by `CLIFFORD_SHOOT` in
 `scripts/import-images.mjs`). Every other old-site image — jackets, posters, stills,

@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 
 import { OfferCard } from "@/components/coaching/OfferCard";
 import { OfferGrid } from "@/components/coaching/OfferGrid";
+import { FaqBlock } from "@/components/content/FaqList";
 import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { listCourses } from "@/lib/content/coaching";
+import { courseFaqs } from "@/lib/content/product-faqs";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
@@ -54,6 +56,9 @@ export default async function CoursesPage() {
             ))}
           </OfferGrid>
         )}
+
+        {/* The questions on every course's page, here too (owner, 2026-11-02). */}
+        {courses.length > 0 ? <FaqBlock items={courseFaqs()} /> : null}
       </Container>
     </Section>
   );

@@ -59,6 +59,14 @@ export type PricedTier = {
   }[];
   /** Everything this tier includes, as stored — its own complete list. */
   benefits: string[];
+  /**
+   * "Includes £260 of Group Coaching, plus every video playlist and the
+   * monthly Q&A": the priced parts added up, the rest named. Null where
+   * there is nothing priced to add.
+   */
+  includes: { amount: string; of: string; plus: string | null } | null;
+  /** Percent off a single one-to-one session for holders (migration 0026). 0 for none. */
+  oneToOneDiscount: number;
 };
 
 export function MembershipPricing({ tiers }: { tiers: PricedTier[] }) {
@@ -152,7 +160,7 @@ function TierCard({
       >
         {/* The whole card is clickable (owner, 2026-09-26); the Join button
             below stays the one link in the tab order. */}
-        <PeriodLink href={`/coaching/passes/${tier.slug}`} overlay className="z-0 rounded-(--radius-lg)" />
+        <PeriodLink href={`/coaching/passes/${tier.slug}`} prices={tier.prices} overlay className="z-0 rounded-(--radius-lg)" />
 
         {/* "The premium tier", not "Everything included" (owner, 2026-10-08):
             Platinum does not include everything — private coaching, cohorts and
@@ -172,6 +180,25 @@ function TierCard({
           </CardTitle>
 
           <TierPrice prices={tier.prices} />
+
+          {/* What the pass holds, in money, under its price (owner,
+              2026-10-29): the sum is what makes the price read as a deal. */}
+          {tier.includes ? (
+            <p className="mt-2 text-sm leading-snug text-muted-foreground">
+              Includes <strong className="font-semibold text-foreground tabular-nums">{tier.includes.amount}</strong>{" "}
+              {tier.includes.of}
+              {tier.includes.plus ? `, ${tier.includes.plus}` : ""}
+            </p>
+          ) : null}
+          {/* The holder's discount on one-to-ones, as a badge: a perk on top
+              of what the pass includes (owner, 2026-11-02). */}
+          {tier.oneToOneDiscount > 0 ? (
+            <p className="mt-3">
+              <span className="inline-block rounded-full bg-accent/12 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-accent uppercase">
+                {tier.oneToOneDiscount}% off one-to-one sessions
+              </span>
+            </p>
+          ) : null}
 
           {/*
             What the tier includes, each line ticked. A check says "included"
@@ -199,7 +226,7 @@ function TierCard({
           {tier.prices.length > 0 ? (
             <p className="mt-4 flex-1 text-xs text-muted-foreground">
               {price?.billing_type !== "recurring"
-                ? "One payment for twelve months. It does not renew"
+                ? "One payment for twelve months. No subscription, nothing auto-renews"
                 : price.interval === "year"
                   ? "Renews yearly. Cancel any time"
                   : "Renews monthly. Cancel any time"}
@@ -227,6 +254,7 @@ function TierCard({
             <div className="w-full">
             <PeriodLink
               href={`/coaching/passes/${tier.slug}`}
+              prices={tier.prices}
               className={cn(CTA_BASE, isTop ? CTA_PRIMARY : CTA_OUTLINE)}
             >
               {/*

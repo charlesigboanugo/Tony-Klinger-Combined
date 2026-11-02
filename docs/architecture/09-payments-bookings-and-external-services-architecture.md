@@ -462,6 +462,14 @@ Membership access must reflect the authoritative subscription state.
 > and for the day a recurring price is switched back on. The storefront, cart and checkout
 > word themselves from the active prices (`leadPrice`, `periodNote` in
 > `lib/commerce/billing`) and show no monthly/yearly switch while a tier is sold one way.
+>
+> **Owner, 2026-10-29: `?billing=` only where there is a choice.** Links carry the period
+> (`?billing=monthly|yearly`) only for a product with BOTH a monthly and a yearly price
+> (`hasBothPeriods`); a product sold one way (one payment, yearly only or monthly only) gets
+> no parameter. The pass cards and buy buttons had sent `?billing=monthly` for the
+> one-payment passes. Front-end only: checkout and the order pipeline already resolve a
+> period with no matching price to the one price on sale (`pickPrice`), and store no period
+> for a product sold one way, so nothing was ever charged wrongly.
 
 Every membership tier is purchasable **either** as a recurring subscription **or** as a
 one-time payment for a fixed year. Both grant the same benefits for the same duration; they
@@ -534,6 +542,31 @@ read the membership from the entitlement (`my_membership()`), so a lump-sum memb
 a member with an end date and "does not renew".
 
 ---
+
+## 16.2 A pass holder's discount on one-to-one sessions — owner, 2026-11-02, migration 0026
+
+From Elaine's review: "a small discount on £150 private sessions for pass holders would give
+people a natural next step up".
+
+- **Set per pass type in admin**: `membership_tiers.private_coaching_discount_percent`
+  (0–90, 0 for none), labelled "Discount on one-to-one sessions (%)". Starting values rise
+  with the pass: Silver 5, Gold 10, Platinum 15.
+- **What it applies to**: a SINGLE one-to-one session (`private_coaching`, one credit) bought by
+  the holder of a live pass for themselves. Not the pack, which has its own saving; not a gift,
+  which someone else pays for.
+- **Priced on the server**, as a pass upgrade is (§16.1, migration 0027):
+  `applyPassHolderDiscount` (`lib/commerce/pass-discount`) rewrites the priced lines in the
+  cart, on the checkout page and in the checkout action, reading the holder's percentage
+  through `my_private_coaching_discount()` from the session. The line is charged by inline
+  `price_data` at the discounted amount (`stripePriceId` cleared), so Stripe takes exactly
+  what the order says.
+- **Recorded as a discount**: the order's `subtotal` is the full price, `discount_total` what
+  was taken off, `total` what was charged; the item's metadata keeps `full_unit_amount` and
+  `discount_percent`. An upgrade is not a discount and still records none.
+- **Shown** from the same data: a "N% off one-to-one sessions" badge on each pass card and a
+  "One-to-one sessions" fact on each pass page; "Pass holders save up to N%" on the private
+  coaching card and hero (linking to the passes) and in the buy panel; a signed-in holder sees
+  their own price there and at checkout, with the full price struck through.
 
 ## 17. Membership Lifecycle
 
@@ -1096,6 +1129,12 @@ a hold for a caller with none (the function is unchanged); the action releases i
   Choosing a time needs a signed-in account holding a session, so a guest claims the
   order first (note 05 §29.3).
 - Membership inclusion of private coaching is still not modelled, per the rule above.
+- **Group places are fixed** (owner, 2026-11-02). Only a one-to-one session (48 hours) and a
+  free event place are cancelled by the customer. A place on a Group Coaching series or a
+  cohort intake, and a single group session bought for its date (2026-10-09), is not swapped
+  or cancelled, online or on request: the Academy, the FAQs and the Terms say so, and none of
+  them offers "get in touch" for it. `cancel_booking` still accepts a group session booking
+  (its 24-hour credit return stays for staff-granted credits), but no page offers it.
 
 
 ## 37. Cohort Registration

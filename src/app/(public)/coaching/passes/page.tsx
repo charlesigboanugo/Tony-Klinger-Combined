@@ -4,9 +4,13 @@ import {
   MembershipPricing,
   type PricedTier,
 } from "@/app/(public)/coaching/passes/MembershipPricing";
+import { FaqBlock } from "@/components/content/FaqList";
 import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { listMembershipTiers } from "@/lib/content/coaching";
+import { optionGroup } from "@/lib/commerce/options";
+import { formatPrice } from "@/lib/commerce/pricing";
+import { listMembershipTiers, listRetreats, listSeries, type MembershipTier } from "@/lib/content/coaching";
+import { passFaqs } from "@/lib/content/pass-faq";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
@@ -17,7 +21,49 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default async function MembershipsPage() {
-  const tiers = await listMembershipTiers();
+  const [tiers, series, retreats] = await Promise.all([listMembershipTiers(), listSeries(), listRetreats()]);
+
+  /*
+    "Includes £X of …, plus …" on each card (owner, 2026-10-29, from Elaine's
+    "show the value"). Only parts with a price of their own are added up: a
+    whole series at its price, and the Level One retreat where a tier includes
+    retreats. Playlists and the Q&A are never sold alone, so they are named,
+    not given a figure: a "worth" made of prices nobody has paid would be a
+    misleading reference price. All read from the prices on sale, so a price
+    changed in admin moves the line. The LOWEST series price is used, so the
+    figure is never more than a member could have paid.
+  */
+  const seriesPrices = (
+    await Promise.all(series.map((s) => optionGroup(`group-coaching-${s.slug}`)))
+  ).flatMap((group) => group.filter((o) => (o.credits ?? 1) > 1).map((o) => o.amount));
+  const seriesPrice = seriesPrices.length > 0 ? Math.min(...seriesPrices) : null;
+  const levelOne = retreats
+    .filter((r) => r.level === 1)
+    .flatMap((r) => r.prices.filter((p) => p.billing_type === "one_time").map((p) => p.amount));
+  const retreatPrice = levelOne.length > 0 ? Math.min(...levelOne) : null;
+  const currency = tiers.flatMap((t) => t.prices)[0]?.currency ?? "GBP";
+
+  const includesOf = (tier: MembershipTier): PricedTier["includes"] => {
+    if (tier.seriesAllowance == null || seriesPrice == null) return null;
+    const retreat = tier.includesRetreats && retreatPrice != null ? retreatPrice : 0;
+    const amount = tier.seriesAllowance * seriesPrice + retreat;
+    if (amount <= 0) return null;
+    const extras = [
+      tier.playlistAllowance == null
+        ? "every video playlist"
+        : tier.playlistAllowance === 1
+          ? "a video playlist"
+          : tier.playlistAllowance > 1
+            ? `${tier.playlistAllowance} video playlists`
+            : null,
+      tier.includesQa ? "the monthly Q&A" : null,
+    ].filter((x): x is string => Boolean(x));
+    return {
+      amount: formatPrice(amount, currency),
+      of: retreat > 0 ? "of coaching and retreats" : "of Group Coaching",
+      plus: extras.length > 0 ? `plus ${extras.join(" and ")}` : null,
+    };
+  };
 
   /*
     Each card shows its tier's OWN FULL LIST, exactly as stored (migration
@@ -34,6 +80,8 @@ export default async function MembershipsPage() {
     rank: tier.rank,
     prices: tier.prices,
     benefits: tier.benefits,
+    includes: includesOf(tier),
+    oneToOneDiscount: tier.oneToOneDiscount,
   }));
 
   return (
@@ -46,7 +94,7 @@ export default async function MembershipsPage() {
           // Narrower than the block (owner, 2026-10-10), so it sits on two
           // even lines above the text instead of one long one.
           titleClassName="mx-auto max-w-xl text-balance"
-          description="Live Group Coaching, a video library that keeps growing and, from Gold, a monthly Q&A with Tony. More for less than buying each part on its own, to use whenever you like within twelve months."
+          description="Live Group Coaching, a video library that keeps growing and, from Gold, a monthly Q&A with Tony, together in one payment for twelve months."
           align="center"
         />
 
@@ -54,15 +102,20 @@ export default async function MembershipsPage() {
 
         <div className="measure mx-auto mt-12 space-y-3 text-center text-sm text-muted-foreground">
           <p>
-            A Coaching Pass is one payment for twelve months, to use whenever
-            you like within the year. It does not renew by itself and nothing
-            more is taken: when the year ends you can buy another.
+            A Coaching Pass is one payment for twelve months. During your year,
+            join your series as each one opens for registration, ahead of
+            everyone else. No subscription, nothing auto-renews:
+            when the year ends you can buy another.
           </p>
           <p>
             Private coaching, Interactive Cohorts and courses are separate from
             the Coaching Pass and are bought on their own.
           </p>
         </div>
+
+        {/* Elaine's questions, answered from the rules themselves (owner,
+            2026-11-02): the same list as on each pass's page. */}
+        <FaqBlock items={passFaqs(tiers)} />
       </Container>
     </Section>
 

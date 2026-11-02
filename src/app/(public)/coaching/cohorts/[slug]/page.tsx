@@ -5,10 +5,12 @@ import { notFound } from "next/navigation";
 import { CohortPurchase } from "@/app/(public)/coaching/cohorts/[slug]/CohortPurchase";
 import { MobileBuyBar, ProductFacts, ProductHero, ProductLayout, ProductSection, PurchasePanel } from "@/components/coaching/ProductPage";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
-import { phaseStatus } from "@/lib/content/offer-status";
+import { FaqList } from "@/components/content/FaqList";
+import { phaseStatus, placesLabel } from "@/lib/content/offer-status";
 import { formatPrice } from "@/lib/commerce/pricing";
 import type { SaleStatus } from "@/lib/commerce/sale-status";
 import { getCohort, listIntakes } from "@/lib/content/coaching";
+import { cohortFaqs } from "@/lib/content/product-faqs";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { cn } from "@/lib/utils/cn";
 
@@ -98,6 +100,7 @@ export default async function CohortPage({ params }: PageProps<"/coaching/cohort
         price={shown}
         priceNote={shown ? "one payment" : null}
         status={phaseStatus(intakes)}
+        places={placesLabel(intakes)}
       />
 
       <ProductLayout
@@ -175,6 +178,11 @@ export default async function CohortPage({ params }: PageProps<"/coaching/cohort
             </div>
           </ProductSection>
         ) : null}
+
+        {/* Questions people ask about a cohort (owner, 2026-11-02). */}
+        <ProductSection title="FAQs">
+          <FaqList items={cohortFaqs()} className="max-w-2xl" />
+        </ProductSection>
       </ProductLayout>
 
       <MobileBuyBar price={shown} priceNote="one payment" href="#buy" label={open ? "Join cohort" : "See intakes"} />

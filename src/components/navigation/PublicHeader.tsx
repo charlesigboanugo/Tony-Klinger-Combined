@@ -11,7 +11,7 @@ import { navLinkType, navLinkUnderline } from "@/components/navigation/navStyles
 import { isSigningOutHere, useVisitor } from "@/components/navigation/useVisitor";
 import { UserMenu } from "@/components/navigation/UserMenu";
 import { Wordmark } from "@/components/navigation/Wordmark";
-import { ButtonLink } from "@/components/ui/Button";
+import { ButtonLink, FILLED_STATES } from "@/components/ui/Button";
 import { isActive, isCurrentPage, publicNavigation } from "@/lib/navigation";
 import { cn } from "@/lib/utils/cn";
 
@@ -19,8 +19,8 @@ import { cn } from "@/lib/utils/cn";
  * Public site header — the masthead. Note 04 §7, §26, §27; note 10 §42.2.
  *
  * THREE WIDTHS, THREE ARRANGEMENTS:
- *   phone     mark + Menu
- *   tablet    mark + Sign in (or the account menu) + Menu
+ *   phone     mark + Coaching + Menu
+ *   tablet    mark + Coaching + Sign in (or the account menu) + Menu
  *   desktop   mark · navigation in tracked capitals · cart · Sign in
  *
  * The cart icon carries a count badge when the cart is non-empty, and below
@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils/cn";
  * public pages are pre-built and cannot know the visitor (note 10 §47.1).
  */
 export function PublicHeader() {
+  const featured = publicNavigation.find((item) => item.featured) ?? null;
   const pathname = usePathname();
   const router = useRouter();
   const visitor = useVisitor(pathname);
@@ -126,8 +127,8 @@ export function PublicHeader() {
         )}
       >
         <Container width="wide">
-          <div className="flex h-16 items-center justify-between gap-4 lg:h-18 xl:gap-6">
-            <Wordmark />
+          <div className="flex h-16 items-center justify-between gap-2 sm:gap-4 lg:h-18 xl:gap-6">
+            <Wordmark monogramOnSmallestPhones />
 
             <nav aria-label="Main" className="hidden lg:block">
               <ul className="flex items-center">
@@ -157,7 +158,8 @@ export function PublicHeader() {
               </ul>
             </nav>
 
-            <div className="flex items-center gap-1 sm:gap-2">
+            {/* Never squeezed: the featured pill must not wrap "Sign in". */}
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               <Link
                 href="/cart"
                 aria-label={cartCount > 0 ? `Cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}` : "Cart"}
@@ -205,6 +207,24 @@ export function PublicHeader() {
                 </span>
               )}
 
+              {/* The featured destination (Coaching) on its own below lg, so it
+                  is seen without opening the menu (Tony, 2026-11-02). */}
+              {featured ? (
+                <Link
+                  href={featured.href}
+                  aria-current={isActive(pathname, featured.href) ? "page" : undefined}
+                  className={cn(
+                    "relative flex h-10 items-center rounded-full bg-button px-3 text-button-foreground min-[420px]:ml-1 min-[420px]:px-4 lg:hidden",
+                    "transition-[box-shadow,filter,transform] duration-200 ease-out active:scale-96 motion-reduce:transform-none",
+                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                    FILLED_STATES,
+                    navLinkType,
+                  )}
+                >
+                  {featured.label}
+                </Link>
+              ) : null}
+
               <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
@@ -212,7 +232,9 @@ export function PublicHeader() {
                 aria-controls="mobile-navigation"
                 aria-label={open ? "Close menu" : "Open menu"}
                 className={cn(
-                  "ml-1 flex h-10 items-center gap-2.5 rounded-full border border-border pr-4 pl-3.5 lg:hidden",
+                  // Below 420px only its icon, beside the Coaching button; the
+                  // word "Menu" returns once there is room.
+                  "flex h-10 w-10 shrink-0 items-center justify-center gap-2.5 rounded-full border border-border min-[420px]:ml-1 min-[420px]:w-auto min-[420px]:justify-start min-[420px]:pr-4 min-[420px]:pl-3.5 lg:hidden",
                   "transition-colors hover:border-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                   navLinkType,
                   open && "border-foreground bg-foreground text-background",
@@ -234,7 +256,7 @@ export function PublicHeader() {
                     )}
                   />
                 </span>
-                <span aria-hidden="true">{open ? "Close" : "Menu"}</span>
+                <span aria-hidden="true" className="hidden min-[420px]:inline">{open ? "Close" : "Menu"}</span>
               </button>
             </div>
           </div>

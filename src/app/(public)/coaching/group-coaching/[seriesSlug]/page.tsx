@@ -7,10 +7,12 @@ import { CheckList, MobileBuyBar, ProductFacts, ProductHero, ProductLayout, Prod
 import { OwnershipProvider, UnlessOwned, ViewerOwnedNotice } from "@/components/coaching/ViewerOwnership";
 import { NewsletterCta } from "@/components/content/NewsletterPopup";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
-import { phaseStatus } from "@/lib/content/offer-status";
+import { FaqList } from "@/components/content/FaqList";
+import { phaseStatus, placesLabel } from "@/lib/content/offer-status";
 import { optionGroup } from "@/lib/commerce/options";
 import { formatPrice } from "@/lib/commerce/pricing";
 import { getSeries, listComingSessions, listRuns } from "@/lib/content/coaching";
+import { seriesFaqs } from "@/lib/content/product-faqs";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { cn } from "@/lib/utils/cn";
 
@@ -177,6 +179,7 @@ export default async function SeriesPage({
         price={fromPrice}
         priceNote={fromNote}
         status={status}
+        places={placesLabel(runs)}
       />
 
       <ProductLayout
@@ -318,6 +321,11 @@ export default async function SeriesPage({
             <CheckList items={series.syllabus} columns={2} />
           </ProductSection>
         ) : null}
+
+        {/* Questions people ask about a series, from its own rules (owner, 2026-11-02). */}
+        <ProductSection title="FAQs">
+          <FaqList items={seriesFaqs({ sessions, singlePrice: singleOption ? formatPrice(singleOption.amount, singleOption.currency) : null, seriesPrice: wholeOption ? formatPrice(wholeOption.amount, wholeOption.currency) : null })} className="max-w-2xl" />
+        </ProductSection>
       </ProductLayout>
 
       {options.length > 0 ? (

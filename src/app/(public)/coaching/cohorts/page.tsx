@@ -3,12 +3,14 @@ import type { Metadata } from "next";
 
 import { OfferCard } from "@/components/coaching/OfferCard";
 import { OfferGrid } from "@/components/coaching/OfferGrid";
+import { FaqBlock } from "@/components/content/FaqList";
 import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { phaseStatus } from "@/lib/content/offer-status";
+import { phaseStatus, placesLabel } from "@/lib/content/offer-status";
 import { listCohorts, listIntakes } from "@/lib/content/coaching";
+import { cohortFaqs } from "@/lib/content/product-faqs";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
@@ -67,6 +69,7 @@ export default async function CohortsPage() {
                   eyebrow={`${cohort.cohort_level} cohort`}
                   cta="View cohort"
                   status={statusOf(cohort.id)}
+                  places={placesLabel(intakes.filter((i) => i.cohortId === cohort.id))}
                   meta={datesOf(cohort.id)}
                   prices={cohort.prices}
                   storagePath={cohort.storagePath}
@@ -79,6 +82,9 @@ export default async function CohortsPage() {
           </OfferGrid>
         )}
 
+
+        {/* The questions on every cohort's page, here too (owner, 2026-11-02). */}
+        {cohorts.length > 0 ? <FaqBlock items={cohortFaqs()} /> : null}
       </Container>
     </Section>
   );

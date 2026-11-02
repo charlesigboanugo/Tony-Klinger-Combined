@@ -11,10 +11,12 @@ import {
   ViewerPurchasePanel,
 } from "@/components/coaching/ViewerOwnership";
 import { GiftLink } from "@/components/coaching/GiftLink";
+import { FaqList } from "@/components/content/FaqList";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { formatPrice } from "@/lib/commerce/pricing";
 import { getCourse, priceForProduct } from "@/lib/content/coaching";
+import { courseFaqs } from "@/lib/content/product-faqs";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { courseData } from "@/lib/seo/structured-data";
 
@@ -118,6 +120,11 @@ export default async function CoursePage({
               "Your progress saved across your devices",
             ]}
           />
+        </ProductSection>
+
+        {/* Questions people ask about a course (owner, 2026-11-02). */}
+        <ProductSection title="FAQs">
+          <FaqList items={courseFaqs()} className="max-w-2xl" />
         </ProductSection>
       </ProductLayout>
 

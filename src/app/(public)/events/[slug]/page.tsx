@@ -10,6 +10,7 @@ import {
   ProductSection,
   PurchasePanel,
 } from "@/components/coaching/ProductPage";
+import { FaqList } from "@/components/content/FaqList";
 import { StoredImage } from "@/components/media/StoredImage";
 import { Reveal } from "@/components/motion/Reveal";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -30,6 +31,7 @@ import {
 import { pageMetadata } from "@/lib/seo/metadata";
 import { eventData } from "@/lib/seo/structured-data";
 import { cn } from "@/lib/utils/cn";
+import { eventFaqs } from "@/lib/content/product-faqs";
 
 import { leaveWaitlistAction } from "./actions";
 import { RegisterButton, WaitlistButton } from "./RegisterButton";
@@ -204,6 +206,13 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
             )}
           </ul>
         </ProductSection>
+
+        {/* Questions people ask about an event, while it is still to come (owner, 2026-11-02). */}
+        {past ? null : (
+          <ProductSection title="FAQs">
+            <FaqList items={eventFaqs({ isFree: event.is_free, online: online && !inPerson })} className="max-w-2xl" />
+          </ProductSection>
+        )}
       </ProductLayout>
 
       {bar ? <MobileBuyBar price={bar.price} href={bar.href} label={bar.label} /> : null}

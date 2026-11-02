@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { OfferStatusChip } from "@/components/coaching/OfferStatusChip";
+import { OfferStatusChip, PlacesChip, SavingChip } from "@/components/coaching/OfferStatusChip";
 import { GeneratedCover } from "@/components/media/GeneratedCover";
 import { StoredImage } from "@/components/media/StoredImage";
 import { CardLink } from "@/components/ui/Card";
@@ -42,6 +42,9 @@ export function OfferCard({
   eyebrow,
   meta,
   status,
+  places,
+  saving,
+  perk,
   prices,
   priceLabel,
   priceNote,
@@ -62,6 +65,12 @@ export function OfferCard({
   meta?: string | null;
   /** When it is on, as a chip on the photograph: the start date, closing soon. */
   status?: OfferStatus | null;
+  /** How many places, beside the status on the photograph: "8 places left". */
+  places?: string | null;
+  /** A pack's saving, in the places spot: "Save £200 with a pack of 8". */
+  saving?: string | null;
+  /** A pass holder's perk, at the foot of the photo where a status would be: "Pass holders save up to 15%". */
+  perk?: string | null;
   prices?: ProductPrice[];
   /** A price stated directly, for offers priced by another product (group series). */
   priceLabel?: string | null;
@@ -121,23 +130,32 @@ export function OfferCard({
         {/* THE PRICE, pinned to the picture and made to be seen (owner,
             2026-09-26: "very visible"): large figures, white on the button
             red — the one fill that reads on any photograph — and a lift. */}
-        {shownPrice ? (
-          <p className="absolute top-4 right-4 flex items-baseline gap-1.5 rounded-full bg-button px-5 py-2.5 text-button-foreground shadow-lift ring-1 ring-white/20">
-            {shownNote === "from" ? (
-              <span className="text-xs font-semibold tracking-wide uppercase">from</span>
+        {/* The places on the left edge, level with the price (owner,
+            2026-10-29); the price keeps the right. */}
+        {shownPrice || places || saving ? (
+          <div className="absolute top-4 right-4 left-4 flex flex-wrap items-center justify-between gap-2">
+            {places ? <PlacesChip label={places} /> : null}
+            {saving ? <SavingChip label={saving} /> : null}
+            {shownPrice ? (
+              <p className="ml-auto flex items-baseline gap-1.5 rounded-full bg-button px-5 py-2.5 text-button-foreground shadow-lift ring-1 ring-white/20">
+                {shownNote === "from" ? (
+                  <span className="text-xs font-semibold tracking-wide uppercase">from</span>
+                ) : null}
+                <span className="font-display text-2xl leading-none font-semibold tabular-nums sm:text-[1.75rem]">{shownPrice}</span>
+                {shownNote && shownNote !== "from" ? (
+                  <span className="text-xs font-medium">{shownNote}</span>
+                ) : null}
+              </p>
             ) : null}
-            <span className="font-display text-2xl leading-none font-semibold tabular-nums sm:text-[1.75rem]">{shownPrice}</span>
-            {shownNote && shownNote !== "from" ? (
-              <span className="text-xs font-medium">{shownNote}</span>
-            ) : null}
-          </p>
+          </div>
         ) : null}
 
         {/* WHEN IT IS ON, at the foot of the picture where the eye lands
             after the price (owner, 2026-10-09: the date "much more visible"). */}
-        {status ? (
-          <div className="absolute right-4 bottom-4 left-4 flex">
-            <OfferStatusChip status={status} />
+        {status || perk ? (
+          <div className="absolute right-4 bottom-4 left-4 flex flex-wrap gap-2">
+            {status ? <OfferStatusChip status={status} /> : null}
+            {perk ? <SavingChip label={perk} icon="pass" /> : null}
           </div>
         ) : null}
       </div>

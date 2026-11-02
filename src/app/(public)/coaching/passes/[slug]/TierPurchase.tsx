@@ -80,6 +80,8 @@ export function TierPurchase({
   const selected = pickPrice(prices, period);
   const saving = yearlySaving(prices);
   const bothWays = hasBothPeriods(prices);
+  // The period goes to checkout only when there is a choice (see PeriodLink).
+  const billingQuery = bothWays ? `&billing=${period}` : "";
 
   // No price, or no active product behind the tier: there is nothing to sell,
   // and a button that leads to an empty checkout is worse than no button.
@@ -102,7 +104,7 @@ export function TierPurchase({
     { value: "monthly", label: "Monthly", note: "Renews each month until you cancel" },
     yearlyRenews
       ? { value: "yearly", label: "Yearly", note: "Renews each year until you cancel" }
-      : { value: "yearly", label: "One payment", note: "One year, does not renew" },
+      : { value: "yearly", label: "One payment", note: "One year, nothing auto-renews" },
   ];
 
   return (
@@ -196,7 +198,7 @@ export function TierPurchase({
       ) : (
         <>
         <Link
-          href={`/checkout?product=${productSlug}&billing=${period}`}
+          href={`/checkout?product=${productSlug}${billingQuery}`}
           className={cn(
             "mt-6 inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full px-6",
             "bg-button text-[0.9375rem] font-semibold text-button-foreground shadow-card",
@@ -228,12 +230,12 @@ export function TierPurchase({
           ? "You can change how you pay before you confirm."
           : selected.billing_type === "recurring"
             ? "Renews until you cancel."
-            : "One payment for twelve months. It does not renew."}
+            : "One payment for twelve months. No subscription, nothing auto-renews."}
       </p>
       {/* A renewing price bills the buyer's own account, so only the single
           payment can be a gift (lib/commerce/gift). */}
       {productSlug && selected.billing_type !== "recurring" ? (
-        <GiftLink href={`/checkout?product=${productSlug}&billing=${period}&gift=1`} />
+        <GiftLink href={`/checkout?product=${productSlug}${billingQuery}&gift=1`} />
       ) : null}
     </div>
   );

@@ -43,7 +43,7 @@ export function IntakeChooser({
                   "This takes the cohort place you have paid for.",
                   "Your place is kept in every workshop. There is nothing to book.",
                 ]}
-                note="Once you have joined an intake it cannot be swapped for another. If you need to change it, get in touch."
+                note="Once you have joined an intake your place is fixed: it cannot be swapped for another intake, or cancelled."
                 confirmLabel="Yes, join it"
               >
                 Join this intake

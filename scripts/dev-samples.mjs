@@ -215,7 +215,7 @@ try {
         ["virtual-retreat-level-1", "Sample – October", "-20 days", "-19 days -17 hours", null], // ended
         ["virtual-retreat-level-1", "Sample – November", "30 days", "30 days 7 hours", null], // open for booking
         ["virtual-retreat-level-2", "Sample – November", "30 days", "30 days 7 hours", 6], // by interview
-        ["virtual-retreat-level-3", "Sample – This week", "-3 hours", "3 days", 6], // in progress
+        ["virtual-retreat-level-3", "Sample – This week", "-3 hours", "3 days", 4], // in progress
       ];
       for (const [slug, label, starts, ends, capacity] of batches) {
         await tx`

@@ -61,6 +61,16 @@ export type PricedLine = {
    */
   upgradeFrom?: string | null;
   fullAmount?: number;
+  /** Sessions one unit grants, where the product is counted (1 for a single session). */
+  credits: number | null;
+  /**
+   * The unit price before a pass holder's discount (migration 0026), set by
+   * `applyPassHolderDiscount` and never by the browser. Kept apart from
+   * `fullAmount`: an upgrade is priced at a difference, not discounted.
+   */
+  discountFrom?: number;
+  /** The discount's percentage, for labelling the line. */
+  discountPercent?: number;
 };
 
 /** Resolve slugs to real products and their active prices. */
@@ -149,6 +159,7 @@ export async function priceCart(lines: CartLine[]): Promise<PricedLine[]> {
       needsDate: product.product_type === "group_coaching" && Boolean(product.series_id) && (product.credits ?? 1) <= 1,
       seriesId: product.series_id,
       sessionId: line.sessionId ?? null,
+      credits: product.credits,
     });
   }
 
@@ -157,6 +168,11 @@ export async function priceCart(lines: CartLine[]): Promise<PricedLine[]> {
 
 export function cartTotal(lines: PricedLine[]): number {
   return lines.reduce((sum, l) => sum + l.unitAmount * l.quantity, 0);
+}
+
+/** The total before any pass holder's discount: `cartTotal` plus what it took off. */
+export function cartSubtotal(lines: PricedLine[]): number {
+  return lines.reduce((sum, l) => sum + (l.discountFrom ?? l.unitAmount) * l.quantity, 0);
 }
 
 /**
@@ -183,6 +199,9 @@ export async function createPendingOrder(params: {
 
   const admin = createAdminClient();
   const total = cartTotal(lines);
+  // A pass holder's discount is recorded as one (migration 0026): the order
+  // keeps what the lines cost before it, and what it took off.
+  const subtotal = cartSubtotal(lines);
   const currency = lines[0]?.currency ?? "GBP";
 
   const { data: order, error } = await admin
@@ -192,8 +211,8 @@ export async function createPendingOrder(params: {
       guest_email: userId ? null : guestEmail,
       status: "pending",
       currency,
-      subtotal: total,
-      discount_total: 0,
+      subtotal,
+      discount_total: subtotal - total,
       total,
       checkout_mode: checkoutMode,
       is_gift: isGift,
@@ -218,6 +237,8 @@ export async function createPendingOrder(params: {
       ...(line.needsDate && line.sessionId ? { metadata: { session_id: line.sessionId } } : {}),
       // The pass an upgrade changes the tier of; fulfilment adds no new year.
       ...(line.upgradeFrom ? { metadata: { upgrade_from: line.upgradeFrom } } : {}),
+      // What a pass holder's discount took off, for the record.
+      ...(line.discountFrom ? { metadata: { full_unit_amount: line.discountFrom, discount_percent: line.discountPercent } } : {}),
     })),
   );
 

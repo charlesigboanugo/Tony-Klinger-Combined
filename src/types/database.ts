@@ -1491,6 +1491,7 @@ export type Database = {
           includes_retreats: boolean
           name: string
           playlist_allowance: number | null
+          private_coaching_discount_percent: number
           product_id: string | null
           rank: number
           retreats_require_yearly: boolean
@@ -1509,6 +1510,7 @@ export type Database = {
           includes_retreats?: boolean
           name: string
           playlist_allowance?: number | null
+          private_coaching_discount_percent?: number
           product_id?: string | null
           rank: number
           retreats_require_yearly?: boolean
@@ -1527,6 +1529,7 @@ export type Database = {
           includes_retreats?: boolean
           name?: string
           playlist_allowance?: number | null
+          private_coaching_discount_percent?: number
           product_id?: string | null
           rank?: number
           retreats_require_yearly?: boolean
@@ -3070,6 +3073,7 @@ export type Database = {
         }[]
       }
       my_permissions: { Args: never; Returns: string[] }
+      my_private_coaching_discount: { Args: never; Returns: number }
       my_roles: { Args: never; Returns: string[] }
       my_security_keys: {
         Args: never

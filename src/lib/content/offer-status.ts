@@ -120,6 +120,25 @@ export function phaseStatus(phases: OfferPhase[], extras: OfferExtras = {}): Off
   return { tone: "quiet", label: "Dates to be announced" };
 }
 
+/**
+ * The places to show beside the status (owner, 2026-10-29), from the same date
+ * the status leads with: the open one, else the next to open. "N places left"
+ * while booking is open, the size before it opens, and nothing once full,
+ * closed or under way, where the status already says so.
+ */
+export function placesLabel(
+  phases: Array<{ state: string; capacity: number | null; placesLeft: number | null }>,
+): string | null {
+  const plural = (n: number) => `${n} place${n === 1 ? "" : "s"}`;
+  const open = phases.find((p) => p.state === "open");
+  if (open) {
+    const left = open.placesLeft ?? open.capacity;
+    return left == null ? null : `${plural(left)} left`;
+  }
+  const upcoming = phases.find((p) => p.state === "upcoming");
+  return upcoming?.capacity != null ? plural(upcoming.capacity) : null;
+}
+
 /** The status of something with one date of its own: a retreat. */
 export function datedStatus(item: {
   startsAt: string | null;
@@ -127,11 +146,38 @@ export function datedStatus(item: {
   inProgress: boolean;
   /** Every batch over and none to come (owner, 2026-10-23). */
   endedAt?: string | null;
+  /** A later batch already taking bookings while this one runs. */
+  nextOpenAt?: string | null;
+  /**
+   * The batches still to finish. Before one is under way they are said as
+   * series runs and intakes are, "Registration open · starts …" (owner,
+   * 2026-10-29), not a bare start date.
+   */
+  batches?: Array<{
+    state: string;
+    registrationOpensAt: string;
+    registrationClosesAt: string | null;
+    startsAt: string;
+    endsAt: string;
+    placesLeft: number | null;
+  }>;
 }): OfferStatus {
   const now = Date.now();
+  if (item.inProgress && item.nextOpenAt) {
+    return { tone: "live", label: `In progress · registration open for ${day(item.nextOpenAt, now)}` };
+  }
   if (item.inProgress) return { tone: "closed", label: "In progress · booking closed" };
   if (!item.startsAt && item.endedAt) return { tone: "closed", label: "Finished · next date to be announced" };
   if (!item.startsAt) return { tone: "quiet", label: "Date to be announced" };
+  const phases = (item.batches ?? []).flatMap((b) =>
+    b.state === "open" || b.state === "upcoming" || b.state === "full"
+      ? [{ ...b, state: b.state, registrationClosesAt: b.registrationClosesAt ?? undefined } satisfies OfferPhase]
+      : [],
+  );
+  if (phases.length > 0) return phaseStatus(phases);
+  if (item.batches?.[0]?.state === "closed") {
+    return { tone: "closed", label: `Registration closed · starts ${day(item.startsAt, now)}` };
+  }
   return +new Date(item.startsAt) - now <= CLOSING_SOON_DAYS * DAY_MS
     ? { tone: "urgent", label: `Starts ${day(item.startsAt, now)} · ${inDays(item.startsAt, now)}` }
     : { tone: "live", label: `Starts ${day(item.startsAt, now)}` };

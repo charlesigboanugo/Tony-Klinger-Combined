@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 
 import { OfferCard } from "@/components/coaching/OfferCard";
 import { OfferGrid } from "@/components/coaching/OfferGrid";
+import { FaqBlock } from "@/components/content/FaqList";
 import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { datedStatus } from "@/lib/content/offer-status";
-import { listRetreats } from "@/lib/content/coaching";
+import { datedStatus, placesLabel } from "@/lib/content/offer-status";
+import { listMembershipTiers, listRetreats } from "@/lib/content/coaching";
+import { retreatsOverviewFaqs } from "@/lib/content/product-faqs";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
@@ -19,7 +21,7 @@ export const metadata: Metadata = pageMetadata({
 
 
 export default async function RetreatsPage() {
-  const retreats = await listRetreats();
+  const [retreats, tiers] = await Promise.all([listRetreats(), listMembershipTiers()]);
 
   return (
     <Section>
@@ -49,8 +51,8 @@ export default async function RetreatsPage() {
                   // Where a retreat has no product yet, say how it is entered
                   // in the place the price would be.
                   priceLabel={retreat.prices.length === 0 && retreat.requires_application ? "By interview" : undefined}
-                  status={datedStatus({ startsAt: retreat.starts_at, endsAt: retreat.ends_at, inProgress: retreat.inProgress, endedAt: retreat.endedAt })}
-                  meta={retreat.capacity ? `${retreat.capacity} places` : null}
+                  status={datedStatus({ startsAt: retreat.starts_at, endsAt: retreat.ends_at, inProgress: retreat.inProgress, endedAt: retreat.endedAt, nextOpenAt: retreat.nextOpenAt, batches: retreat.batches })}
+                  places={placesLabel(retreat.batches)}
                   storagePath={retreat.storagePath}
                   seed={retreat.slug}
                   priority={i < 3}
@@ -60,6 +62,16 @@ export default async function RetreatsPage() {
             ))}
           </OfferGrid>
         )}
+
+        {/* Every level's questions at once; a pass's free entry is to Level One
+            only (owner, 2026-11-02). */}
+        {retreats.length > 0 ? (
+          <FaqBlock
+            items={retreatsOverviewFaqs({
+              passNames: tiers.filter((t) => t.includesRetreats && t.prices.length > 0).map((t) => t.name),
+            })}
+          />
+        ) : null}
       </Container>
     </Section>
   );

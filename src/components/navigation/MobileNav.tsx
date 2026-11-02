@@ -125,6 +125,13 @@ export function MobileNav({
   // Entries rise in one after another; capped so the last never lags.
   const rise = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 45}ms` });
 
+  // The featured destination (Coaching) first on a phone (Tony, 2026-11-02);
+  // the rest keep the masthead's order.
+  const menuOrder = [
+    ...publicNavigation.filter((item) => item.featured),
+    ...publicNavigation.filter((item) => !item.featured),
+  ];
+
   return (
     <div className="lg:hidden">
       <div
@@ -142,7 +149,7 @@ export function MobileNav({
       >
         <nav aria-label="Main" className="mx-auto flex min-h-full max-w-2xl flex-col px-5 pt-6 pb-10 sm:px-8">
           <ol className="border-t border-border">
-            {publicNavigation.map((item, i) => (
+            {menuOrder.map((item, i) => (
               <li
                 key={item.href}
                 style={rise(i)}

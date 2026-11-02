@@ -7,6 +7,7 @@ import { isBillingPeriod } from "@/lib/commerce/billing";
 import { readCart } from "@/lib/commerce/cart";
 import { createPendingOrder, priceCart } from "@/lib/commerce/orders";
 import { giftBlock } from "@/lib/commerce/gift";
+import { applyPassHolderDiscount } from "@/lib/commerce/pass-discount";
 import { applyPassUpgrades } from "@/lib/commerce/pass-upgrade";
 import { saleCheck } from "@/lib/commerce/sale-check";
 import { callerFingerprint, checkRateLimit } from "@/lib/security/rate-limit";
@@ -136,7 +137,9 @@ export async function startCheckoutAction(
   // A higher pass bought by somebody holding a lower one is an upgrade, priced
   // at the difference (migration 0027). Decided here, from the session, never
   // from the form.
-  const lines = await applyPassUpgrades(asker, await priceCart(requested));
+  // A pass holder's single one-to-one session at their pass's discount
+  // (migration 0026), likewise decided here. Not for a gift.
+  const lines = await applyPassHolderDiscount(asker, await applyPassUpgrades(asker, await priceCart(requested)), { gift });
   if (lines.length === 0) {
     return {
       error: parsed.data.product

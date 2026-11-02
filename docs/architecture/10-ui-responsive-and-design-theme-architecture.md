@@ -1782,10 +1782,16 @@ The header and footer frame every public page in the same studio language as the
   right are a cart icon and **Sign in** as the masthead's one filled button, or the account
   menu when signed in. There is deliberately no "Book coaching" button in the header (the
   owner's call, 2026-09-24); coaching is reached through the navigation and the footer's
-  CTAs. It aligns to the wide grid. By width:
-  - **Phone:** mark and Menu.
-  - **Tablet:** mark, Sign in and Menu.
-  - **Desktop:** everything.
+  CTAs. **Changed 2026-11-02 at Tony's direction** ("make it very clear and obvious that
+  COACHING is an important destination"): the Coaching item itself, not a separate CTA, is
+  now the masthead's featured destination (`NavItem.featured`). On desktop its trigger is a
+  filled red pill with the site's filled-button states, keeping its dropdown; below `lg` a
+  red **Coaching** button sits beside Menu, and Coaching is listed first in the phone menu.
+  One item only may be featured. It aligns to the wide grid. By width:
+  - **Phone:** mark, Coaching and Menu. Below 420px Menu shows only its icon; below 360px
+    the mark shows only the TK disc (`monogramOnSmallestPhones`), so all three fit at 320px.
+  - **Tablet:** mark, Coaching, Sign in and Menu.
+  - **Desktop:** everything, Coaching as the red pill.
 - **Dropdown panels (`NavDropdown`).** The header's own paper surface (`bg-background`,
   solid), attached flush to the bar's bottom edge: squared where it meets the bar, rounded
   below, with a hairline border, the lift shadow and a short red rule under the trigger.
@@ -1839,7 +1845,9 @@ placement means picking a file that isn't listed there yet.
 Photos appear in three forms (`src/components/media/DesignPhoto.tsx`), all of which
 render the photographer's credit through `<PhotoCredit>`. The photographer's name in
 the credit links to their own site (for Danny Clifford, `https://www.dannyclifford.com/`,
-opening in a new tab). `photo-credits.ts` records a name and an optional URL per
+opening in a new tab). The line reads "Photo(s) of Tony Klinger by Danny Clifford" in
+Tony's wording (2026-11-02), and the footer carries it once for the whole site.
+`photo-credits.ts` records a name, an optional URL and an optional subject per
 photographer:
 
 | Form | Use | Where |

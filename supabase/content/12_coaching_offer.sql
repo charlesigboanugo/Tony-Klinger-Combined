@@ -54,9 +54,9 @@ update membership_tiers set
  where tier = 'gold';
 
 update membership_tiers set
-  description = 'Access to four Group Coaching series a year, every video playlist, the monthly Q&A with Tony and free entry to every Level One Virtual Retreat.',
+  description = 'One of every Group Coaching series each year, every video playlist, the monthly Q&A with Tony and free entry to every Level One Virtual Retreat.',
   benefits = array[
-    'Access to four Group Coaching series a year, with their thirty-two live sessions',
+    'One of every Group Coaching series each year, with their thirty-two live sessions',
     'Access to the replays of the sessions in your series',
     'Access to every video playlist, including the Miscellaneous playlist, kept for Gold and Platinum',
     'New videos added to the playlists regularly',
@@ -71,6 +71,11 @@ update membership_tiers set
 -- says Pass: Silver Pass, Gold Pass, Platinum Pass. Only the words change —
 -- slugs, tables and the `membership` product type keep their names.
 update membership_tiers set name = initcap(tier::text) || ' Pass';
+
+-- A pass holder's discount on a single one-to-one session (owner, 2026-11-02;
+-- migration 0026). Starting values, rising with the pass; edited in admin.
+update membership_tiers set private_coaching_discount_percent =
+  case tier when 'silver' then 5 when 'gold' then 10 when 'platinum' then 15 else 0 end;
 update products set name = 'Silver Pass' where slug = 'membership-silver';
 update products set name = 'Gold Pass' where slug = 'membership-gold';
 update products set name = 'Platinum Pass' where slug = 'membership-platinum';
@@ -79,7 +84,7 @@ update products set description = 'Access to one Group Coaching series a year an
  where slug = 'membership-silver';
 update products set description = 'Access to two Group Coaching series a year, every video playlist and the monthly Q&A with Tony.'
  where slug = 'membership-gold';
-update products set description = 'Access to four Group Coaching series a year, every video playlist, the monthly Q&A with Tony and free entry to every Level One Virtual Retreat.'
+update products set description = 'One of every Group Coaching series each year, every video playlist, the monthly Q&A with Tony and free entry to every Level One Virtual Retreat.'
  where slug = 'membership-platinum';
 
 -- MEMBERSHIP IS ONE PAYMENT FOR TWELVE MONTHS (owner, 2026-10-09). It is a
@@ -222,7 +227,7 @@ update products set
   description = 'Eight hours of private coaching with Tony Klinger. Use them within six months.',
   credits = 8, valid_months = 6,
   pack_of = (select id from products where slug = 'one-to-one-single'),
-  option_group = 'one-to-one', option_label = '8 sessions', option_position = 20
+  option_group = 'one-to-one', option_label = 'Pack of 8', option_position = 20
  where slug = 'one-to-one-x8';
 
 -- The Stripe price goes with the old amount: a Stripe price cannot change its

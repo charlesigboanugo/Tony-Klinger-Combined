@@ -13,12 +13,15 @@ import {
   ProductSection,
   PurchasePanel,
 } from "@/components/coaching/ProductPage";
+import { FaqList } from "@/components/content/FaqList";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
-import { datedStatus } from "@/lib/content/offer-status";
+import { datedStatus, placesLabel } from "@/lib/content/offer-status";
 import { formatPrice } from "@/lib/commerce/pricing";
-import { getRetreat, listRetreats } from "@/lib/content/coaching";
+import { getRetreat, listMembershipTiers, listRetreats } from "@/lib/content/coaching";
+import { retreatFaqs } from "@/lib/content/product-faqs";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { createPublicClient } from "@/lib/supabase/public";
+import { cn } from "@/lib/utils/cn";
 
 const UK = "Europe/London";
 
@@ -53,7 +56,7 @@ export async function generateMetadata({
  */
 export default async function RetreatPage({ params }: PageProps<"/coaching/retreats/[slug]">) {
   const { slug } = await params;
-  const [retreat, all] = await Promise.all([getRetreat(slug), listRetreats()]);
+  const [retreat, all, tiers] = await Promise.all([getRetreat(slug), listRetreats(), listMembershipTiers()]);
   if (!retreat) notFound();
 
   const price = retreat.prices.length ? retreat.prices.reduce((a, b) => (a.amount <= b.amount ? a : b)) : null;
@@ -66,10 +69,13 @@ export default async function RetreatPage({ params }: PageProps<"/coaching/retre
   const starts = retreat.starts_at ? new Date(retreat.starts_at) : null;
   const day = (iso: string) =>
     new Date(iso).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: UK });
+  // The soonest date not yet under way, laid out as the cohorts' "Next intake".
   // Run and over, with nothing new yet: say so, not "to be announced".
-  const when = starts ? day(starts.toISOString()) : retreat.endedAt ? `Last ran ${day(retreat.endedAt)}` : "To be announced";
-  // Later batches of the same retreat, so a visitor sees when it runs again.
-  const later = retreat.batches.slice(1);
+  const next = retreat.batches.find((b) => b.state !== "in_progress") ?? null;
+  const nextDate = next ? day(next.startsAt) : retreat.endedAt ? `Last ran ${day(retreat.endedAt)}` : "To be announced";
+  // A one-day batch shows its day; a longer one, from and to.
+  const span = (b: { startsAt: string; endsAt: string }) =>
+    day(b.startsAt) === day(b.endsAt) ? day(b.startsAt) : `${day(b.startsAt)} to ${day(b.endsAt)}`;
 
   // What the public facts alone say. The purchase component refines it for the
   // visitor (already holds a place, application approved, places gone).
@@ -79,7 +85,7 @@ export default async function RetreatPage({ params }: PageProps<"/coaching/retre
       ? retreat.endedAt
         ? "ended"
         : "unscheduled"
-      : retreat.begun
+      : retreat.begun && !retreat.nextOpenAt
         ? "past"
         : retreat.requires_application
         ? "application"
@@ -114,7 +120,8 @@ export default async function RetreatPage({ params }: PageProps<"/coaching/retre
         cover={{ path: retreat.storagePath }}
         price={shown}
         priceNote={shown ? "one payment" : null}
-        status={datedStatus({ startsAt: retreat.starts_at, endsAt: retreat.ends_at, inProgress: retreat.inProgress, endedAt: retreat.endedAt })}
+        status={datedStatus({ startsAt: retreat.starts_at, endsAt: retreat.ends_at, inProgress: retreat.inProgress, endedAt: retreat.endedAt, nextOpenAt: retreat.nextOpenAt, batches: retreat.batches })}
+        places={placesLabel(retreat.batches)}
       />
 
       <ProductLayout
@@ -160,14 +167,40 @@ export default async function RetreatPage({ params }: PageProps<"/coaching/retre
           facts={[
             { label: "Length", value: "One day" },
             { label: "Where", value: "Online, live" },
-            { label: "When", value: retreat.batchLabel ? `${when} (${retreat.batchLabel})` : when },
-            ...(later.length > 0
-              ? [{ label: "Also running", value: later.map((b) => `${day(b.startsAt)} (${b.label})`).join("; ") }]
-              : []),
             { label: "Entry", value: retreat.requires_application ? "By interview" : "Open to all" },
-            ...(retreat.capacity ? [{ label: "Places", value: String(retreat.capacity) }] : []),
+            { label: "Next date", value: nextDate },
           ]}
         />
+
+        {/* The dates: when it runs, and whether it can be joined. The same
+            ruled list as the cohorts' intakes (owner, 2026-10-29). */}
+        {retreat.batches.length > 0 ? (
+          <ProductSection title="Dates">
+            <ul className="max-w-2xl divide-y divide-border border-y border-border">
+              {retreat.batches.map((batch) => (
+                <li key={batch.id} className="flex flex-col gap-1 py-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
+                  <div>
+                    <p className="font-semibold">{batch.label}</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">{span(batch)}</p>
+                  </div>
+                  <p className={cn("shrink-0 text-sm font-medium", batch.state === "open" ? "text-accent" : "text-muted-foreground")}>
+                    {batch.state === "open"
+                      ? batch.placesLeft == null
+                        ? "Registration open"
+                        : `Registration open · ${batch.placesLeft} place${batch.placesLeft === 1 ? "" : "s"} left`
+                      : batch.state === "full"
+                        ? "Fully booked"
+                        : batch.state === "in_progress"
+                          ? "In progress · booking closed"
+                          : batch.state === "closed"
+                            ? "Registration closed"
+                            : `Registration opens ${day(batch.registrationOpensAt)}`}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </ProductSection>
+        ) : null}
 
         {retreat.benefits.length > 0 ? (
           <ProductSection title="What's included">
@@ -212,6 +245,12 @@ export default async function RetreatPage({ params }: PageProps<"/coaching/retre
             </ul>
           </ProductSection>
         ) : null}
+
+        {/* Questions people ask about a retreat. A pass's free entry is to the levels open
+            without an interview, Level One only (owner, 2026-11-02). */}
+        <ProductSection title="FAQs">
+          <FaqList items={retreatFaqs({ byInterview: retreat.requires_application, passEntry: !retreat.requires_application, passNames: tiers.filter((t) => t.includesRetreats && t.prices.length > 0).map((t) => t.name) })} className="max-w-2xl" />
+        </ProductSection>
       </ProductLayout>
 
       <MobileBuyBar price={shown} priceNote={shown ? "one payment" : null} href="#buy" label={starts ? "Book your place" : "See details"} />

@@ -1087,6 +1087,11 @@ batches", as a cohort runs as intakes (§16.2), and that each batch carry its ow
   them, and each place bought sits on it. The three real levels had no dates, so have no batch
   yet.
 
+- **The page lists every date** (owner, 2026-10-29), as cohort intakes are: each date still to
+  finish with its own state, and "Next date" in the facts. While one date runs and a later one
+  is open, the page sells the later one (status "In progress · booking open for …", its places),
+  matching where `place_on_open_retreat_batch` puts the buyer, rather than saying booking closed.
+
 Admin: **Retreats**, **Retreat batches** (Current / Past, by retreat) and **Retreat batch
 places** (by batch, with the retreat in brackets; Past folded; how each place was taken, as
 Series run registrations show it, migration 0033), alongside Retreat applications.

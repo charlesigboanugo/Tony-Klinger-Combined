@@ -219,7 +219,8 @@ from (values
   ('the-butterfly-ball',            100),  -- 1976
   ('rachels-man',                   110),  -- 1975
   ('gold',                          120),  -- 1974
-  ('just-a-boy',                    130),  -- in development
+  ('just-a-boy',                    130),  -- in development; archived 2026-11-02
+  ('jacks-back',                    130),  -- in development; in Just A Boy's place (Tony, 2026-11-02)
   ('the-havana-chronicles',         140)   -- in development
 ) as v(slug, position)
 where ci.slug = v.slug and ci.category = 'films';

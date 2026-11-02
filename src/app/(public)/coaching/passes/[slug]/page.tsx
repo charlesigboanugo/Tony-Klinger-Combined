@@ -14,10 +14,12 @@ import {
   ProductLayout,
   ProductSection,
 } from "@/components/coaching/ProductPage";
+import { FaqList } from "@/components/content/FaqList";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { leadPrice } from "@/lib/commerce/billing";
 import { formatPrice } from "@/lib/commerce/pricing";
 import { listMembershipTiers, listPlaylists, listSeries } from "@/lib/content/coaching";
+import { passFaqs } from "@/lib/content/pass-faq";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { designPhotos } from "@/lib/site/design-photos";
 
@@ -50,6 +52,10 @@ export default async function MembershipTierPage({
   const lead = leadPrice(tier.prices);
   const shown = lead ? formatPrice(lead.price.amount, lead.price.currency) : null;
   const count = (n: number) => ["no", "one", "two", "three", "four"][n] ?? String(n);
+  // An allowance as large as the catalogue reads as "one of every series". It
+  // counts registrations, not kinds, so it is never "every series": a kind can
+  // run more than once a year.
+  const everySeries = tier.seriesAllowance != null && series.length > 0 && tier.seriesAllowance >= series.length;
 
   // Only the playlists a member of this tier may hold (the Miscellaneous
   // playlist is Gold and above).
@@ -69,7 +75,9 @@ export default async function MembershipTierPage({
       : "Buy it, and your pass starts straight away and runs for twelve months. Everything it includes is in your Academy.",
     tier.seriesAllowance == null
       ? `Every Group Coaching series is open to you: ${listOf(series.map((s) => s.name))}.`
-      : `Your pass includes ${count(tier.seriesAllowance)} Group Coaching series in the year, from ${listOf(series.map((s) => s.name))}.`,
+      : everySeries
+        ? `Your pass includes one of every Group Coaching series each year: ${listOf(series.map((s) => s.name))}. That is ${count(tier.seriesAllowance)} places in the year, to use as you like.`
+        : `Your pass includes ${count(tier.seriesAllowance)} Group Coaching series in the year, from ${listOf(series.map((s) => s.name))}.`,
     "Each series runs for eight weeks and opens for registration before it starts. As a pass holder you can register ahead of everyone else. Register for the one you want, in your Academy, and your seat is kept in all eight sessions, with no booking. A series you register for during your year is yours to finish, even if the year ends first.",
     tier.playlistAllowance == null
       ? `Watch every video playlist: ${listOf(choosable)}. New videos appear as they are added.`
@@ -147,12 +155,18 @@ export default async function MembershipTierPage({
               value:
                 tier.seriesAllowance == null
                   ? "Every series"
-                  : `${count(tier.seriesAllowance)} series a year`.replace(/^./, (c) => c.toUpperCase()),
+                  : everySeries
+                    ? "One of every series a year"
+                    : `${count(tier.seriesAllowance)} series a year`.replace(/^./, (c) => c.toUpperCase()),
             },
+            // The holder's discount on one-to-ones (migration 0026), set per pass in admin.
+            ...(tier.oneToOneDiscount > 0
+              ? [{ label: "One-to-one sessions", value: `${tier.oneToOneDiscount}% off` }]
+              : []),
             ...(monthly
               ? [{ label: yearlyRenews ? "Renews" : "Monthly plan", value: yearlyRenews ? "Until you cancel" : "Cancel any time" }]
               : shown
-                ? [{ label: "Renews", value: "No, it ends after the year" }]
+                ? [{ label: "Renews", value: "No subscription, nothing auto-renews" }]
                 : []),
           ]}
         />
@@ -191,7 +205,7 @@ export default async function MembershipTierPage({
               </p>
             ) : (
               <p>
-                <span className="font-medium text-foreground">One payment.</span> You pay once, for twelve months. It does not renew by itself and nothing more is taken, so there is nothing to cancel.
+                <span className="font-medium text-foreground">One payment.</span> You pay once, for twelve months. No subscription, nothing auto-renews, so there is nothing to cancel.
               </p>
             )}
             {renews ? null : (
@@ -202,9 +216,15 @@ export default async function MembershipTierPage({
               </p>
             )}
             <p>
-              When a pass ends, so does access to what it included. Anything you bought separately stays yours.
+              When a pass ends, so does access to what it included, apart from the replays of the series you
+              registered for, which stay in your Academy. Anything you bought separately stays yours.
             </p>
           </div>
+        </ProductSection>
+
+        {/* Elaine's questions, answered from the rules themselves (owner, 2026-11-02). */}
+        <ProductSection title="FAQs">
+          <FaqList items={passFaqs(tiers)} className="max-w-2xl" />
         </ProductSection>
       </ProductLayout>
 

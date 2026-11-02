@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { ExternalMark } from "@/components/navigation/ExternalMark";
 import { navLinkType } from "@/components/navigation/navStyles";
+import { FILLED_STATES } from "@/components/ui/Button";
 import { isActive, isCurrentPage, type NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils/cn";
 
@@ -105,10 +106,21 @@ export function NavDropdown({
           setOpen((v) => (mouse ? true : !v));
         }}
         className={cn(
-          "flex items-center gap-1.5 rounded-sm px-2 py-3 transition-colors xl:px-3",
+          "flex items-center gap-1.5 transition-colors",
           "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
           navLinkType,
-          sectionActive || open ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+          item.featured
+            ? // The featured destination (Coaching) as a filled pill, with the
+              // site's own filled-button states (Tony, 2026-11-02).
+              cn(
+                "mx-0.5 h-9 rounded-full bg-button px-3 text-button-foreground transition-[box-shadow,filter,transform] duration-200 ease-out xl:mx-2 xl:px-4",
+                FILLED_STATES,
+                "active:scale-96 motion-reduce:transform-none",
+              )
+            : cn(
+                "rounded-sm px-2 py-3 xl:px-3",
+                sectionActive || open ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+              ),
         )}
       >
         {item.label}

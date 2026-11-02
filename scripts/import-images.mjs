@@ -148,6 +148,9 @@ const COVERS = {
   // took effect after a `db reset` (note 08 §60.1.1).
   "alsatia-the-search-for-treasure": "Screenshot-2024-09-05-215117.png",
   "just-a-boy": "JustABoy_pic.PNG",                      // the film's artwork, title top left
+  // The title page of Tony's own pitch deck, supplied by him (2026-11-02);
+  // title on the left of a landscape page.
+  "jacks-back": "jacks-back-cover.webp",
   // Not on the old sites: a CC BY-SA photograph of the INS Dakar, the submarine
   // the film is about (supabase/content/images/CREDITS.md). Credited on the page.
   "full-circle": "ins-dakar-1968.webp",
@@ -350,7 +353,8 @@ let uploaded = 0, skipped = 0, tooBig = 0, failed = 0;
 // carry no credit unless one is known below — none is better than a wrong one.
 // Images added from elsewhere keep the credit their licence requires instead
 // (supabase/content/images/CREDITS.md).
-const SUPPLIED_CREDIT = "Photos courtesy of Danny Clifford Photographer";
+// Tony's wording since 2026-11-02 (was "Photos courtesy of Danny Clifford Photographer").
+const SUPPLIED_CREDIT = "Photos of Tony Klinger by Danny Clifford";
 const CLIFFORD_SHOOT = /^(Z9[12]_\d+(-Edit)?|9388fb_4dcc5d4200784ffb998a6d66782d98b8~mv2)\.[a-z]+$/i;
 // Old-site files whose own credit is known. Keyed by original filename.
 const SOURCE_CREDIT_OVERRIDES = {
@@ -367,6 +371,8 @@ const CONTENT_CREDITS = {
   // The old site's own jacket image, trimmed of its margins. A jacket, not a
   // Clifford photograph, so no credit.
   "twilight-of-the-gods-cover.webp": null,
+  // Tony's own pitch deck title page, supplied by him: his artwork, no credit.
+  "jacks-back-cover.webp": null,
   // Show artwork for podcasts and interviews: not openly licensed — each is
   // the show's own promotional image, used to identify it, credited to it.
   "the-tony-klinger-podcast-cover.webp": null,

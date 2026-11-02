@@ -4,6 +4,7 @@ import { NewsletterButton } from "@/components/content/NewsletterPopup";
 import { Container } from "@/components/layout/Container";
 import { Wordmark } from "@/components/navigation/Wordmark";
 import { footerColumns, legalNavigation } from "@/lib/navigation";
+import { DANNY_CLIFFORD } from "@/lib/site/photo-credits";
 
 /**
  * Public footer — note 04 §8, note 10 §42.2.
@@ -83,8 +84,28 @@ export function PublicFooter() {
       <div className="relative border-t border-border">
         <Container width="wide">
           <div className="flex flex-col gap-3 py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <p>© {new Date().getFullYear()} Tony Klinger. All rights reserved.</p>
-            <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            {/* The copyright and, beside it on wide screens, one credit for every
+                portrait on the site (Tony, 2026-11-02), as well as the caption on
+                each photo. On a phone the two close the page on lines of their own,
+                below the links. */}
+            <div className="space-y-1 lg:flex lg:items-center lg:gap-x-2.5 lg:space-y-0">
+              <p>© {new Date().getFullYear()} Tony Klinger. All rights reserved.</p>
+              <span aria-hidden="true" className="hidden lg:inline">
+                &middot;
+              </span>
+              <p>
+                Photos of Tony Klinger by{" "}
+                <a
+                  href={DANNY_CLIFFORD.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2 hover:text-foreground"
+                >
+                  Danny Clifford
+                </a>
+              </p>
+            </div>
+            <ul className="order-first flex flex-wrap items-center gap-x-6 gap-y-2 sm:order-none">
               {legalNavigation.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="hover:text-foreground">

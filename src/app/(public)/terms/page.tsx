@@ -17,8 +17,8 @@ export const metadata: Metadata = pageMetadata({
  * conventional.
  *
  * Every rule stated here is one the platform enforces: cumulative tiers (note
- * 07), access vs booking (note 01 §11), the 24-hour credit return in
- * `cancel_booking` (migration 0003), recurring vs lump-sum membership (note 07
+ * 07), access vs booking (note 01 §11), places on a series, cohort or single
+ * group session being fixed (owner, 2026-11-02: no swap, no cancelling), recurring vs lump-sum membership (note 07
  * §31.1), free-event registration (migration 0017). Checkout does not yet
  * ask buyers to give up the 14-day cancellation right for digital content, so
  * that right is stated in full; add the acknowledgement at checkout before
@@ -37,7 +37,7 @@ export default function Page() {
       summary={[
         "Every product page says what is included, what it costs and how it is delivered, before you pay.",
         "Your account and what you buy are for you alone.",
-        "Cancel a booked session at least 24 hours ahead and any credit it used comes back.",
+        "Cancel a one-to-one session at least 48 hours ahead and it comes back to rebook. Places in group coaching are fixed.",
         "The courses and recordings are for your own learning, not for sharing or resale.",
       ]}
       sections={[
@@ -118,11 +118,12 @@ export default function Page() {
                 you.
               </p>
               <p>
-                <strong>Booked sessions.</strong> Cancel from your bookings at
-                least 24 hours before a group session starts and any credit it
-                used is returned. Later than that, the place counts as used.
-                Private coaching needs 48 hours: cancel at least 48 hours ahead
-                and the session is returned to your account to rebook.
+                <strong>Booked sessions.</strong> Cancel a one-to-one session
+                from your bookings at least 48 hours before it starts and it is
+                returned to your account to rebook. Later than that, it counts
+                as used. A place on a Group Coaching series or cohort, and a
+                single group session bought for its date, is fixed: it cannot
+                be swapped or cancelled.
               </p>
               <p>
                 <strong>If we cancel.</strong> If we have to cancel a session or

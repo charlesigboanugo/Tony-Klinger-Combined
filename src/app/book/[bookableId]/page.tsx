@@ -49,7 +49,7 @@ export default async function ConfirmBookingPage({
 
       <p className="mt-4 text-sm text-muted-foreground">
         {credits
-          ? "Booking uses one session credit. Cancel at least 24 hours ahead and it's returned."
+          ? "Booking uses one session credit. Once booked, your place is fixed and cannot be cancelled."
           : "This is covered by your access — booking it costs nothing extra."}
       </p>
     </>

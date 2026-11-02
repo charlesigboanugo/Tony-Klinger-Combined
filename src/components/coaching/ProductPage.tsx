@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { OfferStatusChip } from "@/components/coaching/OfferStatusChip";
+import { OfferStatusChip, PlacesChip, SavingChip } from "@/components/coaching/OfferStatusChip";
 import { Container } from "@/components/layout/Container";
 import { StoredImage } from "@/components/media/StoredImage";
 import { Reveal } from "@/components/motion/Reveal";
@@ -51,6 +51,11 @@ export function ProductHero({
   price,
   priceNote,
   status,
+  places,
+  saving,
+  savingHref,
+  perk,
+  perkHref,
   fullScreen = false,
 }: {
   /**
@@ -69,6 +74,16 @@ export function ProductHero({
   priceNote?: string | null;
   /** When it is on, beside the price: the start date, closing soon. */
   status?: OfferStatus | null;
+  /** How many places, at the top right of the hero: "8 places left". */
+  places?: string | null;
+  /** A pack's saving, in the places spot: "Save £200 with a pack of 8". */
+  saving?: string | null;
+  /** Where the saving leads: the buy panel with that pack chosen. */
+  savingHref?: string | null;
+  /** A pass holder's perk, beside the price: "Pass holders save up to 15%". */
+  perk?: string | null;
+  /** Where the perk leads: the passes. */
+  perkHref?: string | null;
 }) {
   const hasCover = Boolean(cover.path || cover.src);
   return (
@@ -131,18 +146,24 @@ export function ProductHero({
         too small and too faint over the photo.
       */}
       <Container className="pt-6 pb-14 sm:pb-18 lg:pb-20 lg:pt-[max(1.5rem,calc(var(--hero-text-top)-3.5rem))]">
-        <Link
-          href={backHref}
-          className="group inline-flex items-center gap-2.5 rounded-full border border-block-foreground/35 bg-block-noir/45 py-2 pr-4.5 pl-3.5 text-[0.9375rem] font-medium text-block-foreground backdrop-blur-sm transition-colors hover:border-block-foreground/70 hover:bg-block-noir/70 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
-        >
-          <span
-            aria-hidden="true"
-            className="text-xl leading-none transition-transform duration-(--dur-base) group-hover:-translate-x-0.5 motion-reduce:transition-none"
+        {/* The back link on the left; the places on the right of the same
+            row (owner, 2026-10-29: "on top right hand side"). */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link
+            href={backHref}
+            className="group inline-flex items-center gap-2.5 rounded-full border border-block-foreground/35 bg-block-noir/45 py-2 pr-4.5 pl-3.5 text-[0.9375rem] font-medium text-block-foreground backdrop-blur-sm transition-colors hover:border-block-foreground/70 hover:bg-block-noir/70 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
           >
-            &larr;
-          </span>
-          {backLabel}
-        </Link>
+            <span
+              aria-hidden="true"
+              className="text-xl leading-none transition-transform duration-(--dur-base) group-hover:-translate-x-0.5 motion-reduce:transition-none"
+            >
+              &larr;
+            </span>
+            {backLabel}
+          </Link>
+          {places ? <PlacesChip label={places} size="hero" /> : null}
+          {saving ? <SavingChip label={saving} href={savingHref} size="hero" /> : null}
+        </div>
 
         <Reveal className="mt-10 max-w-3xl lg:mt-16">
           {eyebrow ? (
@@ -161,7 +182,7 @@ export function ProductHero({
           {/* The price and WHEN IT IS ON, side by side: the two facts a
               visitor decides on (owner, 2026-10-09: the date "much more
               visible"). They wrap to two lines on a phone. */}
-          {price || status ? (
+          {price || status || perk ? (
             <div className="mt-8 flex flex-wrap items-center gap-3">
               {price ? (
                 <p className="inline-flex items-baseline gap-2 rounded-full bg-button px-6 py-3 text-button-foreground shadow-lift ring-1 ring-white/20">
@@ -170,6 +191,7 @@ export function ProductHero({
                 </p>
               ) : null}
               {status ? <OfferStatusChip status={status} size="hero" /> : null}
+              {perk ? <SavingChip label={perk} href={perkHref} icon="pass" size="hero" /> : null}
             </div>
           ) : null}
         </Reveal>

@@ -2,14 +2,16 @@ import type { Metadata } from "next";
 
 import { OfferCard } from "@/components/coaching/OfferCard";
 import { OfferGrid } from "@/components/coaching/OfferGrid";
+import { FaqBlock } from "@/components/content/FaqList";
 import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { phaseStatus } from "@/lib/content/offer-status";
+import { phaseStatus, placesLabel } from "@/lib/content/offer-status";
 import { formatPrice } from "@/lib/commerce/pricing";
 import { optionGroup } from "@/lib/commerce/options";
 import { listComingSessions, listRuns, listSeries } from "@/lib/content/coaching";
+import { seriesFaqs } from "@/lib/content/product-faqs";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export const metadata: Metadata = pageMetadata({
@@ -120,6 +122,7 @@ export default async function GroupCoachingPage() {
                   priceLabel={offer.price}
                   priceNote={offer.note}
                   status={statusOf(s.id)}
+                  places={placesLabel(runs.filter((r) => r.seriesId === s.id))}
                   meta={datesOf(s.id)}
                   storagePath={s.storagePath}
                   seed={s.slug}
@@ -146,6 +149,16 @@ export default async function GroupCoachingPage() {
           </OfferGrid>
         )}
 
+        {/* The questions on every series' page, here too (owner, 2026-11-02). */}
+        {series.length > 0 ? (
+          <FaqBlock
+            items={seriesFaqs({
+              sessions: series[0].syllabus.length > 0 ? series[0].syllabus.length : 8,
+              singlePrice: single ? formatPrice(single.amount, single.currency) : null,
+              seriesPrice: whole ? formatPrice(whole.amount, whole.currency) : null,
+            })}
+          />
+        ) : null}
       </Container>
     </Section>
   );

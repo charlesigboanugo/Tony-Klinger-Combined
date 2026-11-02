@@ -25,7 +25,7 @@ const MESSAGES: Record<string, string> = {
   no_membership: "You need a Coaching Pass to choose.",
   not_found: "That is no longer available to choose.",
   not_allowed: "That playlist is not part of your pass.",
-  limit_reached: "You have already made your choice. To change it, please get in touch.",
+  limit_reached: "You have already made your choice, and it stays with your pass for the year.",
   invalid: "Something was missing from that request. Please try again.",
 };
 

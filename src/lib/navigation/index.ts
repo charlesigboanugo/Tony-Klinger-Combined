@@ -37,6 +37,14 @@ export type NavItem = {
    * does not read as one more product.
    */
   lead?: boolean;
+  /**
+   * The one destination the masthead makes stand out (Tony, 2026-11-02: "make
+   * it very clear and obvious that COACHING is an important destination").
+   * Drawn as a filled pill on desktop, given its own button beside Menu on
+   * phones, and listed first in the phone menu. Keep it to one item: two
+   * featured items would each be half as obvious.
+   */
+  featured?: boolean;
 };
 
 /** Public site — note 04 §3, §38. */
@@ -98,6 +106,7 @@ export const publicNavigation: NavItem[] = [
   {
     label: "Coaching",
     href: "/coaching",
+    featured: true,
     description: "Learn the film business from someone who has done it — courses, cohorts, group and one-to-one coaching.",
     children: [
       // The trigger is a BUTTON that toggles the menu, so it cannot navigate.

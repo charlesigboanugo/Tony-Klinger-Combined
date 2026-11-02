@@ -83,3 +83,4 @@ attribution required; recorded anyway), found through Openverse. StockSnap serve
 | `coaching-level-two-cover.webp` | How to Get Your Movie Made | "Sony film camera, location unknown", rawpixel, CC0 (public domain) — https://www.rawpixel.com/image/6112388/sony-film-camera-location-unknown-date-unknown, 1024 px (replaced the meeting photo, 2026-09-26) |
 | `coaching-private-cover.webp` | private | "Business Meeting" by Christina Morillo, StockSnap, CC0 — https://stocksnap.io/photo/business-meeting-SKBXLJOILI |
 | `coaching-virtual-retreat-cover.webp` | virtual retreat | "Laptop Apple" by WDnet Studio, StockSnap, CC0 — https://stocksnap.io/photo/laptop-apple-8FCUYBIMVF |
+| `jacks-back-cover.webp` | Jack's Back — cover | Title page of Tony Klinger's "Jack's Back" pitch deck © 2026, supplied by Tony (2026-11-02); its "Pitch deck © 2026" line removed at Charles's request | Tony Klinger | Used with the owner's permission |

@@ -42,7 +42,7 @@ insert into public.testimonial_videos
   (slug, title, attributed_to, context, duration_seconds, position, status)
 values
   ('sen-monro-short',       'You cannot do it on your own', 'Sen Monro',       'coaching', 50,  10,  'published'),
-  ('sharon-touviano-short', 'I would''ve been lost',        'Sharon Touviano', 'coaching', 28,  20,  'published'),
+  ('sharon-touviano-short', 'I would''ve been lost',        'Sharon Touvaino', 'coaching', 28,  20,  'published'),
   ('phil-miller-short',     'It''s been fantastic',          'Phil Miller',     'coaching', 25,  30,  'published'),
   ('paul-greenwood',        'It''s quite in-depth',          'Paul Greenwood',  'coaching', 47,  40,  'published'),
   ('compilation',           'Testimonials from very satisfied customers', null, 'coaching', 72,  50,  'published'),

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FaqBlock } from "@/components/content/FaqList";
 import { NewsletterSignup } from "@/components/content/NewsletterSignup";
 import { Container } from "@/components/layout/Container";
 import { StoredImage } from "@/components/media/StoredImage";
@@ -14,6 +15,7 @@ import {
   listEventsByTime,
   type PublicEvent,
 } from "@/lib/content/events";
+import { eventsOverviewFaqs } from "@/lib/content/product-faqs";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { cn } from "@/lib/utils/cn";
 
@@ -138,6 +140,13 @@ export default async function EventsPage() {
       </section>
 
       {/* THE ARCHIVE — most recent first. */}
+      {/* What people ask before booking (owner, 2026-11-02). */}
+      <section className="border-t border-border py-18 sm:py-24">
+        <Container>
+          <FaqBlock items={eventsOverviewFaqs()} className="mt-0 sm:mt-0" />
+        </Container>
+      </section>
+
       {past.length > 0 ? (
         <section aria-labelledby="past-heading" className="border-t border-border bg-surface-muted py-18 sm:py-24">
           <Container>

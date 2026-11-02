@@ -24,7 +24,7 @@ export const metadata: Metadata = { title: "All bookings · Admin", robots: { in
  * THE FLAT LIST, one step in from Bookings since 2026-10-13: `/admin/bookings`
  * now opens on the products that are booked (note 10 §33.2), and this is its
  * "All bookings" view, for finding one customer's bookings across everything.
- * It was `/admin/bookings` itself; to put it back see REVERSE.md.
+ * It was `/admin/bookings` itself.
  *
  * Filtered by type and status through the URL. An unpaid private-coaching
  * HOLD is shown as such rather than as a booking: it becomes one only when

@@ -17,6 +17,7 @@ import {
   listMembershipTiers,
   type ProductPrice,
 } from "@/lib/content/coaching";
+import { sessionEntry } from "@/lib/content/session-entry";
 import { listTestimonialVideos } from "@/lib/content/testimonial-videos";
 import { listTestimonials } from "@/lib/content/testimonials";
 import { pageMetadata } from "@/lib/seo/metadata";
@@ -67,13 +68,14 @@ const STEPS = [
  * clients on camera and in writing.
  */
 export default async function CoachingPage() {
-  const [tiers, courses, cohorts, services, quotes, videos] = await Promise.all([
+  const [tiers, courses, cohorts, services, quotes, videos, entry] = await Promise.all([
     listMembershipTiers(),
     listCourses(),
     listCohorts(),
     listCoachingServices(),
     listTestimonials({ context: "coaching", limit: 8 }),
     listTestimonialVideos(),
+    sessionEntry(),
   ]);
 
   // "From" figures are read from the storefront, so this page cannot quote a
@@ -504,8 +506,8 @@ export default async function CoachingPage() {
                 Ask Tony
                 <ButtonArrow />
               </ButtonLink>
-              <ButtonLink href="/coaching/group-coaching" size="lg" variant="outline">
-                Try a group session
+              <ButtonLink href={entry.href} size="lg" variant="outline">
+                {entry.label}
               </ButtonLink>
             </div>
           </Reveal>

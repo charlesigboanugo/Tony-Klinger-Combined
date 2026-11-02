@@ -19,6 +19,7 @@ import { giftBlock } from "@/lib/commerce/gift";
 import { optionsForProducts } from "@/lib/commerce/options";
 import { cartTotal, priceCart } from "@/lib/commerce/orders";
 import { formatPrice } from "@/lib/commerce/pricing";
+import { applyPassHolderDiscount } from "@/lib/commerce/pass-discount";
 import { applyPassUpgrades } from "@/lib/commerce/pass-upgrade";
 import { saleCheck } from "@/lib/commerce/sale-check";
 import type { saleBlock } from "@/lib/commerce/sale-status";
@@ -44,8 +45,9 @@ export default async function CartPage() {
   );
   const supabase = await createClient();
   // A higher pass for somebody holding a lower one is an upgrade, at the
-  // difference in price (migration 0027), here as at checkout.
-  const lines = await applyPassUpgrades(supabase, priced);
+  // difference in price (migration 0027), here as at checkout; and a pass
+  // holder's one-to-one session at their discount (migration 0026).
+  const lines = await applyPassHolderDiscount(supabase, await applyPassUpgrades(supabase, priced));
   const total = cartTotal(lines);
   const currency = lines[0]?.currency;
 
@@ -108,12 +110,19 @@ export default async function CartPage() {
                             {recurring
                               ? `${formatPrice(line.unitAmount, line.currency)} every ${line.interval ?? "month"}, cancel any time`
                               : line.productType === "membership"
-                                ? "One payment for twelve months. It does not renew"
-                                : "One payment"}
+                                ? "One payment for twelve months. No subscription, nothing auto-renews"
+                                : line.discountFrom
+                                  ? `One payment. Your pass holder price: ${line.discountPercent}% off`
+                                  : "One payment"}
                           </p>
                         </div>
 
-                        <p className="shrink-0 font-display text-xl font-semibold tabular-nums">
+                        <p className="shrink-0 text-right font-display text-xl font-semibold tabular-nums">
+                          {line.discountFrom ? (
+                            <s className="block text-sm font-normal text-muted-foreground">
+                              {formatPrice(line.discountFrom * line.quantity, line.currency)}
+                            </s>
+                          ) : null}
                           {formatPrice(
                             line.unitAmount * line.quantity,
                             line.currency,

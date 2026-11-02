@@ -35,7 +35,7 @@ export function ChoiceList({
           : remaining === 1
             ? "Choose one more."
             : `Choose ${remaining} more.`}{" "}
-        Your choice stays with your pass, so take a moment over it. To change it later, get in touch.
+        Your choice stays with your pass for the year and can&apos;t be changed, so take a moment over it.
       </p>
 
       {state.error ? <FormMessage>{state.error}</FormMessage> : null}
@@ -62,7 +62,7 @@ export function ChoiceList({
                     : `This uses one of the ${remaining} playlists you still have to choose.`,
                   "You can watch it straight away, and new videos appear in it as they are added.",
                 ]}
-                note="The choice stays with your pass and cannot be changed here. To change it later, get in touch."
+                note="The choice stays with your pass for the year and cannot be changed."
                 confirmLabel={`Yes, choose ${item.name}`}
               >
                 Choose {item.name}

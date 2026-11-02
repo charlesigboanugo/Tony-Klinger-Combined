@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-import { viewerSaleStatusAction } from "@/app/(public)/coaching/actions";
+import { viewerOneToOneDiscountAction, viewerSaleStatusAction } from "@/app/(public)/coaching/actions";
 import { AddToCart } from "@/components/coaching/AddToCart";
 import { OptionSwitch } from "@/components/coaching/OptionSwitch";
 import { ButtonLink } from "@/components/ui/Button";
+import { discounted, formatPrice } from "@/lib/commerce/pricing";
 import { saleBlock, toSaleStatus } from "@/lib/commerce/sale-status";
 import { cn } from "@/lib/utils/cn";
 
@@ -36,6 +37,8 @@ export type PackOption = {
   priceNote: string;
   /** Under the price, quieter: "£16.25 a session · Use within three months". */
   detail?: string | null;
+  /** Beside the price, for a pack cheaper than its sessions bought singly: "Save £200". */
+  saving?: string | null;
   /** The main button. A link, because the next step is another page. */
   cta: { href: string; label: string };
   /** Offer "Add to cart" as well. Off where the next step is choosing a time. */
@@ -46,24 +49,77 @@ export type PackOption = {
    * checkout as `session`; with none left to pick there is nothing to buy.
    */
   dates?: Array<{ id: string; label: string; note: string; full: boolean }>;
+  /**
+   * A pass holder's discount applies (a single one-to-one session, migration
+   * 0026). With `amount`, a holder is shown their price; checkout charges it.
+   */
+  passDiscountable?: boolean;
+  amount?: number;
+  currency?: string;
 };
 
 export function PackPurchase({
   label,
   options,
   initial,
+  passPerk = null,
 }: {
   /** What is being chosen, for assistive tech. */
   label: string;
   options: PackOption[];
   /** Slug selected to begin with. Defaults to the first option. */
   initial?: string;
+  /** "Pass holders save up to 15%", shown to everyone else on a discountable choice. */
+  passPerk?: string | null;
 }) {
-  const [slug, setSlug] = useState(initial && options.some((o) => o.slug === initial) ? initial : options[0]?.slug);
+  const opensOn = initial && options.some((o) => o.slug === initial) ? initial : options[0]?.slug;
+  const [slug, setSlug] = useState(opensOn);
+  // "#buy-<slug>" (the hero's saving chip) chooses that option and brings
+  // the panel into view. Read in the browser: the page is pre-built.
+  const slugs = options.map((o) => o.slug).join(",");
+  useEffect(() => {
+    const show = (hash: string) => {
+      const wanted = hash.replace(/^#buy-/, "");
+      if (wanted === hash || !slugs.split(",").includes(wanted)) return false;
+      setSlug(wanted);
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      document.getElementById("buy")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      return true;
+    };
+    // A click on a "#buy-<slug>" link is handled here, not left to the
+    // browser: when the address already carries that hash nothing changes,
+    // so no hashchange would come and the panel would not scroll. This way
+    // every click scrolls (owner, 2026-10-29).
+    const onClick = (e: MouseEvent) => {
+      const link = (e.target as Element | null)?.closest?.('a[href^="#buy-"]');
+      const hash = link?.getAttribute("href");
+      if (!hash || !show(hash)) return;
+      e.preventDefault();
+      const { pathname, search } = window.location;
+      window.history.replaceState(window.history.state, "", `${pathname}${search}${hash}`);
+    };
+    const fromHash = () => show(window.location.hash);
+    fromHash();
+    window.addEventListener("hashchange", fromHash);
+    document.addEventListener("click", onClick);
+    return () => {
+      window.removeEventListener("hashchange", fromHash);
+      document.removeEventListener("click", onClick);
+    };
+  }, [slugs]);
+
+  // Choosing on the switch keeps the address in step: "#buy-<slug>" for any
+  // other choice, and the plain address again for the one the page opens on,
+  // so a link copied or reloaded shows what was chosen. replaceState: no
+  // scroll, no history entry per click, and no hashchange back into the above.
+  const choose = (next: string) => {
+    setSlug(next);
+    const { pathname, search } = window.location;
+    window.history.replaceState(window.history.state, "", next === opensOn ? `${pathname}${search}` : `${pathname}${search}#buy-${next}`);
+  };
   // Which of these the visitor may not buy just now. Asked after load, since
   // the page is pre-built; checkout enforces it whatever this says.
   const [status, setStatus] = useState<Record<string, string>>({});
-  const slugs = options.map((o) => o.slug).join(",");
   useEffect(() => {
     let live = true;
     viewerSaleStatusAction(slugs.split(","))
@@ -76,12 +132,45 @@ export function PackPurchase({
     };
   }, [slugs]);
 
+  // This visitor's own pass holder discount, asked after load (the page is
+  // pre-built) and only where a choice can take it. Display only: checkout
+  // prices it again from the session.
+  const discountable = options.some((o) => o.passDiscountable);
+  const [myPercent, setMyPercent] = useState(0);
+  useEffect(() => {
+    if (!discountable) return;
+    let live = true;
+    viewerOneToOneDiscountAction()
+      .then((n) => {
+        if (live) setMyPercent(n);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [discountable]);
+
   // The date chosen for an option that is bought for one. Starts on the first
   // with a seat, so the button is live without a second decision.
   const [date, setDate] = useState<string | null>(null);
 
   const selected = options.find((o) => o.slug === slug) ?? options[0];
   if (!selected) return null;
+
+  const passPrice =
+    selected.passDiscountable && myPercent > 0 && selected.amount != null
+      ? formatPrice(discounted(selected.amount, myPercent), selected.currency)
+      : null;
+  // What leads the line under the price: a pack's saving, a holder's own
+  // discount, or the passes' offer to everyone else.
+  const badge = selected.saving
+    ? { text: selected.saving, href: null }
+    : passPrice
+      ? { text: `${myPercent}% off with your pass`, href: null }
+      : selected.passDiscountable && passPerk
+        ? { text: passPerk, href: "/coaching/passes" }
+        : null;
+  const anyBadge = options.some((o) => o.saving || (o.passDiscountable && (passPerk || myPercent > 0)));
 
   const dates = selected.dates ?? null;
   const chosenDate = dates ? (dates.find((d) => d.id === date && !d.full) ?? dates.find((d) => !d.full) ?? null) : null;
@@ -101,7 +190,7 @@ export function PackPurchase({
         <OptionSwitch
           label={label}
           stretch
-          onSelect={setSlug}
+          onSelect={choose}
           options={options.map((o) => ({ value: o.slug, label: o.label, active: o.slug === selected.slug }))}
         />
       ) : (
@@ -114,12 +203,34 @@ export function PackPurchase({
           key={selected.slug}
           className="font-display text-5xl leading-none font-semibold tabular-nums motion-safe:animate-[nav-fade_var(--dur-base)_var(--ease-expo)]"
         >
-          {selected.price}
+          {passPrice ?? selected.price}
         </span>
+        {passPrice ? <s className="text-lg text-muted-foreground tabular-nums">{selected.price}</s> : null}
         <span className="text-sm text-muted-foreground">{selected.priceNote}</span>
       </p>
-      {/* The line is kept in both states so switching does not move the buttons. */}
-      <p className="mt-2 min-h-5 text-sm text-muted-foreground">{selected.detail ?? ""}</p>
+      {/* The line is kept in both states so switching does not move the buttons.
+          A pack's saving leads it, in the badge the pass billing switch uses. */}
+      <p
+        className={cn(
+          "mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-muted-foreground",
+          // Room for the badge's line in every state, where any choice has one.
+          anyBadge ? "min-h-13 content-start" : "min-h-6",
+        )}
+      >
+        {badge?.href ? (
+          <a
+            href={badge.href}
+            className="rounded-full bg-accent/12 px-2.5 py-0.5 text-xs font-semibold tracking-wide whitespace-nowrap text-accent uppercase underline-offset-2 hover:underline"
+          >
+            {badge.text} &rarr;
+          </a>
+        ) : badge ? (
+          <span className="rounded-full bg-accent/12 px-2.5 py-0.5 text-xs font-semibold tracking-wide whitespace-nowrap text-accent uppercase">
+            {badge.text}
+          </span>
+        ) : null}
+        <span>{selected.detail ?? ""}</span>
+      </p>
 
       {block ? (
         <div className="mt-5 rounded-(--radius) border border-border bg-surface-muted/60 p-4">

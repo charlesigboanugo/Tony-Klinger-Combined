@@ -9,8 +9,9 @@ import { isBillingPeriod } from "@/lib/commerce/billing";
 import { readCart } from "@/lib/commerce/cart";
 import { optionsForProducts } from "@/lib/commerce/options";
 import { priceCart } from "@/lib/commerce/orders";
-import { formatPrice } from "@/lib/commerce/pricing";
+import { discounted, formatPrice } from "@/lib/commerce/pricing";
 import { giftBlock } from "@/lib/commerce/gift";
+import { applyPassHolderDiscount, passHolderDiscount } from "@/lib/commerce/pass-discount";
 import { applyPassUpgrades } from "@/lib/commerce/pass-upgrade";
 import { saleCheck } from "@/lib/commerce/sale-check";
 import { createPublicClient } from "@/lib/supabase/public";
@@ -103,7 +104,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
       );
   // A higher pass, for somebody holding a lower one, is an upgrade at the
   // difference in price (migration 0027); the action prices it the same way.
-  const lines = await applyPassUpgrades(asker, priced);
+  const lines = await applyPassHolderDiscount(asker, await applyPassUpgrades(asker, priced), { gift });
 
   if (lines.length === 0) {
     return (
@@ -150,6 +151,13 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   const single = slug ? lines[0] : null;
   const alternatives =
     slug && single?.productType !== "group_coaching" ? ((await optionsForProducts([slug])).get(slug) ?? []) : [];
+  // The switch quotes a holder's own price for a single one-to-one session, as
+  // the line does (migration 0026); never for a gift.
+  const holderPercent = !gift && alternatives.length > 1 ? await passHolderDiscount(asker) : 0;
+  const switchAmount = (o: (typeof alternatives)[number]) =>
+    holderPercent > 0 && single?.productType === "private_coaching" && (o.credits ?? 1) === 1
+      ? discounted(o.amount, holderPercent)
+      : o.amount;
 
   // The date a single session is for, to show on its line.
   const dated = lines.find((l) => l.needsDate && l.sessionId);
@@ -266,14 +274,21 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
                       ? `Renews every ${line.interval ?? "month"}`
                       : line.upgradeFrom
                         ? `You pay the difference${line.fullAmount ? ` (${formatPrice(line.fullAmount, line.currency)} less what your pass cost)` : ""}. Your pass moves up for the rest of its year; its end date does not change`
-                        : line.productType === "membership"
-                          ? "One payment for twelve months. It does not renew"
+                        : line.discountFrom
+                          ? `Your pass holder price: ${line.discountPercent}% off ${formatPrice(line.discountFrom, line.currency)}`
+                          : line.productType === "membership"
+                          ? "One payment for twelve months. No subscription, nothing auto-renews"
                           : line.needsDate && chosen
                             ? `${sessionDay(chosen.starts_at)}. Your seat is kept as you pay`
                             : "One payment"}
                   </span>
                 </span>
-                <span className="shrink-0 font-medium tabular-nums">
+                <span className="shrink-0 text-right font-medium tabular-nums">
+                  {line.discountFrom ? (
+                    <s className="mr-1.5 font-normal text-muted-foreground">
+                      {formatPrice(line.discountFrom * line.quantity, line.currency)}
+                    </s>
+                  ) : null}
                   {formatPrice(line.unitAmount * line.quantity, line.currency)}
                 </span>
               </li>
@@ -290,7 +305,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
                 options={alternatives.map((o) => ({
                   value: o.slug,
                   label: o.label,
-                  note: formatPrice(o.amount, o.currency),
+                  note: formatPrice(switchAmount(o), o.currency),
                   active: o.slug === slug,
                   href: `/checkout?product=${o.slug}${gift ? "&gift=1" : ""}`,
                 }))}

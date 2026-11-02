@@ -438,6 +438,26 @@ update public.catalogue_items set body = body || $b$
 Photographs, via Wikimedia Commons. Cover: the INS Dakar, 1968, by a Bamahane photographer (Israel Defense Forces), CC BY-SA 3.0. The Dakar's masts in the western Mediterranean on 18 January 1968, probably its last photograph, from the Clandestine Immigration and Naval Museum, CC0. The Dakar's emblem, Israel Defense Forces, CC BY-SA 3.0.$b$
 where slug = 'full-circle' and category = 'films' and body not like '%Photographs, via Wikimedia Commons%';
 
+-- JACK'S BACK replaces JUST A BOY (Tony, 2026-11-02: "Remove the panel for the
+-- film JUST A BOY and replace it with a panel for JACK'S BACK that I shall send
+-- you"). Text is Tony's own, from the pitch deck he sent: its story page and
+-- tagline; the "why it works internationally" pitch to buyers is left out.
+-- Just A Boy is archived, not deleted, so its page and text can come back.
+insert into public.catalogue_items
+  (category, title, slug, description, body, status, published_at, is_external, external_url, tags, position)
+values
+  ('films', 'Jack''s Back', 'jacks-back',
+   'An immersive, character-driven saga spanning the gritty streets of post-war Newcastle and the frozen battlefields of Korea, written by Tony Klinger.',
+'Summer 1940: a bombing raid takes Jack’s best friend and leaves him with a secret, a father at war, and a family holding things together by sheer will. By 1952 he’s a talented boxer, a daring heist driver, and a young man running from, and toward, everything. When his father Harry returns, he’s not the hero Jack imagined: he’s a liar, a deserter, and the catalyst for a war that moves from Newcastle’s backstreets to a foreign battlefield. Betrayal, gangland revenge, a stolen fortune, and a fateful choice under fire: Jack must decide whether to repeat the past or break the cycle.
+
+An immersive, character-driven saga spanning the gritty streets of post-war Newcastle and the frozen battlefields of Korea. At its heart: Jack, brilliant, reckless, loyal to a fault, who loses his childhood to a bombing raid, comes of age in a world of rationing, boxing, and petty crime, and ultimately fights not just for his country, but to unmask the father he worshipped and redeem the family he loves.
+
+“You can’t outrun where you come from, but you can choose whom you become. Sometimes a man does bad things for good reasons.”',
+   'published', now(), false, null, '{}', 110)
+on conflict (category, slug) do nothing;
+
+update public.catalogue_items set status = 'archived' where slug = 'just-a-boy';
+
 -- Which edge of the cover a card keeps when it crops to fill (migration 0008_catalogue_and_site_media;
 -- default 'top'). Set only where the title sits elsewhere, checked against the
 -- crop: Alsatia's title is top left of a square painting, Sisters' is at the
@@ -446,7 +466,7 @@ where slug = 'full-circle' and category = 'films' and body not like '%Photograph
 -- is tall, so no 3:4 crop can hold its title; centre keeps the pilot on the
 -- wing instead, and the card's caption carries the title.
 update public.catalogue_items set cover_focus = 'left'
-  where slug in ('alsatia-the-search-for-treasure', 'sisters', 'just-a-boy');
+  where slug in ('alsatia-the-search-for-treasure', 'sisters', 'just-a-boy', 'jacks-back');
 update public.catalogue_items set cover_focus = 'center'
   where slug = 'solo2darwin';
 

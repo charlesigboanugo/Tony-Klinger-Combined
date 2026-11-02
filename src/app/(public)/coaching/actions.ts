@@ -1,6 +1,7 @@
 "use server";
 
 import { entitlementFor, type EntitlementState } from "@/lib/commerce/entitlements";
+import { passHolderDiscount } from "@/lib/commerce/pass-discount";
 import { heldPass } from "@/lib/commerce/pass-upgrade";
 import { RENEWAL_WINDOW_DAYS } from "@/lib/commerce/sale-check";
 import { queueEmail } from "@/lib/email/send";
@@ -308,4 +309,18 @@ export async function viewerPassAction(): Promise<ViewerPass | null> {
     canUpgrade: held.canUpgrade,
     upgradeUntil: held.upgradeUntil ? day(new Date(held.upgradeUntil)) : null,
   };
+}
+
+/**
+ * This visitor's own discount on a single one-to-one session, from their live
+ * pass (migration 0026), so a pre-built page can show a holder their price.
+ * Display only: checkout asks the database again before charging. 0 for none.
+ */
+export async function viewerOneToOneDiscountAction(): Promise<number> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return 0;
+  return passHolderDiscount(supabase);
 }

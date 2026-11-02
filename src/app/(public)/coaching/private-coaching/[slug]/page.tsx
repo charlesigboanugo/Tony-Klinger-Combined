@@ -13,11 +13,13 @@ import {
   ProductSection,
   PurchasePanel,
 } from "@/components/coaching/ProductPage";
+import { FaqList } from "@/components/content/FaqList";
 import { ButtonLink } from "@/components/ui/Button";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
-import { optionsForProducts, validityNote } from "@/lib/commerce/options";
-import { formatPrice } from "@/lib/commerce/pricing";
-import { getCoachingService } from "@/lib/content/coaching";
+import { optionsForProducts, packSaving, packSavingOffer, validityNote } from "@/lib/commerce/options";
+import { formatPrice, passPerkLabel } from "@/lib/commerce/pricing";
+import { getCoachingService, listMembershipTiers } from "@/lib/content/coaching";
+import { privateCoachingFaqs } from "@/lib/content/product-faqs";
 import { pageMetadata } from "@/lib/seo/metadata";
 
 export async function generateMetadata({
@@ -66,16 +68,30 @@ export default async function PrivateCoachingServicePage({
   const choices: PackOption[] = options.map((o) => {
     const count = o.credits ?? 1;
     const each = count > 1 ? `${formatPrice(Math.round(o.amount / count), o.currency)} a session` : null;
+    const saved = packSaving(o, options);
     return {
       slug: o.slug,
       label: o.label,
       price: formatPrice(o.amount, o.currency),
       priceNote: count > 1 ? `for ${count} sessions` : "a session",
       detail: [each ?? "Pay, then choose your time", validityNote(o.validMonths)].filter(Boolean).join(" · "),
+      saving: saved > 0 ? `Save ${formatPrice(saved, o.currency)}` : null,
       cta: { href: `/checkout?product=${o.slug}`, label: count > 1 ? `Buy ${count} sessions` : "Buy a session" },
       cart: true,
+      // A single session takes a pass holder's discount; the pack does not.
+      ...(count === 1 ? { amount: o.amount, currency: o.currency, passDiscountable: true } : {}),
     };
   });
+  const offer = packSavingOffer(options);
+  // The pass holders' discount on a single session (migration 0026), from the
+  // passes on sale: beside the price, and in the buy panel.
+  const tiersOnSale = (await listMembershipTiers()).filter((t) => t.prices.length > 0);
+  const perk = passPerkLabel(tiersOnSale.map((t) => t.oneToOneDiscount));
+  // For the questions: the single's lifetime, the pack and each pass's discount.
+  const singleOption = options.find((o) => (o.credits ?? 1) === 1) ?? null;
+  const packOption = options.find((o) => (o.credits ?? 1) > 1) ?? null;
+  const packSaved = packOption ? packSaving(packOption, options) : 0;
+  const discounts = tiersOnSale.filter((t) => t.oneToOneDiscount > 0).map((t) => `${t.oneToOneDiscount}% off with a ${t.name}`);
   // A service whose product has no option group still sells its one session.
   const buyHref = service.productSlug ? `/checkout?product=${service.productSlug}` : null;
 
@@ -100,6 +116,11 @@ export default async function PrivateCoachingServicePage({
         cover={{ path: service.storagePath }}
         price={shown ?? "Price on application"}
         priceNote={shown ? "a session" : null}
+        saving={offer?.label}
+        perk={perk}
+        perkHref="/coaching/passes"
+        // To the buy panel with the pack chosen (PackPurchase reads the hash).
+        savingHref={offer && choices.length > 1 ? `#buy-${offer.slug}` : null}
       />
 
       <ProductLayout
@@ -112,7 +133,7 @@ export default async function PrivateCoachingServicePage({
             footnote="Cancel at least 48 hours ahead and the session is returned to your account to rebook."
           >
             {choices.length > 1 ? (
-              <PackPurchase label="Number of sessions" options={choices} initial={service.productSlug ?? undefined} />
+              <PackPurchase label="Number of sessions" options={choices} initial={service.productSlug ?? undefined} passPerk={perk} />
             ) : buyHref ? (
               <ButtonLink href={buyHref} size="lg" className="w-full">
                 Buy a session
@@ -147,8 +168,8 @@ export default async function PrivateCoachingServicePage({
         <ProductSection title="How booking works">
           <div className="max-w-2xl space-y-4 leading-relaxed text-muted-foreground">
             <p>
-              <span className="font-medium text-foreground">Pay first.</span> Buy one session, or a pack to use when
-              you need them. Your sessions wait in your Academy.
+              <span className="font-medium text-foreground">Pay first.</span> Buy one session, or a pack of 8 sessions
+              to use when you need them. Your sessions wait in your Academy.
             </p>
             <p>
               <span className="font-medium text-foreground">Then choose your time.</span> Pick a time from Tony&apos;s
@@ -157,6 +178,11 @@ export default async function PrivateCoachingServicePage({
             </p>
             <p>The joining link appears in your Academy fifteen minutes before each session starts.</p>
           </div>
+        </ProductSection>
+
+        {/* Questions people ask about one-to-one coaching (owner, 2026-11-02). */}
+        <ProductSection title="FAQs">
+          <FaqList items={privateCoachingFaqs({ validMonths: singleOption?.validMonths ?? null, pack: packOption ? { sessions: packOption.credits ?? 8, saving: packSaved > 0 ? formatPrice(packSaved, packOption.currency) : null, validMonths: packOption.validMonths } : null, passDiscounts: discounts.length > 0 ? discounts.length > 1 ? `${discounts.slice(0, -1).join(", ")} and ${discounts.at(-1)}` : discounts[0] : null })} className="max-w-2xl" />
         </ProductSection>
       </ProductLayout>
 

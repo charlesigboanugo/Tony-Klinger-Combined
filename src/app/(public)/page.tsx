@@ -14,6 +14,7 @@ import { Marquee } from "@/components/motion/Marquee";
 import { Reveal } from "@/components/motion/Reveal";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { ButtonArrow, ButtonLink, HERO_ACTIONS } from "@/components/ui/Button";
+import { optionGroup } from "@/lib/commerce/options";
 import { formatPrice } from "@/lib/commerce/pricing";
 import { leadPrice } from "@/lib/commerce/billing";
 import {
@@ -27,8 +28,11 @@ import {
   listCoachingServices,
   listCourses,
   listMembershipTiers,
+  listRetreats,
+  listSeries,
   type ProductPrice,
 } from "@/lib/content/coaching";
+import { sessionEntry } from "@/lib/content/session-entry";
 import { listTestimonials } from "@/lib/content/testimonials";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { tonyPerson, websiteData } from "@/lib/seo/structured-data";
@@ -171,7 +175,7 @@ const eyebrow = "text-xs font-semibold tracking-[0.2em] uppercase";
 export default async function HomePage() {
   // Fetched together: independent reads on one page should not be sequential
   // waits.
-  const [testimonials, works, tiers, courses, cohorts, services] =
+  const [testimonials, works, tiers, courses, cohorts, services, series, retreats, trySession] =
     await Promise.all([
       listTestimonials({ featuredOnly: true, limit: 6 }),
       listCatalogue(),
@@ -179,7 +183,15 @@ export default async function HomePage() {
       listCourses(),
       listCohorts(),
       listCoachingServices(),
+      listSeries(),
+      listRetreats(),
+      sessionEntry(),
     ]);
+  // A whole series' price, the lowest across the series: the Group Coaching row
+  // quotes it (owner, 2026-11-02: prices on every row).
+  const seriesPrices = (await Promise.all(series.map((s) => optionGroup(`group-coaching-${s.slug}`))))
+    .flatMap((group) => group.filter((o) => (o.credits ?? 1) > 1));
+  const seriesPrice = seriesPrices.length > 0 ? seriesPrices.reduce((a, b) => (b.amount < a.amount ? b : a)) : null;
 
   // Only works that actually have a cover: a strip of empty frames is worse
   // than no strip.
@@ -229,9 +241,9 @@ export default async function HomePage() {
     {
       title: "Group Coaching",
       href: "/coaching/group-coaching",
-      summary: "Eight live sessions, up to eight people.",
-      price: null,
-      priceNote: "Included with a Coaching Pass",
+      summary: "Eight live sessions, up to eight people. Included with a Coaching Pass.",
+      price: seriesPrice ? formatPrice(seriesPrice.amount, seriesPrice.currency) : null,
+      priceNote: seriesPrice ? "per series" : "Included with a Coaching Pass",
     },
     {
       title: "Courses",
@@ -257,9 +269,9 @@ export default async function HomePage() {
     {
       title: "Retreats",
       href: "/coaching/retreats",
-      summary: "Immersive, limited-place experiences.",
-      price: null,
-      priceNote: "Limited places",
+      summary: "A day online with working mentors, at three levels.",
+      price: price(lowest(retreats.flatMap((r) => r.prices), "one_time")),
+      priceNote: "per retreat",
     },
   ];
 
@@ -277,10 +289,10 @@ export default async function HomePage() {
     {
       title: silver ? `Get the ${silver.name}` : "Get a Coaching Pass",
       line:
-        silver && silverMonthly
-          ? `${silverMonthly} ${silverLead?.note}: ${silver.benefits
-              .map((b) => b[0].toLowerCase() + b.slice(1))
-              .join(", and ")}.`
+        // The tier's one-line description, not its benefits joined into one
+        // long sentence: this is a signpost, and the passes page has the list.
+        silver?.description && silverMonthly
+          ? `${silverMonthly} ${silverLead?.note}: ${silver.description[0].toLowerCase()}${silver.description.slice(1)}`
           : "Silver, Gold or Platinum, for twelve months.",
       href: "/coaching/passes",
       cta: "Compare the passes",
@@ -499,6 +511,95 @@ export default async function HomePage() {
         </Band>
       ) : null}
 
+      {/*
+        COACHING — straight after the posters (Tony, 2026-11-02: coaching must be
+        "very clear and obvious" as a destination), redesigned the same day as a
+        PRICE BOARD (owner: "prices more visible"). The intro holds the left
+        column, staying in view on wide screens while the offers pass; the six
+        offers are tall ruled rows (still no cards, owner 2026-09-26), each with
+        its name and line on the left and its price, large in the display face,
+        on the right. Every price is read from the storefront.
+      */}
+      <section aria-labelledby="coaching-heading" className="bg-surface-muted py-18 sm:py-24">
+        <Container>
+          <div className="grid gap-10 lg:grid-cols-12 lg:gap-16">
+            <Reveal className="lg:sticky lg:top-28 lg:col-span-5 lg:self-start">
+              <Eyebrow>Coaching</Eyebrow>
+              <h2 id="coaching-heading" className="mt-5 font-display">
+                Tony&apos;s coaching solves your problems.
+              </h2>
+              <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground text-pretty">
+                Direct answers from someone who has done the job, not theory
+                from someone who has read about it.
+              </p>
+              <div className={cn("mt-8", HERO_ACTIONS)}>
+                <ButtonLink href="/coaching" size="lg" variant="primary">
+                  Explore coaching
+                  <ButtonArrow />
+                </ButtonLink>
+                {/* A single £25 session, ONLY while one can be bought (owner,
+                    2026-11-02): never a price the visitor then cannot get. */}
+                {trySession.available ? (
+                  <ButtonLink href={trySession.href} size="lg" variant="outline">
+                    {trySession.label}
+                  </ButtonLink>
+                ) : null}
+              </div>
+            </Reveal>
+
+            <ul className="border-t border-foreground/15 lg:col-span-7">
+              {offers.map((offer, i) => (
+                <Reveal as="li" key={offer.href} delay={i * 50} className="border-b border-foreground/15">
+                  <Link
+                    href={offer.href}
+                    className="group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-5 py-6 focus-visible:outline-offset-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-x-8 sm:py-7"
+                  >
+                    {/* A red stroke down the row's edge, drawn on hover. */}
+                    <span
+                      aria-hidden="true"
+                      className="absolute top-0 -left-4 h-full w-0.5 origin-top scale-y-0 bg-primary transition-transform duration-(--dur-base) ease-expo group-hover:scale-y-100 motion-reduce:transition-none sm:-left-5"
+                    />
+                    <span className="min-w-0">
+                      <span className="block font-display text-2xl leading-tight font-semibold text-balance sm:text-[1.75rem]">
+                        {offer.title}
+                      </span>
+                      <span className="mt-1.5 block text-sm leading-relaxed text-muted-foreground text-pretty">
+                        {offer.summary}
+                      </span>
+                    </span>
+                    <span className="text-right">
+                      {offer.price ? (
+                        <>
+                          <span className="block text-[0.6875rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                            From
+                          </span>
+                          <span className="mt-1 block font-display text-3xl leading-none font-semibold whitespace-nowrap tabular-nums sm:text-[2.5rem]">
+                            {offer.price}
+                          </span>
+                          <span className="mt-1.5 block text-[0.6875rem] font-semibold tracking-[0.14em] whitespace-nowrap text-muted-foreground uppercase">
+                            {offer.priceNote}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[0.6875rem] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                          {offer.priceNote}
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="hidden h-10 w-10 place-items-center rounded-full border border-foreground/20 transition-[transform,background-color,border-color,color] duration-(--dur-base) ease-expo group-hover:translate-x-1 group-hover:border-button group-hover:bg-button group-hover:text-button-foreground motion-reduce:transform-none sm:grid"
+                    >
+                      &rarr;
+                    </span>
+                  </Link>
+                </Reveal>
+              ))}
+            </ul>
+          </div>
+        </Container>
+      </section>
+
       {/* WORKED WITH — the names do the talking, in a line of credits that
           never quite ends. Page ground, so it rests the eye between two
           saturated fields. More room below than above (owner, 2026-09-26),
@@ -680,76 +781,6 @@ export default async function HomePage() {
           </Reveal>
         </Container>
         <PhotoCredit src={designPhotos.homeBanner.src} variant="overlay" />
-      </section>
-
-      {/*
-        COACHING — a short signpost, not a price list (owner, 2026-09-26: the
-        /coaching pages already carry the detail). On the warm paper tone so it
-        parts from the noir catalogue above and the testimonials below. The six
-        offers are a plain ruled list, no cards (owner), each linking to its own
-        page with its starting price.
-      */}
-      <section aria-labelledby="coaching-heading" className="bg-surface-muted py-18 sm:py-24">
-        <Container>
-          <Reveal className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-16">
-            <div>
-              <Eyebrow>Coaching</Eyebrow>
-              <h2 id="coaching-heading" className="mt-5 font-display">
-                Tony&apos;s coaching solves your problems.
-              </h2>
-              <p className="mt-5 max-w-2xl leading-relaxed text-muted-foreground text-pretty">
-                Direct answers from someone who has done the job, not theory
-                from someone who has read about it.
-              </p>
-            </div>
-            <ButtonLink href="/coaching" size="lg" variant="primary" className="justify-self-start">
-              Explore coaching
-              <ButtonArrow />
-            </ButtonLink>
-          </Reveal>
-
-          {/* Still no cards (owner), but each offer stands on its own (owner,
-              2026-09-26: the rows read as mixed together): its own top rule,
-              led by a short red stroke, and clear space between offers in
-              both directions rather than one continuous ruled table. */}
-          <ul className="mt-10 grid gap-x-10 gap-y-8 sm:mt-12 sm:grid-cols-2 sm:gap-y-10 lg:grid-cols-3 lg:gap-x-14 lg:gap-y-12">
-            {offers.map((offer, i) => (
-              <Reveal as="li" key={offer.href} delay={(i % 3) * 60}>
-                <Link
-                  href={offer.href}
-                  className="group relative flex h-full flex-col border-t border-foreground/20 pt-5 focus-visible:outline-offset-4"
-                >
-                  {/* The lead stroke, drawing across the whole rule on hover. */}
-                  <span
-                    aria-hidden="true"
-                    className="absolute -top-px left-0 h-0.5 w-10 bg-primary transition-[width] duration-(--dur-slow) ease-expo group-hover:w-full motion-reduce:transition-none"
-                  />
-                  <span className="font-display text-xl leading-tight font-semibold">
-                    {offer.title}
-                    <span
-                      aria-hidden="true"
-                      className="ml-3 inline-block text-base text-muted-foreground transition-transform duration-(--dur-base) ease-expo group-hover:translate-x-1.5 group-hover:text-accent motion-reduce:transform-none"
-                    >
-                      &rarr;
-                    </span>
-                  </span>
-                  <span className="mt-2 text-sm leading-relaxed text-muted-foreground">{offer.summary}</span>
-                  <span className="mt-auto pt-4">
-                    {offer.price ? (
-                      <span className="mr-2 text-xs tracking-[0.06em] text-muted-foreground uppercase">From</span>
-                    ) : null}
-                    {offer.price ? (
-                      <span className="font-display text-xl leading-none font-semibold tabular-nums">{offer.price}</span>
-                    ) : null}
-                    <span className={cn("text-xs tracking-[0.06em] text-muted-foreground uppercase", offer.price && "ml-2")}>
-                      {offer.priceNote}
-                    </span>
-                  </span>
-                </Link>
-              </Reveal>
-            ))}
-          </ul>
-        </Container>
       </section>
 
       {/*
