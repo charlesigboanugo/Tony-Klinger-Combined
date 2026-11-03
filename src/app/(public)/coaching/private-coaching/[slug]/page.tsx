@@ -123,7 +123,13 @@ export default async function PrivateCoachingServicePage({
         savingHref={offer && choices.length > 1 ? `#buy-${offer.slug}` : null}
       />
 
+      {/* Questions people ask about one-to-one coaching (owner, 2026-11-02). */}
       <ProductLayout
+        closing={
+          <ProductSection title="FAQs" quiet>
+            <FaqList items={privateCoachingFaqs({ validMonths: singleOption?.validMonths ?? null, pack: packOption ? { sessions: packOption.credits ?? 8, saving: packSaved > 0 ? formatPrice(packSaved, packOption.currency) : null, validMonths: packOption.validMonths } : null, passDiscounts: discounts.length > 0 ? discounts.length > 1 ? `${discounts.slice(0, -1).join(", ")} and ${discounts.at(-1)}` : discounts[0] : null })} className="max-w-2xl" />
+          </ProductSection>
+        }
         aside={
           <PurchasePanel
             price={choices.length > 1 ? null : shown}
@@ -178,11 +184,6 @@ export default async function PrivateCoachingServicePage({
             </p>
             <p>The joining link appears in your Academy fifteen minutes before each session starts.</p>
           </div>
-        </ProductSection>
-
-        {/* Questions people ask about one-to-one coaching (owner, 2026-11-02). */}
-        <ProductSection title="FAQs">
-          <FaqList items={privateCoachingFaqs({ validMonths: singleOption?.validMonths ?? null, pack: packOption ? { sessions: packOption.credits ?? 8, saving: packSaved > 0 ? formatPrice(packSaved, packOption.currency) : null, validMonths: packOption.validMonths } : null, passDiscounts: discounts.length > 0 ? discounts.length > 1 ? `${discounts.slice(0, -1).join(", ")} and ${discounts.at(-1)}` : discounts[0] : null })} className="max-w-2xl" />
         </ProductSection>
       </ProductLayout>
 

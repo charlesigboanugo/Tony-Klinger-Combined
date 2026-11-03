@@ -124,7 +124,14 @@ export default async function RetreatPage({ params }: PageProps<"/coaching/retre
         places={placesLabel(retreat.batches)}
       />
 
+      {/* Questions people ask about a retreat. A pass's free entry is to the levels open
+          without an interview, Level One only (owner, 2026-11-02). */}
       <ProductLayout
+        closing={
+          <ProductSection title="FAQs" quiet>
+            <FaqList items={retreatFaqs({ byInterview: retreat.requires_application, passEntry: !retreat.requires_application, passNames: tiers.filter((t) => t.includesRetreats && t.prices.length > 0).map((t) => t.name) })} className="max-w-2xl" />
+          </ProductSection>
+        }
         aside={
           <PurchasePanel
             price={shown}
@@ -245,12 +252,6 @@ export default async function RetreatPage({ params }: PageProps<"/coaching/retre
             </ul>
           </ProductSection>
         ) : null}
-
-        {/* Questions people ask about a retreat. A pass's free entry is to the levels open
-            without an interview, Level One only (owner, 2026-11-02). */}
-        <ProductSection title="FAQs">
-          <FaqList items={retreatFaqs({ byInterview: retreat.requires_application, passEntry: !retreat.requires_application, passNames: tiers.filter((t) => t.includesRetreats && t.prices.length > 0).map((t) => t.name) })} className="max-w-2xl" />
-        </ProductSection>
       </ProductLayout>
 
       <MobileBuyBar price={shown} priceNote={shown ? "one payment" : null} href="#buy" label={starts ? "Book your place" : "See details"} />

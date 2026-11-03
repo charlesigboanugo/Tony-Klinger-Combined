@@ -62,7 +62,9 @@ export function FaqList({ items, className }: { items: Faq[]; className?: string
         >
           <summary
             className={cn(
-              "flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-left font-semibold [&::-webkit-details-marker]:hidden",
+              // Body-sized and medium weight, so the questions support the
+              // page rather than compete with it (owner, 2026-11-03).
+              "flex cursor-pointer list-none items-center justify-between gap-6 py-4 text-left font-medium [&::-webkit-details-marker]:hidden",
               "transition-colors duration-(--dur-fast) hover:text-accent",
               "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring",
             )}
@@ -81,7 +83,7 @@ export function FaqList({ items, className }: { items: Faq[]; className?: string
               <path d="m4 6 4 4 4-4" />
             </svg>
           </summary>
-          <p className="pb-5 leading-relaxed text-muted-foreground text-pretty">{withLinks(item.answer)}</p>
+          <p className="pb-4 text-[0.9375rem] leading-relaxed text-muted-foreground text-pretty">{withLinks(item.answer)}</p>
         </details>
       ))}
     </div>
@@ -96,8 +98,10 @@ export function FaqBlock({ items, className }: { items: Faq[]; className?: strin
   if (items.length === 0) return null;
   return (
     <div className={cn("mx-auto mt-16 max-w-3xl sm:mt-20", className)}>
-      <h2 className="text-center text-balance">FAQs</h2>
-      <FaqList items={items} className="mt-8" />
+      {/* A section heading a size down: the FAQs close the page, they do not
+          headline it (owner, 2026-11-03). */}
+      <h2 className="text-center text-2xl text-balance sm:text-3xl">FAQs</h2>
+      <FaqList items={items} className="mt-6" />
     </div>
   );
 }

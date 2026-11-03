@@ -78,7 +78,13 @@ export default async function CoursePage({
         priceNote={shown ? "one payment" : null}
       />
 
+      {/* Questions people ask about a course (owner, 2026-11-02). */}
       <ProductLayout
+        closing={
+          <ProductSection title="FAQs" quiet>
+            <FaqList items={courseFaqs()} className="max-w-2xl" />
+          </ProductSection>
+        }
         aside={
           <ViewerPurchasePanel
             price={shown}
@@ -120,11 +126,6 @@ export default async function CoursePage({
               "Your progress saved across your devices",
             ]}
           />
-        </ProductSection>
-
-        {/* Questions people ask about a course (owner, 2026-11-02). */}
-        <ProductSection title="FAQs">
-          <FaqList items={courseFaqs()} className="max-w-2xl" />
         </ProductSection>
       </ProductLayout>
 

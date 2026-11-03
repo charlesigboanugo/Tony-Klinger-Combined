@@ -115,7 +115,13 @@ export default async function MembershipTierPage({
         priceNote={lead?.note ?? null}
       />
 
+      {/* Elaine's questions, answered from the rules themselves (owner, 2026-11-02). */}
       <ProductLayout
+        closing={
+          <ProductSection title="FAQs" quiet>
+            <FaqList items={passFaqs(tiers)} className="max-w-2xl" />
+          </ProductSection>
+        }
         aside={
           /*
             Price and purchase, as one interactive block. It honours the period
@@ -220,11 +226,6 @@ export default async function MembershipTierPage({
               registered for, which stay in your Academy. Anything you bought separately stays yours.
             </p>
           </div>
-        </ProductSection>
-
-        {/* Elaine's questions, answered from the rules themselves (owner, 2026-11-02). */}
-        <ProductSection title="FAQs">
-          <FaqList items={passFaqs(tiers)} className="max-w-2xl" />
         </ProductSection>
       </ProductLayout>
 

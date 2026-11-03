@@ -92,6 +92,9 @@ export default async function MembershipsPage() {
           split
           eyebrow="Coaching Pass"
           title="A year of coaching, in one pass"
+          // Two lines on every phone (owner, 2026-11-03): eased down from 40px only
+          // where "A year of coaching," would otherwise break, below 390px.
+          titleClassName="max-sm:text-[clamp(2rem,10.3vw,2.5rem)]"
           description="Live Group Coaching, a video library that keeps growing and, from Gold, a monthly Q&A with Tony, together in one payment for twelve months."
         />
 

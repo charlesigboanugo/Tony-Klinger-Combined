@@ -182,7 +182,13 @@ export default async function SeriesPage({
         places={placesLabel(runs)}
       />
 
+      {/* Questions people ask about a series, from its own rules (owner, 2026-11-02). */}
       <ProductLayout
+        closing={
+          <ProductSection title="FAQs" quiet>
+            <FaqList items={seriesFaqs({ sessions, singlePrice: singleOption ? formatPrice(singleOption.amount, singleOption.currency) : null, seriesPrice: wholeOption ? formatPrice(wholeOption.amount, wholeOption.currency) : null })} className="max-w-2xl" />
+          </ProductSection>
+        }
         aside={
           <PurchasePanel
             footnote={
@@ -321,11 +327,6 @@ export default async function SeriesPage({
             <CheckList items={series.syllabus} columns={2} />
           </ProductSection>
         ) : null}
-
-        {/* Questions people ask about a series, from its own rules (owner, 2026-11-02). */}
-        <ProductSection title="FAQs">
-          <FaqList items={seriesFaqs({ sessions, singlePrice: singleOption ? formatPrice(singleOption.amount, singleOption.currency) : null, seriesPrice: wholeOption ? formatPrice(wholeOption.amount, wholeOption.currency) : null })} className="max-w-2xl" />
-        </ProductSection>
       </ProductLayout>
 
       {options.length > 0 ? (

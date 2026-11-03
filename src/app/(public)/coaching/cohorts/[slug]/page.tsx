@@ -103,7 +103,13 @@ export default async function CohortPage({ params }: PageProps<"/coaching/cohort
         places={placesLabel(intakes)}
       />
 
+      {/* Questions people ask about a cohort (owner, 2026-11-02). */}
       <ProductLayout
+        closing={
+          <ProductSection title="FAQs" quiet>
+            <FaqList items={cohortFaqs()} className="max-w-2xl" />
+          </ProductSection>
+        }
         aside={
           <PurchasePanel
             price={shown}
@@ -178,11 +184,6 @@ export default async function CohortPage({ params }: PageProps<"/coaching/cohort
             </div>
           </ProductSection>
         ) : null}
-
-        {/* Questions people ask about a cohort (owner, 2026-11-02). */}
-        <ProductSection title="FAQs">
-          <FaqList items={cohortFaqs()} className="max-w-2xl" />
-        </ProductSection>
       </ProductLayout>
 
       <MobileBuyBar price={shown} priceNote="one payment" href="#buy" label={open ? "Join cohort" : "See intakes"} />

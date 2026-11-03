@@ -122,7 +122,16 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
         priceNote={past ? null : event.is_free ? "register a place" : price ? "a ticket" : null}
       />
 
-      <ProductLayout aside={<Panel event={event} viewer={viewer} past={past} left={left} full={full} price={price} />}>
+      {/* Questions people ask about an event, while it is still to come (owner, 2026-11-02). */}
+      <ProductLayout
+        closing={
+          past ? null : (
+            <ProductSection title="FAQs" quiet>
+              <FaqList items={eventFaqs({ isFree: event.is_free, online: online && !inPerson })} className="max-w-2xl" />
+            </ProductSection>
+          )
+        }
+        aside={<Panel event={event} viewer={viewer} past={past} left={left} full={full} price={price} />}>
         <ProductFacts facts={facts} />
 
         {paragraphs.length > 1 ? (
@@ -206,13 +215,6 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
             )}
           </ul>
         </ProductSection>
-
-        {/* Questions people ask about an event, while it is still to come (owner, 2026-11-02). */}
-        {past ? null : (
-          <ProductSection title="FAQs">
-            <FaqList items={eventFaqs({ isFree: event.is_free, online: online && !inPerson })} className="max-w-2xl" />
-          </ProductSection>
-        )}
       </ProductLayout>
 
       {bar ? <MobileBuyBar price={bar.price} href={bar.href} label={bar.label} /> : null}

@@ -219,27 +219,53 @@ export function ProductFacts({ facts }: { facts: { label: string; value: string 
 }
 
 /** A reading column and a purchase panel that stays in view beside it. */
-export function ProductLayout({ children, aside }: { children: ReactNode; aside: ReactNode }) {
+export function ProductLayout({
+  children,
+  aside,
+  closing,
+}: {
+  children: ReactNode;
+  aside: ReactNode;
+  /**
+   * What closes the page, the FAQs (owner, 2026-11-03: "FAQ must be just
+   * before footer"). After the buy panel on a phone, where the panel drops
+   * below the reading column; under the reading column on a wide screen,
+   * with the panel still beside it.
+   */
+  closing?: ReactNode;
+}) {
   return (
     <Container className="py-14 sm:py-20">
       {/* One column on phones, held to the screen's width: left to size
           itself, it grew to the widest thing in it and pushed the page sideways. */}
-      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-16">
-        <div className="min-w-0 space-y-14">{children}</div>
-        <aside id="buy" className="min-w-0 scroll-mt-28 lg:sticky lg:top-28 lg:self-start">
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_24rem] lg:gap-x-16 lg:gap-y-14">
+        <div className="min-w-0 space-y-14 lg:col-start-1 lg:row-start-1">{children}</div>
+        {/* Spans both rows on a wide screen, so it stays beside the reader
+            through the closing section too. */}
+        <aside id="buy" className="min-w-0 scroll-mt-28 lg:sticky lg:top-28 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start">
           {aside}
         </aside>
+        {closing ? <div className="min-w-0 lg:col-start-1 lg:row-start-2">{closing}</div> : null}
       </div>
     </Container>
   );
 }
 
 /** A titled block in the reading column. */
-export function ProductSection({ title, children }: { title: string; children: ReactNode }) {
+export function ProductSection({
+  title,
+  quiet = false,
+  children,
+}: {
+  title: string;
+  /** A heading a size down, for a closing section like the FAQs (owner, 2026-11-03). */
+  quiet?: boolean;
+  children: ReactNode;
+}) {
   const id = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   return (
     <section aria-labelledby={id}>
-      <h2 id={id} className="text-balance">
+      <h2 id={id} className={cn("text-balance", quiet && "text-2xl sm:text-3xl")}>
         {title}
       </h2>
       <div className="mt-6">{children}</div>
