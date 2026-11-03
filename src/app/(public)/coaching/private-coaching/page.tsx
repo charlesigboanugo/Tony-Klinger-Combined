@@ -45,6 +45,7 @@ export default async function PrivateCoachingPage() {
     <Section>
       <Container>
         <PageHeader
+          split
           eyebrow="Coaching"
           title="Private Coaching"
           description="An hour with Tony on your own project or career, at a time that suits you. Book a single session, or a pack of 8 sessions to use when you need them."

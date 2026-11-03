@@ -131,17 +131,27 @@ export function OfferCard({
             2026-09-26: "very visible"): large figures, white on the button
             red — the one fill that reads on any photograph — and a lift. */}
         {/* The places on the left edge, level with the price (owner,
-            2026-10-29); the price keeps the right. */}
+            2026-10-29); the price keeps the right. Both rows of chips are
+            inset to the card body's own padding (owner, 2026-11-03: the chips
+            should align), so chips and text share one left edge.
+
+            BELOW lg (owner, 2026-11-03: "make sure mobile makes sense") the
+            price stands alone top right, a size smaller on a phone, and every
+            other chip joins the foot of the picture in one left-aligned
+            column: on a phone or a tablet's two-up card a chip beside the
+            price staggered onto two rows. */}
         {shownPrice || places || saving ? (
-          <div className="absolute top-4 right-4 left-4 flex flex-wrap items-center justify-between gap-2">
-            {places ? <PlacesChip label={places} /> : null}
-            {saving ? <SavingChip label={saving} /> : null}
+          <div className="absolute top-5 right-6 left-6 flex flex-wrap items-center justify-between gap-2 sm:right-7 sm:left-7">
+            <span className="hidden lg:contents">
+              {places ? <PlacesChip label={places} /> : null}
+              {saving ? <SavingChip label={saving} /> : null}
+            </span>
             {shownPrice ? (
-              <p className="ml-auto flex items-baseline gap-1.5 rounded-full bg-button px-5 py-2.5 text-button-foreground shadow-lift ring-1 ring-white/20">
+              <p className="ml-auto flex items-baseline gap-1.5 rounded-full bg-button px-4 py-2 text-button-foreground shadow-lift ring-1 ring-white/20 sm:px-5 sm:py-2.5">
                 {shownNote === "from" ? (
                   <span className="text-xs font-semibold tracking-wide uppercase">from</span>
                 ) : null}
-                <span className="font-display text-2xl leading-none font-semibold tabular-nums sm:text-[1.75rem]">{shownPrice}</span>
+                <span className="font-display text-xl leading-none font-semibold tabular-nums sm:text-2xl lg:text-[1.75rem]">{shownPrice}</span>
                 {shownNote && shownNote !== "from" ? (
                   <span className="text-xs font-medium">{shownNote}</span>
                 ) : null}
@@ -151,10 +161,15 @@ export function OfferCard({
         ) : null}
 
         {/* WHEN IT IS ON, at the foot of the picture where the eye lands
-            after the price (owner, 2026-10-09: the date "much more visible"). */}
-        {status || perk ? (
-          <div className="absolute right-4 bottom-4 left-4 flex flex-wrap gap-2">
+            after the price (owner, 2026-10-09: the date "much more visible");
+            below lg the places and saving join it, one chip to a line. */}
+        {status || perk || places || saving ? (
+          <div className="absolute right-6 bottom-5 left-6 flex flex-col items-start gap-1.5 sm:right-7 sm:left-7 lg:flex-row lg:flex-wrap lg:items-center lg:gap-2">
             {status ? <OfferStatusChip status={status} /> : null}
+            <span className="contents lg:hidden">
+              {places ? <PlacesChip label={places} /> : null}
+              {saving ? <SavingChip label={saving} /> : null}
+            </span>
             {perk ? <SavingChip label={perk} icon="pass" /> : null}
           </div>
         ) : null}

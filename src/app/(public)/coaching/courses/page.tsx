@@ -25,6 +25,7 @@ export default async function CoursesPage() {
     <Section>
       <Container>
         <PageHeader
+          split
           eyebrow="Coaching"
           title="Courses"
           description="Buy once, learn at your own pace. Each course is delivered in the Academy and stays available for as long as your access lasts."

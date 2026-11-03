@@ -40,6 +40,7 @@ export default async function CohortsPage() {
     <Section>
       <Container>
         <PageHeader
+          split
           eyebrow="Coaching"
           title="Interactive Cohorts"
           description="A fixed programme with a fixed group: eight three-hour workshops, live on Zoom, start to finish with the same people. Unlike Group Coaching, you do not book session by session."

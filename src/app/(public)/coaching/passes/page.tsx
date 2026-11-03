@@ -89,13 +89,10 @@ export default async function MembershipsPage() {
     <Section>
       <Container>
         <PageHeader
+          split
           eyebrow="Coaching Pass"
           title="A year of coaching, in one pass"
-          // Narrower than the block (owner, 2026-10-10), so it sits on two
-          // even lines above the text instead of one long one.
-          titleClassName="mx-auto max-w-xl text-balance"
           description="Live Group Coaching, a video library that keeps growing and, from Gold, a monthly Q&A with Tony, together in one payment for twelve months."
-          align="center"
         />
 
         <MembershipPricing tiers={priced} />

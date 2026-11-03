@@ -16,6 +16,21 @@ import { cn } from "@/lib/utils/cn";
  *
  * The tone is never the only signal: the words say it too.
  */
+/**
+ * Chip sizes, shared by every chip here. Compact on phones (owner, 2026-11-03:
+ * on mobile they had "too much space within" and looked odd on a narrow card).
+ * Card chips stay compact until lg, as cards are narrow two-up on a tablet;
+ * hero chips take their full size from sm.
+ */
+const CHIP_SIZE = {
+  card: "gap-2 px-3 py-1.5 text-xs lg:gap-2.5 lg:px-4 lg:py-2 lg:text-sm",
+  hero: "gap-2 px-3.5 py-2 text-sm sm:gap-2.5 sm:px-5 sm:py-3 sm:text-base",
+} as const;
+const ICON_SIZE = {
+  card: "size-3.5 lg:size-4",
+  hero: "size-4 sm:size-4.5",
+} as const;
+
 export function OfferStatusChip({
   status,
   size = "card",
@@ -29,8 +44,8 @@ export function OfferStatusChip({
   return (
     <p
       className={cn(
-        "inline-flex max-w-full items-center gap-2.5 rounded-full font-semibold shadow-lift",
-        size === "hero" ? "px-5 py-3 text-base" : "px-4 py-2 text-sm",
+        "inline-flex max-w-full items-center rounded-full font-semibold shadow-lift",
+        CHIP_SIZE[size],
         status.tone === "live" && "bg-accent text-accent-foreground ring-1 ring-white/15",
         status.tone === "urgent" && "bg-block-foreground text-block-noir",
         (status.tone === "quiet" || status.tone === "closed") &&
@@ -48,7 +63,7 @@ export function OfferStatusChip({
         <svg
           aria-hidden="true"
           viewBox="0 0 16 16"
-          className={cn("shrink-0", size === "hero" ? "size-4.5" : "size-4")}
+          className={cn("shrink-0", ICON_SIZE[size])}
           fill="none"
           stroke="currentColor"
           strokeWidth="1.6"
@@ -62,7 +77,7 @@ export function OfferStatusChip({
         <svg
           aria-hidden="true"
           viewBox="0 0 16 16"
-          className={cn("shrink-0", size === "hero" ? "size-4.5" : "size-4")}
+          className={cn("shrink-0", ICON_SIZE[size])}
           fill="none"
           stroke="currentColor"
           strokeWidth="1.6"
@@ -95,15 +110,15 @@ export function PlacesChip({
   return (
     <p
       className={cn(
-        "inline-flex max-w-full items-center gap-2.5 rounded-full bg-accent font-semibold text-accent-foreground shadow-lift ring-1 ring-white/15",
-        size === "hero" ? "px-5 py-3 text-base" : "px-4 py-2 text-sm",
+        "inline-flex max-w-full items-center rounded-full bg-accent font-semibold text-accent-foreground shadow-lift ring-1 ring-white/15",
+        CHIP_SIZE[size],
         className,
       )}
     >
       <svg
         aria-hidden="true"
         viewBox="0 0 16 16"
-        className={cn("shrink-0", size === "hero" ? "size-4.5" : "size-4")}
+        className={cn("shrink-0", ICON_SIZE[size])}
         fill="none"
         stroke="currentColor"
         strokeWidth="1.6"
@@ -144,7 +159,7 @@ export function SavingChip({
       <svg
         aria-hidden="true"
         viewBox="0 0 16 16"
-        className={cn("shrink-0", size === "hero" ? "size-4.5" : "size-4")}
+        className={cn("shrink-0", ICON_SIZE[size])}
         fill="none"
         stroke="currentColor"
         strokeWidth="1.6"
@@ -173,8 +188,8 @@ export function SavingChip({
     </>
   );
   const classes = cn(
-    "inline-flex max-w-full items-center gap-2.5 rounded-full bg-accent font-semibold text-accent-foreground shadow-lift ring-1 ring-white/15",
-    size === "hero" ? "px-5 py-3 text-base" : "px-4 py-2 text-sm",
+    "inline-flex max-w-full items-center rounded-full bg-accent font-semibold text-accent-foreground shadow-lift ring-1 ring-white/15",
+    CHIP_SIZE[size],
     className,
   );
   return href ? (

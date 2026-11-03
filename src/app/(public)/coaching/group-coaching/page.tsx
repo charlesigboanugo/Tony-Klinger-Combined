@@ -93,6 +93,7 @@ export default async function GroupCoachingPage() {
     <Section>
       <Container>
         <PageHeader
+          split
           eyebrow="Coaching"
           title="Group Coaching"
           description={`Live, hour-long sessions in small groups${groupSize}. Each series runs for eight weeks, one session a week. The full series is sold first; once its registration closes, any seats left are sold as single sessions. A series is also included with a Coaching Pass.`}

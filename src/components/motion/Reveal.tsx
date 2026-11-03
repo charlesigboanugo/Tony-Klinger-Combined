@@ -78,9 +78,12 @@ export function Reveal({
           }
         }
       },
-      // Start slightly before the element reaches the viewport so the motion
-      // finishes as it arrives rather than beginning once it is already read.
-      { rootMargin: "0px 0px -12% 0px", threshold: 0.05 },
+      // As soon as any of the element is in view, less a small inset so the
+      // motion is still seen. Not a share of the element: a tall card (a
+      // Group Coaching series with its syllabus) needed 5% of its own height
+      // in view, so it appeared well after it was scrolled to (owner,
+      // 2026-11-03: the cards "don't come out on time").
+      { rootMargin: "0px 0px -6% 0px", threshold: 0 },
     );
 
     observer.observe(el);

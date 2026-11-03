@@ -22,6 +22,11 @@ import { Eyebrow } from "@/components/ui/Eyebrow";
  * With a `photo` (note 10 §42.3) the header becomes a split: the words on one
  * side, a framed portrait drifting gently on the other. Stacked on phones,
  * words first.
+ *
+ * With `split` (owner, 2026-11-03, for the coaching listings) the header uses
+ * the width: the eyebrow, then the title on the left and the description on
+ * the right starting level with it, and a hairline across the full width
+ * before the cards. Stacked on phones, with the same hairline.
  */
 /**
  * From lg the words start at `--hero-text-top` below the header, the height
@@ -40,6 +45,7 @@ export function PageHeader({
   photo,
   className,
   nested = false,
+  split = false,
 }: {
   eyebrow?: string;
   title: string;
@@ -53,6 +59,8 @@ export function PageHeader({
   /** Set by the photo split for its inner title block, which it has
       already moved to the shared start height. */
   nested?: boolean;
+  /** Title left, description right, a hairline under both (see above). */
+  split?: boolean;
 }) {
   if (photo) {
     return (
@@ -84,6 +92,39 @@ export function PageHeader({
             parallax
           />
         </Reveal>
+      </div>
+    );
+  }
+
+  if (split) {
+    return (
+      <div className={cn("mb-10 border-b border-border pb-10 sm:mb-14 sm:pb-12", HERO_START, className)}>
+        {eyebrow ? (
+          <Reveal className="mb-4">
+            <Eyebrow>{eyebrow}</Eyebrow>
+          </Reveal>
+        ) : null}
+        {/* Title and description start level, so the block reads the same
+            whether the description is one line or five. */}
+        <div className="grid gap-6 lg:grid-cols-12 lg:items-start lg:gap-12">
+          <Reveal as="h1" delay={eyebrow ? 60 : 0} className={cn("font-display text-balance lg:col-span-6", titleClassName)}>
+            {title}
+          </Reveal>
+          {description ? (
+            <Reveal
+              as="p"
+              delay={120}
+              className="text-lg leading-relaxed text-muted-foreground text-pretty lg:col-span-6 lg:pt-2"
+            >
+              {description}
+            </Reveal>
+          ) : null}
+        </div>
+        {actions ? (
+          <Reveal delay={180} className={cn("mt-8", HERO_ACTIONS)}>
+            {actions}
+          </Reveal>
+        ) : null}
       </div>
     );
   }

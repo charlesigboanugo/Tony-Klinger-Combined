@@ -27,6 +27,7 @@ export default async function RetreatsPage() {
     <Section>
       <Container>
         <PageHeader
+          split
           eyebrow="Coaching"
           title="Retreats"
           description="A day online with working mentors. Join at the level that suits you: watch the sessions, bring your own project for feedback, or pitch it to the panel."
