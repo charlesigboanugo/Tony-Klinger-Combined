@@ -148,13 +148,13 @@ export function MobileNav({
           "motion-safe:animate-[nav-fade_200ms_ease-out]",
         )}
       >
-        <nav aria-label="Main" className="mx-auto flex min-h-full max-w-2xl flex-col px-5 pt-6 pb-10 sm:px-8">
+        <nav aria-label="Main" className="mx-auto flex min-h-full max-w-2xl flex-col px-5 pt-9 pb-10 sm:px-8">
           {/* Signed in, the account sits ABOVE the menu (owner, 2026-11-03):
               Admin for staff on a line of its own, then Academy and My account
               side by side, as the same outline pills as Cart and Sign out at
               the foot, so top and bottom read as one set. */}
           {userEmail ? (
-            <div className="mb-6 grid grid-cols-2 gap-3 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both]">
+            <div className="mb-8 grid grid-cols-2 gap-3 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both]">
               {admin ? (
                 <ButtonLink href="/admin" variant="onBlockOutline" onClick={onClose} className="col-span-2 w-full">
                   Admin
@@ -211,7 +211,9 @@ export function MobileNav({
 
           <div
             style={rise(publicNavigation.length)}
-            className="mt-auto grid grid-cols-2 gap-3 pt-10 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both]"
+            // The same gap below the menu as above it (owner, 2026-11-03), not
+            // pushed to the foot of the screen, where it varied with its height.
+            className="mt-8 grid grid-cols-2 gap-3 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both]"
           >
             {userEmail ? null : (
               <ButtonLink href="/auth/sign-in" variant="onBlock" onClick={onClose} className="w-full">
