@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { signOutAction } from "@/app/auth/actions";
 import { ExternalMark } from "@/components/navigation/ExternalMark";
-import { ButtonLink } from "@/components/ui/Button";
+import { announceSignedOut } from "@/components/navigation/useVisitor";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { isActive, isCurrentPage, publicNavigation, type NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils/cn";
 
@@ -148,24 +150,29 @@ export function MobileNav({
         )}
       >
         <nav aria-label="Main" className="mx-auto flex min-h-full max-w-2xl flex-col px-5 pt-6 pb-10 sm:px-8">
-          {/* Signed in, where they are most likely going sits ABOVE the menu
-              (owner, 2026-11-02): Admin for staff, as the one filled button,
-              then the Academy. The account and cart stay at the foot. */}
+          {/* Signed in, the account sits ABOVE the menu as one small panel
+              (owner, 2026-11-03): who is signed in, then Admin for staff on a
+              line of its own and Academy and My account side by side, all as
+              matching tiles so no one of them shouts. Cart and Sign out pair up
+              at the foot. */}
           {userEmail ? (
-            <div className="mb-6 grid gap-3 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both] sm:grid-cols-2">
-              {admin ? (
-                <ButtonLink href="/admin" variant="onBlock" onClick={onClose}>
-                  Admin
-                </ButtonLink>
-              ) : null}
-              <ButtonLink
-                href="/academy"
-                variant={admin ? "onBlockOutline" : "onBlock"}
-                onClick={onClose}
-                className={cn(!admin && "sm:col-span-2")}
-              >
-                Academy
-              </ButtonLink>
+            <div className="mb-6 rounded-(--radius-lg) border border-border bg-foreground/5 p-3 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both]">
+              <p className="truncate px-1 text-xs text-muted-foreground">
+                Signed in as <span className="text-foreground">{userEmail}</span>
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {admin ? (
+                  <Link href="/admin" onClick={onClose} className={cn(tile, "col-span-2")}>
+                    Admin
+                  </Link>
+                ) : null}
+                <Link href="/academy" onClick={onClose} className={tile}>
+                  Academy
+                </Link>
+                <Link href="/account" onClick={onClose} className={tile}>
+                  My account
+                </Link>
+              </div>
             </div>
           ) : null}
           <ol className="border-t border-border">
@@ -211,30 +218,47 @@ export function MobileNav({
 
           <div
             style={rise(publicNavigation.length)}
-            className="mt-auto grid gap-3 pt-10 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both] sm:grid-cols-2"
+            className="mt-auto grid grid-cols-2 gap-3 pt-10 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both]"
           >
-            {userEmail ? (
-              <ButtonLink href="/account" variant="onBlockOutline" onClick={onClose}>
-                My account
-              </ButtonLink>
-            ) : (
-              <ButtonLink href="/auth/sign-in" variant="onBlock" onClick={onClose}>
+            {userEmail ? null : (
+              <ButtonLink href="/auth/sign-in" variant="onBlock" onClick={onClose} className="w-full">
                 Sign in
               </ButtonLink>
             )}
-            <ButtonLink href="/cart" variant="onBlockOutline" onClick={onClose}>
+            <ButtonLink href="/cart" variant="onBlockOutline" onClick={onClose} className="w-full">
               {cartCount > 0 ? `Cart (${cartCount})` : "Cart"}
             </ButtonLink>
+            {userEmail ? (
+              // Sign out, as in the desktop account menu: a POST form, never a
+              // link, so no other page can sign someone out.
+              <form
+                action={signOutAction}
+                onSubmit={() => {
+                  announceSignedOut();
+                  onClose();
+                }}
+                className="grid"
+              >
+                <Button type="submit" variant="onBlockOutline" className="w-full">
+                  Sign out
+                </Button>
+              </form>
+            ) : null}
           </div>
 
-          {userEmail ? (
-            <p className="mt-4 truncate text-center text-xs text-muted-foreground">Signed in as {userEmail}</p>
-          ) : null}
         </nav>
       </div>
     </div>
   );
 }
+
+/** An account tile in the menu's signed-in panel: all alike, so Admin, Academy
+ * and My account read as one set rather than competing buttons. */
+const tile = cn(
+  "flex h-11 items-center justify-center rounded-(--radius) bg-foreground/8 text-sm font-semibold text-foreground",
+  "transition-colors duration-(--dur-fast) hover:bg-foreground/15 active:bg-foreground/20",
+  "outline-offset-2 focus-visible:outline-2 focus-visible:outline-white",
+);
 
 /** "01" — the catalogue's numbering, carried into the menu. */
 function SectionNumber({ n }: { n: number }) {

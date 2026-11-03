@@ -1791,8 +1791,10 @@ The header and footer frame every public page in the same studio language as the
   - **Phone:** mark, Coaching and Menu. Below 420px Menu shows only its icon; below 360px
     the mark shows only the TK disc (`monogramOnSmallestPhones`), so all three fit at 320px.
   - **Tablet:** mark, Coaching, Sign in and Menu. Signed in, no account menu (owner,
-    2026-11-02): the Menu sheet already opens with Admin (staff) and Academy above the
-    navigation, and My account and Cart at its foot.
+    2026-11-02): the Menu sheet already holds the account. Signed in, it opens with a small account
+    panel above the navigation: "Signed in as …", then Admin (staff, its own line) and
+    Academy and My account side by side, as matching tiles. It ends with Cart and Sign out
+    as two outline pills side by side (signed out: Sign in and Cart) (owner, 2026-11-03).
   - **Desktop:** everything, Coaching as the red pill.
 - **Dropdown panels (`NavDropdown`).** The header's own paper surface (`bg-background`,
   solid), attached flush to the bar's bottom edge: squared where it meets the bar, rounded
