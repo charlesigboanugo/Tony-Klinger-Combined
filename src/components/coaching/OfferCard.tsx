@@ -41,6 +41,7 @@ export function OfferCard({
   description,
   eyebrow,
   meta,
+  facts,
   status,
   places,
   saving,
@@ -63,6 +64,12 @@ export function OfferCard({
   eyebrow?: string;
   /** A fact worth stating on the card: duration, capacity, date. */
   meta?: string | null;
+  /**
+   * The details someone decides on, under the title with an icon each
+   * (owner, 2026-11-03: "important details" were small grey text at the
+   * foot): when it meets, the dates, how many sessions.
+   */
+  facts?: Array<{ icon: "clock" | "calendar" | "count"; text: string }>;
   /** When it is on, as a chip on the photograph: the start date, closing soon. */
   status?: OfferStatus | null;
   /** How many places, beside the status on the photograph: "8 places left". */
@@ -203,17 +210,30 @@ export function OfferCard({
           </p>
         ) : null}
 
+        {facts && facts.length > 0 ? (
+          <ul className="mt-4 grid gap-1.5 text-sm text-block-foreground/90">
+            {facts.map((fact) => (
+              <li key={fact.text} className="flex items-center gap-2.5">
+                <FactIcon icon={fact.icon} />
+                {fact.text}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
         {children}
 
         {/* Pushes the foot to the bottom so every card in a row ends level,
             while keeping at least 1.5rem above it. */}
         <div aria-hidden="true" className={cn("min-h-6", !feature && "flex-1")} />
 
-        <div className="flex items-center justify-between gap-4 border-t border-block-foreground/15 pt-5">
-          <span className="text-xs text-block-foreground/60">{meta ?? ""}</span>
+        {/* The button is a solid light pill (owner, 2026-11-03: it was a thin
+            outline, easy to miss), full width on a phone. */}
+        <div className="flex flex-col gap-4 border-t border-block-foreground/15 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          {meta ? <span className="text-xs text-block-foreground/60">{meta}</span> : <span aria-hidden="true" className="hidden sm:block" />}
           <span
             aria-hidden="true"
-            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-block-foreground/35 px-4 py-2 text-sm font-semibold whitespace-nowrap transition-colors duration-(--dur-fast) group-hover:border-block-foreground group-hover:bg-block-foreground group-hover:text-block-noir"
+            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-block-foreground px-5 text-sm font-semibold whitespace-nowrap text-block-noir transition-[filter,box-shadow] duration-(--dur-fast) group-hover:brightness-110 group-hover:shadow-[0_0_0_4px_color-mix(in_oklab,var(--block-foreground)_22%,transparent)] max-sm:w-full"
           >
             {cta}
             <span className="transition-transform duration-(--dur-base) ease-expo group-hover:translate-x-0.5 motion-reduce:transform-none">
@@ -223,5 +243,38 @@ export function OfferCard({
         </div>
       </div>
     </article>
+  );
+}
+
+/** The small icon beside a card fact. */
+function FactIcon({ icon }: { icon: "clock" | "calendar" | "count" }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className="size-4 shrink-0 text-block-foreground/55"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {icon === "clock" ? (
+        <>
+          <circle cx="8" cy="8" r="6.25" />
+          <path d="M8 4.75V8l2.25 1.5" />
+        </>
+      ) : icon === "calendar" ? (
+        <>
+          <rect x="2" y="3" width="12" height="11" rx="2" />
+          <path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" />
+        </>
+      ) : (
+        <>
+          <rect x="2" y="2.5" width="12" height="11" rx="2" />
+          <path d="M5 6h6M5 8.5h6M5 11h3.5" />
+        </>
+      )}
+    </svg>
   );
 }

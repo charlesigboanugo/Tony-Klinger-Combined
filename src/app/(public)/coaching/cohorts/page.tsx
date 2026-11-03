@@ -28,12 +28,23 @@ export default async function CohortsPage() {
   const intakes = await listIntakes(cohorts.map((c) => c.id));
   const day = (value: string) =>
     new Date(value).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/London" });
-  // When it is on, as the chip on the card's photograph; the intake's dates
-  // as the quieter line at its foot.
+  // When it is on, as the chip on the card's photograph; the intake and its
+  // dates as facts under the title.
   const statusOf = (cohortId: string) => phaseStatus(intakes.filter((i) => i.cohortId === cohortId));
-  const datesOf = (cohortId: string) => {
-    const intake = intakes.find((i) => i.cohortId === cohortId);
-    return intake ? `${intake.label} · ${day(intake.startsAt)} to ${day(intake.endsAt)}` : null;
+  // The details on each card, under the title (owner, 2026-11-03).
+  const factsOf = (cohortId: string) => {
+    // The intake the status chip speaks of: open, then coming, then under way.
+    const mine = intakes.filter((i) => i.cohortId === cohortId);
+    const intake =
+      mine.find((i) => i.state === "open") ??
+      mine.find((i) => i.state === "full" || i.state === "upcoming") ??
+      mine[0];
+    return [
+      ...(intake
+        ? [{ icon: "calendar" as const, text: `${intake.label}: ${day(intake.startsAt)} to ${day(intake.endsAt)}` }]
+        : []),
+      { icon: "count" as const, text: "Eight three-hour workshops" },
+    ];
   };
 
   return (
@@ -71,7 +82,7 @@ export default async function CohortsPage() {
                   cta="View cohort"
                   status={statusOf(cohort.id)}
                   places={placesLabel(intakes.filter((i) => i.cohortId === cohort.id))}
-                  meta={datesOf(cohort.id)}
+                  facts={factsOf(cohort.id)}
                   prices={cohort.prices}
                   storagePath={cohort.storagePath}
                   seed={cohort.slug}

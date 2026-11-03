@@ -47,9 +47,24 @@ export default async function GroupCoachingPage() {
       runs.filter((r) => r.seriesId === seriesId),
       { singleSessionsLeft: seatsLeft.get(seriesId) ?? 0 },
     );
-  const datesOf = (seriesId: string) => {
-    const run = runs.find((r) => r.seriesId === seriesId);
-    return run ? `${run.label} · ${day(run.startsAt)} to ${day(run.endsAt)}` : null;
+  // The details on each card (owner, 2026-11-03: placed under the title, not
+  // small grey text at the foot): when it meets, its dates, its sessions.
+  const factsOf = (seriesId: string, sessions: number) => {
+    // The run the status chip speaks of: open, then coming, then under way.
+    const mine = runs.filter((r) => r.seriesId === seriesId);
+    const run =
+      mine.find((r) => r.state === "open") ??
+      mine.find((r) => r.state === "full" || r.state === "upcoming") ??
+      mine[0];
+    return [
+      ...(run
+        ? [
+            { icon: "clock" as const, text: run.label },
+            { icon: "calendar" as const, text: `${day(run.startsAt)} to ${day(run.endsAt)}` },
+          ]
+        : []),
+      { icon: "count" as const, text: `${sessions} weekly sessions` },
+    ];
   };
 
   /*
@@ -124,7 +139,7 @@ export default async function GroupCoachingPage() {
                   priceNote={offer.note}
                   status={statusOf(s.id)}
                   places={placesLabel(runs.filter((r) => r.seriesId === s.id))}
-                  meta={datesOf(s.id)}
+                  facts={factsOf(s.id, s.syllabus.length > 0 ? s.syllabus.length : 8)}
                   storagePath={s.storagePath}
                   seed={s.slug}
                   priority={i < 2}
@@ -133,15 +148,26 @@ export default async function GroupCoachingPage() {
                   {offer.later ? <p className="mt-4 text-sm text-block-foreground/75">{offer.later}</p> : null}
                   {/* The curriculum, read from `syllabus` rather than parsed
                       out of description prose (note 07 §37.1). */}
+                  {/* The first few topics on the card, the rest on the series
+                      page (owner, 2026-11-03: the full eight made a card taller
+                      than a phone's screen). */}
                   {s.syllabus.length > 0 ? (
-                    <ul className="mt-5 grid gap-x-6 gap-y-1.5 border-t border-block-foreground/15 pt-5 text-sm text-block-foreground/75 sm:grid-cols-2">
-                      {s.syllabus.map((topic) => (
-                        <li key={topic} className="flex gap-2.5">
-                          <span aria-hidden="true" className="mt-[0.5em] size-1.5 shrink-0 rounded-full bg-block-foreground" />
-                          <span>{topic}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="mt-5 border-t border-block-foreground/15 pt-5">
+                      <p className="text-[0.6875rem] font-semibold tracking-[0.16em] text-block-foreground/60 uppercase">
+                        What it covers
+                      </p>
+                      <ul className="mt-3 grid gap-x-6 gap-y-1.5 text-sm text-block-foreground/75 sm:grid-cols-2">
+                        {s.syllabus.slice(0, 4).map((topic) => (
+                          <li key={topic} className="flex gap-2.5">
+                            <span aria-hidden="true" className="mt-[0.5em] size-1.5 shrink-0 rounded-full bg-block-foreground" />
+                            <span>{topic}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      {s.syllabus.length > 4 ? (
+                        <p className="mt-2 text-sm text-block-foreground/55">+ {s.syllabus.length - 4} more topics</p>
+                      ) : null}
+                    </div>
                   ) : null}
                 </OfferCard>
               </Reveal>
