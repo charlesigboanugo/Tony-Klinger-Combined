@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { signOutAction } from "@/app/auth/actions";
 import { ExternalMark } from "@/components/navigation/ExternalMark";
-import { announceSignedOut } from "@/components/navigation/useVisitor";
+import { SignOutForm } from "@/components/navigation/SignOutForm";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { isActive, isCurrentPage, publicNavigation, type NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -231,18 +230,15 @@ export function MobileNav({
             {userEmail ? (
               // Sign out, as in the desktop account menu: a POST form, never a
               // link, so no other page can sign someone out.
-              <form
-                action={signOutAction}
-                onSubmit={() => {
-                  announceSignedOut();
-                  onClose();
-                }}
-                className="grid"
-              >
-                <Button type="submit" variant="onBlockOutline" className="w-full">
-                  Sign out
-                </Button>
-              </form>
+              // The menu stays open while it works, the button saying so and
+              // the top bar running, and closes once signed out.
+              <SignOutForm className="grid" onDone={onClose}>
+                {(pending) => (
+                  <Button type="submit" variant="onBlockOutline" className="w-full" disabled={pending} aria-busy={pending}>
+                    {pending ? "Signing out…" : "Sign out"}
+                  </Button>
+                )}
+              </SignOutForm>
             ) : null}
           </div>
 

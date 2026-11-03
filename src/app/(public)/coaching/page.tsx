@@ -180,7 +180,7 @@ export default async function CoachingPage() {
         than under them, and the words start at --hero-text-top like every
         other page hero instead of sinking to the foot.
       */}
-      <section className="relative isolate flex min-h-[min(88svh,56rem)] items-end overflow-hidden bg-block-noir text-block-foreground lg:items-start">
+      <section className="relative isolate flex min-h-[min(70svh,44rem)] items-end overflow-hidden bg-block-noir text-block-foreground lg:min-h-[min(88svh,56rem)] lg:items-start">
         <div className="absolute inset-0 -z-10 animate-[settle_2.6s_var(--ease-out-expo)_both] motion-reduce:animate-none lg:left-[30%] lg:mask-[linear-gradient(to_right,transparent,black_30%)]">
           <Image
             src={designPhotos.coachingHero.src}
@@ -201,7 +201,9 @@ export default async function CoachingPage() {
           aria-hidden="true"
           className="absolute inset-0 -z-10 bg-linear-to-r from-block-noir/70 via-transparent to-transparent"
         />
-        <Container className="pt-40 pb-14 sm:pb-20 lg:pt-(--hero-text-top)">
+        {/* Shorter below lg (owner, 2026-11-03: the words "started a bit too low"
+            on a phone), so the heading sits higher over the photo. */}
+        <Container className="pt-32 pb-12 sm:pb-16 lg:pt-(--hero-text-top) lg:pb-20">
           <Reveal className="max-w-3xl">
             <p className={cn(eyebrow, "flex items-center gap-4 text-block-foreground/80")}>
               <span aria-hidden="true" className="h-px w-10 bg-primary" />
@@ -501,12 +503,14 @@ export default async function CoachingPage() {
               Tell Tony what you are working on. He will say which of these
               fits — including when the answer is none of them yet.
             </p>
-            <div className="mt-10 flex flex-wrap justify-center gap-3">
-              <ButtonLink href="/contact" size="lg">
+            {/* Two equal buttons (owner, 2026-11-03: "same size and aligned"):
+                side by side from sm, full width and stacked on a phone. */}
+            <div className="mx-auto mt-10 grid max-w-md gap-3 sm:grid-cols-2">
+              <ButtonLink href="/contact" size="lg" className="w-full">
                 Ask Tony
                 <ButtonArrow />
               </ButtonLink>
-              <ButtonLink href={entry.href} size="lg" variant="outline">
+              <ButtonLink href={entry.href} size="lg" variant="outline" className="w-full">
                 {entry.label}
               </ButtonLink>
             </div>

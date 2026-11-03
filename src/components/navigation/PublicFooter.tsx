@@ -83,12 +83,13 @@ export function PublicFooter() {
 
       <div className="relative border-t border-border">
         <Container width="wide">
-          <div className="flex flex-col gap-3 py-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 py-6 text-xs text-muted-foreground lg:flex-row lg:items-center lg:justify-between lg:gap-3 lg:py-5">
             {/* The copyright and, beside it on wide screens, one credit for every
                 portrait on the site (Tony, 2026-11-02), as well as the caption on
-                each photo. On a phone the two close the page on lines of their own,
-                below the links. */}
-            <div className="space-y-1 lg:flex lg:items-center lg:gap-x-2.5 lg:space-y-0">
+                each photo. Below lg the two close the page on lines of their own,
+                under the links and a hairline, with room between them (owner,
+                2026-11-03). */}
+            <div className="space-y-2 border-t border-border/60 pt-4 leading-relaxed lg:flex lg:items-center lg:gap-x-2.5 lg:space-y-0 lg:border-0 lg:pt-0 lg:leading-normal">
               <p>© {new Date().getFullYear()} Tony Klinger. All rights reserved.</p>
               <span aria-hidden="true" className="hidden lg:inline">
                 &middot;
@@ -105,7 +106,7 @@ export function PublicFooter() {
                 </a>
               </p>
             </div>
-            <ul className="order-first flex flex-wrap items-center gap-x-6 gap-y-2 sm:order-none">
+            <ul className="order-first flex flex-wrap items-center gap-x-6 gap-y-3 lg:order-none">
               {legalNavigation.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="hover:text-foreground">

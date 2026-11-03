@@ -35,6 +35,21 @@ function internalTarget(event: MouseEvent): string | null {
   return target === location.pathname + location.search ? null : target;
 }
 
+/**
+ * Start and finish the bar for work that is not a link: a form that signs out
+ * or redirects (owner, 2026-11-03: "the page just appears to hang"). The bar
+ * finishes by itself when the page changes; `finishProgress` ends it where the
+ * page stays put.
+ */
+const START = "nav-progress:start";
+const DONE = "nav-progress:done";
+export function startProgress() {
+  window.dispatchEvent(new Event(START));
+}
+export function finishProgress() {
+  window.dispatchEvent(new Event(DONE));
+}
+
 export function NavigationProgress() {
   const pathname = usePathname();
   const bar = useRef<HTMLDivElement>(null);
@@ -64,10 +79,9 @@ export function NavigationProgress() {
   }, [clear]);
 
   useEffect(() => {
-    const onClick = (event: MouseEvent) => {
-      const next = internalTarget(event);
+    const begin = (next: string) => {
       const el = bar.current;
-      if (!next || !el) return;
+      if (!el) return;
       clear();
       target.current = next;
       // Restart the animation from the start even if a bar is still showing.
@@ -77,17 +91,28 @@ export function NavigationProgress() {
       started.current = performance.now();
       timers.current.push(window.setTimeout(finish, GIVE_UP_MS));
       // A query-only navigation (a filter) does not change the pathname, so
-      // the URL itself is watched too.
+      // the URL itself is watched too. Work started by `startProgress` has no
+      // URL to wait for ("*"): a new page or `finishProgress` ends it.
+      if (next === "*") return;
       const watch = () => {
         if (target.current && location.pathname + location.search === target.current) finish();
         else if (target.current) frame.current = requestAnimationFrame(watch);
       };
       frame.current = requestAnimationFrame(watch);
     };
+    const onClick = (event: MouseEvent) => {
+      const next = internalTarget(event);
+      if (next) begin(next);
+    };
+    const onStart = () => begin("*");
     // Capture phase: runs before next/link handles (and prevents) the click.
     document.addEventListener("click", onClick, true);
+    window.addEventListener(START, onStart);
+    window.addEventListener(DONE, finish);
     return () => {
       document.removeEventListener("click", onClick, true);
+      window.removeEventListener(START, onStart);
+      window.removeEventListener(DONE, finish);
       clear();
     };
   }, [clear, finish]);

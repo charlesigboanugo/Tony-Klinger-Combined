@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { signOutAction } from "@/app/auth/actions";
-import { announceSignedOut } from "@/components/navigation/useVisitor";
+import { SignOutForm } from "@/components/navigation/SignOutForm";
 import { ButtonLink } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 
@@ -171,15 +170,19 @@ export function UserMenu({
               {item.label}
             </Link>
           ))}
-          <form action={signOutAction} onSubmit={announceSignedOut} className="mt-1 border-t border-border pt-1">
-            <button
-              type="submit"
-              role="menuitem"
-              className="w-full rounded-[calc(var(--radius)-2px)] px-3 py-2 text-left text-sm text-foreground/90 transition-colors hover:bg-surface-muted hover:text-foreground"
-            >
-              Sign out
-            </button>
-          </form>
+          <SignOutForm className="mt-1 border-t border-border pt-1" onDone={() => setOpen(false)}>
+            {(pending) => (
+              <button
+                type="submit"
+                role="menuitem"
+                disabled={pending}
+                aria-busy={pending}
+                className="w-full rounded-[calc(var(--radius)-2px)] px-3 py-2 text-left text-sm text-foreground/90 transition-colors hover:bg-surface-muted hover:text-foreground disabled:text-muted-foreground"
+              >
+                {pending ? "Signing out…" : "Sign out"}
+              </button>
+            )}
+          </SignOutForm>
         </div>
       </div>
     </div>
