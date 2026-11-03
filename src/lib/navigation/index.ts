@@ -366,6 +366,18 @@ export function isActive(pathname: string, href: string): boolean {
 }
 
 /**
+ * The ONE child of a section to mark as current: the most specific link the
+ * page falls under. On /coaching/passes both "Coaching Overview" (/coaching)
+ * and "Coaching Passes" match by prefix; only the passes link is marked
+ * (owner, 2026-11-03). Null when none matches.
+ */
+export function activeChildHref(pathname: string, children: NavItem[]): string | null {
+  const matches = children.filter((child) => !child.external && isActive(pathname, child.href));
+  if (matches.length === 0) return null;
+  return matches.reduce((a, b) => (b.href.length > a.href.length ? b : a)).href;
+}
+
+/**
  * Exact match, for `aria-current="page"`.
  *
  * ARIA defines `aria-current="page"` as "the current page within a set of

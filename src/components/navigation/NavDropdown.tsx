@@ -6,7 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ExternalMark } from "@/components/navigation/ExternalMark";
 import { navLinkType } from "@/components/navigation/navStyles";
 import { FILLED_STATES } from "@/components/ui/Button";
-import { isActive, isCurrentPage, type NavItem } from "@/lib/navigation";
+import { activeChildHref, isActive, isCurrentPage, type NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -51,6 +51,8 @@ export function NavDropdown({
     (item.children ?? []).some(
       (child) => !child.external && isActive(pathname, child.href),
     );
+  // The one child to mark: the most specific match, not every prefix.
+  const currentChild = activeChildHref(pathname, item.children ?? []);
 
   useEffect(() => {
     if (!open) return;
@@ -215,7 +217,7 @@ export function NavDropdown({
               )}
             >
               {(item.children ?? []).map((child) => {
-                const childActive = !child.external && isActive(pathname, child.href);
+                const childActive = child.href === currentChild;
 
                 return (
                   <li

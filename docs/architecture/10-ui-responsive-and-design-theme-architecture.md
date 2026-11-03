@@ -1786,15 +1786,16 @@ The header and footer frame every public page in the same studio language as the
   COACHING is an important destination"): the Coaching item itself, not a separate CTA, is
   now the masthead's featured destination (`NavItem.featured`). On desktop its trigger is a
   filled red pill with the site's filled-button states, keeping its dropdown; below `lg` a
-  red **Coaching** button sits beside Menu, and Coaching is listed first in the phone menu.
+  red **Coaching** button sits beside Menu on a tablet (not on a phone, 2026-11-03), and
+  Coaching is listed first in the phone menu.
   One item only may be featured. It aligns to the wide grid. By width:
-  - **Phone:** mark, Coaching and Menu. Below 420px Menu shows only its icon; below 360px
-    the mark shows only the TK disc (`monogramOnSmallestPhones`), so all three fit at 320px.
+  - **Phone:** mark and Menu (owner, 2026-11-03: no Coaching button on a phone; Coaching
+    leads the menu instead). The name and the "Menu" label show at every width.
   - **Tablet:** mark, Coaching, Sign in and Menu. Signed in, no account menu (owner,
-    2026-11-02): the Menu sheet already holds the account. Signed in, it opens with a small account
-    panel above the navigation: "Signed in as …", then Admin (staff, its own line) and
-    Academy and My account side by side, as matching tiles. It ends with Cart and Sign out
-    as two outline pills side by side (signed out: Sign in and Cart) (owner, 2026-11-03).
+    2026-11-02): the Menu sheet already holds the account. Signed in, it opens above the navigation
+    with Admin (staff, its own line) and Academy and My account side by side, and ends with
+    Cart and Sign out side by side and "Signed in as …"; all are the same outline pills, so
+    top and foot read as one set (signed out: Sign in and Cart) (owner, 2026-11-03).
   - **Desktop:** everything, Coaching as the red pill.
 - **Dropdown panels (`NavDropdown`).** The header's own paper surface (`bg-background`,
   solid), attached flush to the bar's bottom edge: squared where it meets the bar, rounded

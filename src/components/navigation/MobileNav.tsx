@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ExternalMark } from "@/components/navigation/ExternalMark";
 import { SignOutForm } from "@/components/navigation/SignOutForm";
 import { Button, ButtonLink } from "@/components/ui/Button";
-import { isActive, isCurrentPage, publicNavigation, type NavItem } from "@/lib/navigation";
+import { activeChildHref, isActive, isCurrentPage, publicNavigation, type NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -149,29 +149,23 @@ export function MobileNav({
         )}
       >
         <nav aria-label="Main" className="mx-auto flex min-h-full max-w-2xl flex-col px-5 pt-6 pb-10 sm:px-8">
-          {/* Signed in, the account sits ABOVE the menu as one small panel
-              (owner, 2026-11-03): who is signed in, then Admin for staff on a
-              line of its own and Academy and My account side by side, all as
-              matching tiles so no one of them shouts. Cart and Sign out pair up
-              at the foot. */}
+          {/* Signed in, the account sits ABOVE the menu (owner, 2026-11-03):
+              Admin for staff on a line of its own, then Academy and My account
+              side by side, as the same outline pills as Cart and Sign out at
+              the foot, so top and bottom read as one set. */}
           {userEmail ? (
-            <div className="mb-6 rounded-(--radius-lg) border border-border bg-foreground/5 p-3 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both]">
-              <p className="truncate px-1 text-xs text-muted-foreground">
-                Signed in as <span className="text-foreground">{userEmail}</span>
-              </p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {admin ? (
-                  <Link href="/admin" onClick={onClose} className={cn(tile, "col-span-2")}>
-                    Admin
-                  </Link>
-                ) : null}
-                <Link href="/academy" onClick={onClose} className={tile}>
-                  Academy
-                </Link>
-                <Link href="/account" onClick={onClose} className={tile}>
-                  My account
-                </Link>
-              </div>
+            <div className="mb-6 grid grid-cols-2 gap-3 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both]">
+              {admin ? (
+                <ButtonLink href="/admin" variant="onBlockOutline" onClick={onClose} className="col-span-2 w-full">
+                  Admin
+                </ButtonLink>
+              ) : null}
+              <ButtonLink href="/academy" variant="onBlockOutline" onClick={onClose} className="w-full">
+                Academy
+              </ButtonLink>
+              <ButtonLink href="/account" variant="onBlockOutline" onClick={onClose} className="w-full">
+                My account
+              </ButtonLink>
             </div>
           ) : null}
           <ol className="border-t border-border">
@@ -242,19 +236,14 @@ export function MobileNav({
             ) : null}
           </div>
 
+          {userEmail ? (
+            <p className="mt-4 truncate text-center text-xs text-muted-foreground">Signed in as {userEmail}</p>
+          ) : null}
         </nav>
       </div>
     </div>
   );
 }
-
-/** An account tile in the menu's signed-in panel: all alike, so Admin, Academy
- * and My account read as one set rather than competing buttons. */
-const tile = cn(
-  "flex h-11 items-center justify-center rounded-(--radius) bg-foreground/8 text-sm font-semibold text-foreground",
-  "transition-colors duration-(--dur-fast) hover:bg-foreground/15 active:bg-foreground/20",
-  "outline-offset-2 focus-visible:outline-2 focus-visible:outline-white",
-);
 
 /** "01" — the catalogue's numbering, carried into the menu. */
 function SectionNumber({ n }: { n: number }) {
@@ -283,6 +272,8 @@ function MobileSection({
   const sectionActive =
     isActive(pathname, item.href) ||
     (item.children ?? []).some((child) => !child.external && isActive(pathname, child.href));
+  // The one child to mark: the most specific match, not every prefix.
+  const currentChild = activeChildHref(pathname, item.children ?? []);
   const panelId = `mobile-nav-${item.href.replace(/[^a-z0-9]+/gi, "-")}`;
 
   return (
@@ -322,7 +313,7 @@ function MobileSection({
         ) : null}
         <ul className="grid border-l border-border sm:grid-cols-2">
           {(item.children ?? []).map((child) => {
-            const childActive = !child.external && isActive(pathname, child.href);
+            const childActive = child.href === currentChild;
 
             return (
               <li key={child.href}>

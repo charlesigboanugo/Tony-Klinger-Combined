@@ -15,7 +15,6 @@ export function Wordmark({
   className,
   compact = false,
   monogramOnPhone = false,
-  monogramOnSmallestPhones = false,
   monogramOnly = false,
 }: {
   className?: string;
@@ -23,10 +22,6 @@ export function Wordmark({
   /** Below sm show only the TK disc — for workspace headers, where the
       workspace name and the account menu need the room. */
   monogramOnPhone?: boolean;
-  /** Below 360px only the TK disc — for the public masthead, where the
-      Coaching button and the Menu toggle share the smallest phones' width
-      (Tony, 2026-11-02). The name shows from 360px up. */
-  monogramOnSmallestPhones?: boolean;
   /** Only the TK disc at every width — for Admin, whose brand column is as
       narrow as its sidebar. */
   monogramOnly?: boolean;
@@ -34,7 +29,7 @@ export function Wordmark({
   return (
     <Link
       href="/"
-      aria-label={monogramOnPhone || monogramOnSmallestPhones || monogramOnly ? "Tony Klinger, home" : undefined}
+      aria-label={monogramOnPhone || monogramOnly ? "Tony Klinger, home" : undefined}
       className={cn(
         "group flex shrink-0 items-center gap-2.5 rounded-sm outline-offset-4 min-[360px]:gap-3 focus-visible:outline-2 focus-visible:outline-ring",
         className,
@@ -49,7 +44,7 @@ export function Wordmark({
       <span
         className={cn(
           "flex-col",
-          monogramOnly ? "hidden" : monogramOnPhone ? "hidden sm:flex" : monogramOnSmallestPhones ? "hidden min-[360px]:flex" : "flex",
+          monogramOnly ? "hidden" : monogramOnPhone ? "hidden sm:flex" : "flex",
         )}
       >
         {/* One line always: at 320px the name wrapped to two when the mark was

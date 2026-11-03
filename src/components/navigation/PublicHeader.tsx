@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils/cn";
  * Public site header — the masthead. Note 04 §7, §26, §27; note 10 §42.2.
  *
  * THREE WIDTHS, THREE ARRANGEMENTS:
- *   phone     mark + Coaching + Menu
+ *   phone     mark + Menu (no Coaching button: owner, 2026-11-03)
  *   tablet    mark + Coaching + Sign in + Menu (signed in, no account menu:
  *             the Menu sheet holds Admin, Academy and My account — owner,
  *             2026-11-02)
@@ -130,7 +130,7 @@ export function PublicHeader() {
       >
         <Container width="wide">
           <div className="flex h-16 items-center justify-between gap-2 sm:gap-4 lg:h-18 xl:gap-6">
-            <Wordmark monogramOnSmallestPhones />
+            <Wordmark />
 
             <nav aria-label="Main" className="hidden lg:block">
               <ul className="flex items-center">
@@ -209,14 +209,15 @@ export function PublicHeader() {
                 </span>
               )}
 
-              {/* The featured destination (Coaching) on its own below lg, so it
-                  is seen without opening the menu (Tony, 2026-11-02). */}
+              {/* The featured destination (Coaching) on its own on a tablet, so it
+                  is seen without opening the menu (Tony, 2026-11-02). Not on a
+                  phone (owner, 2026-11-03): there it leads the menu instead. */}
               {featured ? (
                 <Link
                   href={featured.href}
                   aria-current={isActive(pathname, featured.href) ? "page" : undefined}
                   className={cn(
-                    "relative flex h-11 items-center rounded-full bg-button px-3 text-button-foreground min-[420px]:ml-1 min-[420px]:px-4 lg:hidden",
+                    "relative hidden h-11 items-center rounded-full bg-button px-4 text-button-foreground sm:ml-1 sm:flex lg:hidden",
                     "transition-[box-shadow,filter,transform] duration-200 ease-out active:scale-96 motion-reduce:transform-none",
                     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                     FILLED_STATES,
@@ -234,9 +235,7 @@ export function PublicHeader() {
                 aria-controls="mobile-navigation"
                 aria-label={open ? "Close menu" : "Open menu"}
                 className={cn(
-                  // Below 420px only its icon, beside the Coaching button; the
-                  // word "Menu" returns once there is room.
-                  "flex h-11 w-11 shrink-0 items-center justify-center gap-2.5 rounded-full border border-foreground/35 min-[420px]:ml-1 min-[420px]:w-auto min-[420px]:justify-start min-[420px]:pr-4 min-[420px]:pl-3.5 lg:hidden",
+                  "ml-1 flex h-11 shrink-0 items-center gap-2.5 rounded-full border border-foreground/35 pr-4 pl-3.5 lg:hidden",
                   "transition-colors hover:border-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                   navLinkType,
                   open && "border-foreground bg-foreground text-background",
@@ -260,7 +259,7 @@ export function PublicHeader() {
                     )}
                   />
                 </span>
-                <span aria-hidden="true" className="hidden min-[420px]:inline">{open ? "Close" : "Menu"}</span>
+                <span aria-hidden="true">{open ? "Close" : "Menu"}</span>
               </button>
             </div>
           </div>
