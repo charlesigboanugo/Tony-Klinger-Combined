@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { JumpLink } from "@/components/coaching/JumpLink";
 import { OfferStatusChip, PlacesChip, SavingChip } from "@/components/coaching/OfferStatusChip";
 import { Container } from "@/components/layout/Container";
 import { StoredImage } from "@/components/media/StoredImage";
@@ -358,12 +359,14 @@ export function MobileBuyBar({
           ) : (
             <span />
           )}
-          <Link
+          {/* To the buy panel on every tap, however often (JumpLink), or straight
+              on to checkout where that is the next step. */}
+          <JumpLink
             href={href}
             className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-button px-4 text-sm font-semibold sm:px-6 sm:text-[0.9375rem] text-button-foreground shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             {label}
-          </Link>
+          </JumpLink>
         </div>
       </div>
     </>
