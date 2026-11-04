@@ -84,3 +84,4 @@ attribution required; recorded anyway), found through Openverse. StockSnap serve
 | `coaching-private-cover.webp` | private | "Business Meeting" by Christina Morillo, StockSnap, CC0 — https://stocksnap.io/photo/business-meeting-SKBXLJOILI |
 | `coaching-virtual-retreat-cover.webp` | virtual retreat | "Laptop Apple" by WDnet Studio, StockSnap, CC0 — https://stocksnap.io/photo/laptop-apple-8FCUYBIMVF |
 | `jacks-back-cover.webp` | Jack's Back — cover | Title page of Tony Klinger's "Jack's Back" pitch deck © 2026, supplied by Tony (2026-11-02); its "Pitch deck © 2026" line removed at Charles's request | Tony Klinger | Used with the owner's permission |
+| `how-to-get-into-the-movie-business-cover.webp` | How to Get Into the Movie Business — jacket | "How to Get Your Movie Made: The Insider's Two-Part Guide to Breaking into the Movie Business" jacket, supplied by Elaine for Tony (2026-11-04), 1024 × 1536 | Tony Klinger | Used with the owner's permission |

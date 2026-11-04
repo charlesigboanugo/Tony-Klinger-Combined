@@ -3,10 +3,11 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { JumpLink } from "@/components/coaching/JumpLink";
-import { OfferStatusChip, PlacesChip, SavingChip } from "@/components/coaching/OfferStatusChip";
+import { OfferStatusChip, PlacesChip, SavingChip, StatusPanel } from "@/components/coaching/OfferStatusChip";
 import { Container } from "@/components/layout/Container";
 import { StoredImage } from "@/components/media/StoredImage";
 import { Reveal } from "@/components/motion/Reveal";
+import { ButtonArrow, FILLED_STATES } from "@/components/ui/Button";
 import type { OfferStatus } from "@/lib/content/offer-status";
 import { cn } from "@/lib/utils/cn";
 
@@ -162,8 +163,8 @@ export function ProductHero({
             </span>
             {backLabel}
           </Link>
-          {places ? <PlacesChip label={places} size="hero" /> : null}
-          {saving ? <SavingChip label={saving} href={savingHref} size="hero" /> : null}
+          {places ? <PlacesChip label={places} size="hero" className="max-sm:hidden" /> : null}
+          {saving ? <SavingChip label={saving} href={savingHref} size="hero" className="max-sm:hidden" /> : null}
         </div>
 
         <Reveal className="mt-10 max-w-3xl lg:mt-16">
@@ -185,16 +186,45 @@ export function ProductHero({
               visible"). They wrap to two lines on a phone. */}
           {price || status || perk ? (
             <div className="mt-8 flex flex-wrap items-center gap-3">
+              {/* A link to "What it costs", not a label (owner, 2026-11-04):
+                  it wears the button red, so it is tapped like one, and a tap
+                  that did nothing was a dead end. It goes where the phone buy
+                  bar goes, on every tap (JumpLink), with the buttons' states. */}
               {price ? (
-                <p className="inline-flex items-baseline gap-2 rounded-full bg-button px-6 py-3 text-button-foreground shadow-lift ring-1 ring-white/20">
+                <JumpLink
+                  href="#buy"
+                  className={cn(
+                    "group/btn inline-flex items-baseline gap-2 rounded-full bg-button px-6 py-3 text-button-foreground ring-1 ring-white/20",
+                    "transition-[filter,box-shadow,scale] duration-(--dur-fast) active:scale-96 motion-reduce:transform-none motion-reduce:transition-none",
+                    FILLED_STATES,
+                    "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring",
+                  )}
+                >
+                  <span className="sr-only">What it costs: </span>
                   <span className="font-display text-3xl leading-none font-semibold tabular-nums">{price}</span>
                   {priceNote ? <span className="text-sm font-medium">{priceNote}</span> : null}
-                </p>
+                  <span className="ml-0.5 self-center text-base leading-none">
+                    <ButtonArrow />
+                  </span>
+                </JumpLink>
               ) : null}
-              {status ? <OfferStatusChip status={status} size="hero" /> : null}
-              {perk ? <SavingChip label={perk} href={perkHref} icon="pass" size="hero" /> : null}
+              {status ? <OfferStatusChip status={status} size="hero" className="max-sm:hidden" /> : null}
+              {perk ? <SavingChip label={perk} href={perkHref} icon="pass" size="hero" className="max-sm:hidden" /> : null}
             </div>
           ) : null}
+          {/* On a phone the chips were scattered: places and saving up by
+              the back link, the status and perk under the price, a long
+              status on two lines. There they gather under the price in the
+              listing card's panel (owner, 2026-11-04: "do what's best"). */}
+          <StatusPanel
+            status={status}
+            places={places}
+            saving={saving}
+            savingHref={savingHref}
+            perk={perk}
+            perkHref={perkHref}
+            className={cn(price ? "mt-4" : "mt-8", "sm:hidden")}
+          />
         </Reveal>
       </Container>
     </section>

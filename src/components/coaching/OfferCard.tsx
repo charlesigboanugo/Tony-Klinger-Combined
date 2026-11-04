@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { OfferStatusChip, PlacesChip, SavingChip } from "@/components/coaching/OfferStatusChip";
+import { StatusPanel, OfferStatusChip, PlacesChip, SavingChip } from "@/components/coaching/OfferStatusChip";
 import { GeneratedCover } from "@/components/media/GeneratedCover";
 import { StoredImage } from "@/components/media/StoredImage";
 import { CardLink } from "@/components/ui/Card";
@@ -144,9 +144,9 @@ export function OfferCard({
 
             BELOW lg (owner, 2026-11-03: "make sure mobile makes sense") the
             price stands alone top right, a size smaller on a phone, and every
-            other chip joins the foot of the picture in one left-aligned
-            column: on a phone or a tablet's two-up card a chip beside the
-            price staggered onto two rows. */}
+            other chip moves to the foot of the picture: on a phone or a
+            tablet's two-up card a chip beside the price staggered onto two
+            rows. */}
         {shownPrice || places || saving ? (
           <div className="absolute top-5 right-6 left-6 flex flex-wrap items-center justify-between gap-2 sm:right-7 sm:left-7">
             <span className="hidden lg:contents">
@@ -168,16 +168,17 @@ export function OfferCard({
         ) : null}
 
         {/* WHEN IT IS ON, at the foot of the picture where the eye lands
-            after the price (owner, 2026-10-09: the date "much more visible");
-            below lg the places and saving join it, one chip to a line. */}
+            after the price (owner, 2026-10-09: the date "much more visible").
+            From lg, chips in a row. Below lg, the status and places are one
+            panel across the foot (owner, 2026-11-04: arranged well for
+            mobile), a pack saving or a pass perk a row of its own in it. */}
         {status || perk || places || saving ? (
-          <div className="absolute right-6 bottom-5 left-6 flex flex-col items-start gap-1.5 sm:right-7 sm:left-7 lg:flex-row lg:flex-wrap lg:items-center lg:gap-2">
-            {status ? <OfferStatusChip status={status} /> : null}
-            <span className="contents lg:hidden">
-              {places ? <PlacesChip label={places} /> : null}
-              {saving ? <SavingChip label={saving} /> : null}
+          <div className="absolute right-6 bottom-5 left-6 flex flex-col items-start gap-2 sm:right-7 sm:left-7 lg:flex-row lg:flex-wrap lg:items-center">
+            <span className="contents max-lg:hidden">
+              {status ? <OfferStatusChip status={status} /> : null}
             </span>
-            {perk ? <SavingChip label={perk} icon="pass" /> : null}
+            {perk ? <SavingChip label={perk} icon="pass" className="max-lg:hidden" /> : null}
+            <StatusPanel status={status} places={places} saving={saving} perk={perk} className="w-full lg:hidden" />
           </div>
         ) : null}
       </div>

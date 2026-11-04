@@ -152,9 +152,14 @@ export function MobileNav({
           {/* Signed in, the account sits ABOVE the menu (owner, 2026-11-03):
               Admin for staff on a line of its own, then Academy and My account
               side by side, as the same outline pills as Cart and Sign out at
-              the foot, so top and bottom read as one set. */}
+              the foot, so top and bottom read as one set. Who is signed in
+              heads it, with the account it names, not at the foot of the
+              menu after Sign out (2026-11-04). */}
           {userEmail ? (
             <div className="mb-8 grid grid-cols-2 gap-3 motion-safe:animate-[menu-rise_420ms_cubic-bezier(0.16,1,0.3,1)_both]">
+              <p className="col-span-2 -mb-0.5 truncate text-xs text-muted-foreground">
+                Signed in as <span className="text-foreground/85">{userEmail}</span>
+              </p>
               {admin ? (
                 <ButtonLink href="/admin" variant="onBlockOutline" onClick={onClose} className="col-span-2 w-full">
                   Admin
@@ -238,9 +243,6 @@ export function MobileNav({
             ) : null}
           </div>
 
-          {userEmail ? (
-            <p className="mt-4 truncate text-center text-xs text-muted-foreground">Signed in as {userEmail}</p>
-          ) : null}
         </nav>
       </div>
     </div>

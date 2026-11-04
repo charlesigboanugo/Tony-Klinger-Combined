@@ -163,10 +163,10 @@ const COVERS = {
   // The /film card's file is a byte-identical copy of this one, which is the
   // copy the upload keeps.
   "the-butterfly-ball": "MV5BMjA0ODY2ODkxNl5BMl5BanBnXkFtZTcwNTM1MDIzMQ__._V1_.jpg", // "A film by Tony Klinger"
-  // One book with its sister title inside (owner, 2026-09-25) — this jacket is
-  // the book's. How to Get Your Movie Made no longer has an entry of its own,
-  // so its separate jacket is not used.
-  "how-to-get-into-the-movie-business": "Screenshot-2024-09-05-221742.png",
+  // One book with its sister title inside (owner, 2026-09-25). Its new jacket,
+  // "The Insider's Two-Part Guide", supplied by Elaine (2026-11-04) for the
+  // two-in-one volume; it replaced the old site's Screenshot-2024-09-05-221742.png.
+  "how-to-get-into-the-movie-business": "how-to-get-into-the-movie-business-cover.webp",
 
   // Podcasts and interviews (2026-09-25). The old /interviews page's own
   // images where it had one for the entry, each placed by its position among
@@ -373,6 +373,8 @@ const CONTENT_CREDITS = {
   "twilight-of-the-gods-cover.webp": null,
   // Tony's own pitch deck title page, supplied by him: his artwork, no credit.
   "jacks-back-cover.webp": null,
+  // The book's jacket, supplied by Elaine for Tony: his artwork, no credit.
+  "how-to-get-into-the-movie-business-cover.webp": null,
   // Show artwork for podcasts and interviews: not openly licensed — each is
   // the show's own promotional image, used to identify it, credited to it.
   "the-tony-klinger-podcast-cover.webp": null,
