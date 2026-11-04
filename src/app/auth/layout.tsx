@@ -9,7 +9,7 @@ import { getAuthContext } from "@/lib/permissions";
  *
  * A split screen: the noir stage (brand, photo, the line) on the left, the
  * form alone on the paper ground on the right. On phones the stage is the
- * wordmark and a short photo band above the form.
+ * wordmark above the form, with no photo.
  *
  * The full public menu is deliberately absent: the user is completing one task.
  * The wordmark on the stage still links home so they are never trapped
@@ -29,11 +29,11 @@ export default async function AuthLayout({ children }: LayoutProps<"/auth">) {
   const context = await getAuthContext();
 
   return (
-    <div className="min-h-svh lg:grid lg:grid-cols-2 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+    <div className="flex min-h-svh flex-col lg:grid lg:grid-cols-2 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
       <SessionSync email={context?.email ?? null} />
       <AuthStage />
 
-      <div className="flex min-h-[calc(100svh-15rem)] flex-col sm:min-h-[calc(100svh-22.5rem)] lg:min-h-svh">
+      <div className="flex flex-1 flex-col lg:min-h-svh">
         <main
           id="main"
           className="flex flex-1 items-start justify-center px-4 pt-10 pb-12 sm:px-8 sm:pt-14 lg:items-center lg:px-12 lg:py-16"

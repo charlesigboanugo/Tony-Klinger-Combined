@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 
 import { signOutAction } from "@/app/auth/actions";
@@ -29,28 +29,29 @@ export function SignOutForm({
 }) {
   return (
     <form
-      action={signOutAction}
+      // Finished here, after the action, not when the button sees `pending`
+      // end: signing out clears the email at once, which removes the button
+      // from the phone menu and the public account menu mid-way, so it never
+      // saw the end and the phone menu stayed open (owner, 2026-11-03).
+      action={async () => {
+        try {
+          await signOutAction();
+        } finally {
+          finishProgress();
+          onDone?.();
+        }
+      }}
       onSubmit={() => {
         announceSignedOut();
         startProgress();
       }}
       className={className}
     >
-      <Status onDone={onDone}>{children}</Status>
+      <Status>{children}</Status>
     </form>
   );
 }
 
-function Status({ onDone, children }: { onDone?: () => void; children: (pending: boolean) => ReactNode }) {
-  const { pending } = useFormStatus();
-  const was = useRef(false);
-  useEffect(() => {
-    if (pending) was.current = true;
-    else if (was.current) {
-      was.current = false;
-      finishProgress();
-      onDone?.();
-    }
-  }, [pending, onDone]);
-  return children(pending);
+function Status({ children }: { children: (pending: boolean) => ReactNode }) {
+  return children(useFormStatus().pending);
 }

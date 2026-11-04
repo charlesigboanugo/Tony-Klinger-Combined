@@ -25,9 +25,9 @@ import { cn } from "@/lib/utils/cn";
  * the stage still and only the form changes: the photo does not reload and the
  * entrance does not replay on every hop.
  *
- * Below `lg` the stage is the wordmark on noir and a short photo band under
- * it, so nothing overlaps there either and the form starts above the fold;
- * the line and the figures appear from `lg`. The figures step aside on short
+ * Below `lg` the stage is only the wordmark on noir — no photo (owner,
+ * 2026-11-03: no image on sign-in on mobile) — so the form starts at the top;
+ * the photo, the line and the figures appear from `lg`. The figures step aside on short
  * screens, so the line stays clear of his face.
  */
 
@@ -49,10 +49,9 @@ export function AuthStage() {
         <Wordmark compact className="text-block-foreground" />
       </div>
 
-      {/* Full width on phones, the whole panel from `lg`. In between, the
-          band is too wide and shallow to hold his whole head, so the photo
-          narrows to a frame that does and its sides dissolve into the noir. */}
-      <figure className="relative h-44 w-full shrink-0 overflow-hidden sm:mx-auto sm:mb-6 sm:h-64 sm:max-w-xl sm:max-lg:mask-[linear-gradient(to_right,transparent,black_16%,black_84%,transparent)] lg:absolute lg:inset-0 lg:-z-10 lg:mb-0 lg:h-auto lg:max-w-none">
+      {/* The whole panel from `lg`; none below it, where the form comes
+          straight after the wordmark (owner, 2026-11-03). */}
+      <figure className="hidden lg:absolute lg:inset-0 lg:-z-10 lg:block lg:overflow-hidden">
         <div className="absolute inset-0 animate-[settle_2.6s_var(--ease-out-expo)_both] motion-reduce:animate-none">
           <Image
             src={photo.src}

@@ -2046,10 +2046,9 @@ It is the yellow hand-on-chin portrait `tk-dc-0-33` (previously unplaced; it rep
 blue-backdrop laugh `tk-dc-0-8`, now unplaced, which had replaced the car-park portrait
 `extra-d64ac0c2` on 2026-09-26). That makes two yellow heroes site-wide, with Give-Get-Go,
 which is the ration's limit. The stage is sticky, and it sits in the layout, so moving between
-sign-in, sign-up and reset changes only the form. Below `lg` the stage is the wordmark on noir
-with a short photo band under it, so nothing overlaps and the form starts above the fold; on
-tablets the band would be too wide and shallow to hold his head, so the photo narrows to a
-centred frame whose sides dissolve into the noir. On short desktop screens the figures step
+sign-in, sign-up and reset changes only the form. Below `lg` the stage is only the wordmark on noir,
+with no photo (owner, 2026-11-03: no image on sign-in on mobile; it replaced a short photo
+band), so the form starts straight under it. On short desktop screens the figures step
 aside so the line stays clear of his face.
 The form column carries nothing else: a plain eyebrow label per screen ("Sign in",
 "Reset"…) led by a small clapperboard mark, the title at the auth size (§9.1), the form, and the alternate action as a
