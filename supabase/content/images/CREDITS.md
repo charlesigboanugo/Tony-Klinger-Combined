@@ -75,7 +75,7 @@ attribution required; recorded anyway), found through Openverse. StockSnap serve
 | `coaching-filmmaking-cover.webp` | filmmaking | "People Man" by Jakob Owens, StockSnap, CC0 — https://stocksnap.io/photo/people-man-PT8C3EOE19 |
 | `coaching-writing-cover.webp` | writing | "Pen Ink" by Aaron Burden, StockSnap, CC0 — https://stocksnap.io/photo/pen-ink-V8A98C0U96 |
 | `coaching-producing-cover.webp` | producing | "Office Work" by Châu Thông Phan, StockSnap, CC0 — https://stocksnap.io/photo/office-work-UP9J4EZYNJ |
-| `coaching-for-all-filmmakers-cover.webp` | for all filmmakers | "Architecture Building" by Nathan Engel, StockSnap, CC0 — https://stocksnap.io/photo/architecture-building-LZDG3B8SXI |
+| `coaching-for-all-moviemakers-cover.webp` | For All Moviemakers | "Architecture Building" by Nathan Engel, StockSnap, CC0 — https://stocksnap.io/photo/architecture-building-LZDG3B8SXI |
 | `coaching-cohort-silver-cover.webp` | cohort silver | "Team Meeting" by Startup Stock Photos, StockSnap, CC0 — https://stocksnap.io/photo/team-meeting-84GOP2OAKR |
 | `coaching-cohort-gold-cover.webp` | cohort gold | "Team Meeting" by Startup Stock Photos, StockSnap, CC0 — https://stocksnap.io/photo/team-meeting-VQXYE2ZEHC |
 | `coaching-cohort-platinum-cover.webp` | cohort platinum | "Team Meeting" by Startup Stock Photos, StockSnap, CC0 — https://stocksnap.io/photo/team-meeting-69TMH4ITIE |

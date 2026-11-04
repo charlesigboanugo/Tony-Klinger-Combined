@@ -182,9 +182,28 @@ export function CheckoutForm({
 
         </div>
       ) : (
-        <SubmitButton className="w-full" pendingLabel="Redirecting to payment…">
-          Continue to payment
-        </SubmitButton>
+        <>
+          {/* Agreeing is the press itself (migration 0028). */}
+          <input type="hidden" name="agree" value="on" />
+          <SubmitButton className="w-full" pendingLabel="Redirecting to payment…">
+            Continue to payment
+          </SubmitButton>
+          {/*
+            NON-REFUNDABLE ONCE CONFIRMED (Tony, 2026-11-04). A UK online buyer
+            may cancel within 14 days unless they ask for the service to start
+            at once and accept losing that right. A tick-box asked it as an
+            extra step (owner, 2026-11-04: "just adds another hiccup"), so it
+            is said here, right under the button: pressing it is the request
+            and the agreement, and the order records when (migration 0028).
+          */}
+          <p className="text-xs text-muted-foreground">
+            By continuing, you ask for your purchase to start now and accept it&apos;s non-refundable once
+            confirmed, losing your right to cancel.{" "}
+            <Link href="/terms#cancellation" className="underline underline-offset-4">
+              Terms
+            </Link>
+          </p>
+        </>
       )}
 
       {/*

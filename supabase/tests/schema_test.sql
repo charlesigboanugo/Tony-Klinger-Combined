@@ -1003,7 +1003,7 @@ insert into t_m select 'run_filmmaking', public.schedule_series_run(
 insert into t_m select 'run_producing', public.schedule_series_run(
   (select id from public.group_coaching_series where slug = 'producing'), now() + interval '20 days', now() - interval '1 day', 8, 60, null, null, 1);
 insert into t_m select 'run_started', public.schedule_series_run(
-  (select id from public.group_coaching_series where slug = 'for-all-filmmakers'), now() + interval '20 days', now() - interval '30 days');
+  (select id from public.group_coaching_series where slug = 'for-all-moviemakers'), now() + interval '20 days', now() - interval '30 days');
 update public.coaching_runs set starts_at = now() - interval '7 days'
  where id = (select id from t_m where k = 'run_started');
 
@@ -1166,7 +1166,7 @@ select is(
 -- 0022 the refusal says why: a run under way has started ('past'); a series
 -- with no run at all has no dates ('unscheduled').
 select is(
-  public.coaching_sale_status((select id from public.products where slug = 'group-coaching-x8-for-all-filmmakers')),
+  public.coaching_sale_status((select id from public.products where slug = 'group-coaching-x8-for-all-moviemakers')),
   'past',
   'a series whose run has started cannot be bought'
 );

@@ -17,7 +17,7 @@ import { pageMetadata } from "@/lib/seo/metadata";
 export const metadata: Metadata = pageMetadata({
   title: "Group Coaching",
   description:
-    "Live Group Coaching with Tony Klinger in small groups: Filmmaking, Writing, Producing and For All Filmmakers.",
+    "Live Group Coaching with Tony Klinger in small groups: Filmmaking, Writing, Producing and For All Moviemakers.",
   path: "/coaching/group-coaching",
 });
 

@@ -254,7 +254,15 @@ export default async function RetreatPage({ params }: PageProps<"/coaching/retre
         ) : null}
       </ProductLayout>
 
-      <MobileBuyBar price={shown} priceNote={shown ? "one payment" : null} href="#buy" label={starts ? "Book your place" : "See details"} />
+      {/* The bar says what the panel it leads to offers first (2026-11-04: a
+          level by interview said "Book your place" over "Sign in to apply").
+          An approved applicant still finds booking there. */}
+      <MobileBuyBar
+        price={shown}
+        priceNote={shown ? "one payment" : null}
+        href="#buy"
+        label={initial === "application" ? "Apply for a place" : initial === "ok" ? "Book your place" : "See details"}
+      />
     </>
   );
 }

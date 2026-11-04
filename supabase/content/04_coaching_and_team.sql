@@ -73,7 +73,7 @@ on conflict (slug) do update set description = excluded.description,
   syllabus = excluded.syllabus, status = 'published';
 
 insert into group_coaching_series (name, slug, description, syllabus, status)
-values ('For all Filmmakers', 'for-all-filmmakers', 'From first idea to a business plan that stands up.',
+values ('For All Moviemakers', 'for-all-moviemakers', 'From first idea to a business plan that stands up.',
   array[
     'Finding the right ideas — How and why',
     'Perfecting your treatment, outline, synopsis',

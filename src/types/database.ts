@@ -1687,6 +1687,7 @@ export type Database = {
           guest_email: string | null
           id: string
           is_gift: boolean
+          no_refund_agreed_at: string | null
           paid_at: string | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
@@ -1703,6 +1704,7 @@ export type Database = {
           guest_email?: string | null
           id?: string
           is_gift?: boolean
+          no_refund_agreed_at?: string | null
           paid_at?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
@@ -1719,6 +1721,7 @@ export type Database = {
           guest_email?: string | null
           id?: string
           is_gift?: boolean
+          no_refund_agreed_at?: string | null
           paid_at?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
@@ -3128,6 +3131,7 @@ export type Database = {
           guest_email: string | null
           id: string
           is_gift: boolean
+          no_refund_agreed_at: string | null
           paid_at: string | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number

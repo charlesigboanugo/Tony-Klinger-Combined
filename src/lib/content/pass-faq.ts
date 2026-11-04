@@ -2,6 +2,7 @@ import type { Faq } from "@/components/content/FaqList";
 import { UPGRADE_MIN_MONTHS } from "@/lib/commerce/pass-upgrade";
 import { RENEWAL_WINDOW_DAYS } from "@/lib/commerce/sale-check";
 import type { MembershipTier } from "@/lib/content/coaching";
+import { REFUND_ANSWER } from "@/lib/content/product-faqs";
 
 /**
  * The Coaching Pass questions (owner, 2026-11-02, from Elaine's review), shown
@@ -73,9 +74,13 @@ export function passFaqs(tiers: MembershipTier[]): Faq[] {
           },
         ]
       : []),
-    // Waiting on Tony (2026-11-02): fill in the answer to show it.
-    { question: "When is the monthly Q&A held?", answer: null },
-    { question: "What is your refund policy?", answer: null },
+    // Tony (2026-11-04): "The dates of all our events will be advised monthly in advance."
+    {
+      question: "When is the monthly Q&A held?",
+      answer: "The date changes from month to month. We let you know each month's date in advance.",
+    },
+    // Tony's policy (2026-11-04), as the Terms and checkout state it.
+    { question: "What is your refund policy?", answer: REFUND_ANSWER },
   ];
 
   return drafts.filter((d): d is Faq => Boolean(d.answer));

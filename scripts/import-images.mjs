@@ -285,7 +285,7 @@ const PRODUCT_COVERS = {
     "filmmaking": "coaching-filmmaking-cover.webp",
     "writing": "coaching-writing-cover.webp",
     "producing": "coaching-producing-cover.webp",
-    "for-all-filmmakers": "coaching-for-all-filmmakers-cover.webp",
+    "for-all-moviemakers": "coaching-for-all-moviemakers-cover.webp",
   },
   cohorts: {
     "cohort-silver": "coaching-cohort-silver-cover.webp",

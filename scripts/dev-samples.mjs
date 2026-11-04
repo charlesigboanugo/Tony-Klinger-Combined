@@ -39,7 +39,7 @@
 //
 // Group Coaching (migration 0016): a run on each real series, one per state —
 // Filmmaking open, Writing closed with single sessions on sale, Producing in
-// progress and full, For All Filmmakers not open to everyone yet.
+// progress and full, For All Moviemakers not open to everyone yet.
 import postgres from "postgres";
 
 import { target } from "./lib/targets.mjs";
@@ -231,7 +231,7 @@ try {
       //   Filmmaking          registration open
       //   Writing             series registration closed early: single sessions on sale
       //   Producing           in progress, every place taken: closed (below)
-      //   For All Filmmakers  not open to everyone yet; open early to pass holders
+      //   For All Moviemakers  not open to everyone yet; open early to pass holders
       // Re-made each time, so anyone registered on a sample run is taken off it.
       await tx`delete from bookings where bookable_type = 'group_coaching_session'
                and bookable_id in (select id from group_coaching_sessions where meeting_url = ${SAMPLE_LINK})`;
@@ -246,7 +246,7 @@ try {
         ["producing", "-14 days 16 hours", "-40 days", null],
         // Opens to everyone in five days, so it is in the pass holders' early
         // window now (seven days ahead, migration 0026).
-        ["for-all-filmmakers", "45 days 16 hours", "5 days", null],
+        ["for-all-moviemakers", "45 days 16 hours", "5 days", null],
       ];
       for (const [slug, first, opens, label] of runs) {
         await tx`select schedule_series_run(

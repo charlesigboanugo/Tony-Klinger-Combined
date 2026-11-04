@@ -211,6 +211,13 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        // For All Filmmakers was renamed For All Moviemakers (Tony, 2026-11-04;
+        // migration 0027), too easily mixed up with Filmmaking.
+        source: "/coaching/group-coaching/for-all-filmmakers",
+        destination: "/coaching/group-coaching/for-all-moviemakers",
+        permanent: true,
+      },
+      {
         // "How it works" is a section of the coaching overview (2026-09-26).
         source: "/coaching/about",
         destination: "/coaching#how-it-works",

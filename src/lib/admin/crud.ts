@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { syncProductToStripe } from "@/lib/stripe/sync";
 import { mediaUsage } from "@/lib/admin/media-usage";
 import { removeMediaFile } from "@/lib/storage/remove";
+import { ukLocalToIso } from "@/lib/utils/uk-time";
 import { placeMediaFile, undoPlaceMediaFile } from "@/lib/storage/visibility";
 import { getAuthContext } from "@/lib/permissions";
 import {
@@ -99,9 +100,15 @@ export function parseFields(
           .filter(Boolean);
         break;
       case "date":
-      case "datetime":
         values[field.name] = new Date(text).toISOString();
         break;
+      case "datetime": {
+        // UK time as typed, not the server's zone (src/lib/utils/uk-time.ts).
+        const iso = ukLocalToIso(text);
+        if (!iso) throw new Error(`${field.label}: enter a date and time.`);
+        values[field.name] = iso;
+        break;
+      }
       case "media":
         // A resource id, or null when the image was removed — handled by the
         // empty-string branch above. Stored verbatim; it is a uuid, not text

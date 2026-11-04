@@ -19,10 +19,11 @@ export const metadata: Metadata = pageMetadata({
  * Every rule stated here is one the platform enforces: cumulative tiers (note
  * 07), access vs booking (note 01 §11), places on a series, cohort or single
  * group session being fixed (owner, 2026-11-02: no swap, no cancelling), recurring vs lump-sum membership (note 07
- * §31.1), free-event registration (migration 0017). Checkout does not yet
- * ask buyers to give up the 14-day cancellation right for digital content, so
- * that right is stated in full; add the acknowledgement at checkout before
- * narrowing it here. Memberships are cancelled by the customer from Account →
+ * §31.1), free-event registration (migration 0017). Payments are
+ * non-refundable once a purchase is confirmed (Tony, 2026-11-04): checkout says,
+ * under "Continue to payment", that pressing it asks for the purchase to start
+ * at once and gives up the 14-day cancellation right, and the order records
+ * when (migration 0028), which is what lets this page say so. Memberships are cancelled by the customer from Account →
  * Billing (Stripe Customer Portal, at period end — migration 0021); private
  * coaching's 48-hour rule is `cancel_booking` (migration 0020). Still needs a
  * legal read before launch.
@@ -33,10 +34,11 @@ export default function Page() {
       current="/terms"
       title="Terms of service"
       intro="The terms that apply when you use tonyklinger.com or buy anything through it, in plain words."
-      lastReviewed="September 2026"
+      lastReviewed="November 2026"
       summary={[
         "Every product page says what is included, what it costs and how it is delivered, before you pay.",
         "Your account and what you buy are for you alone.",
+        "Payments are non-refundable once your purchase is confirmed. If we can't deliver what you bought as agreed, you get a full refund.",
         "Cancel a one-to-one session at least 48 hours ahead and it comes back to rebook. Places in group coaching are fixed.",
         "The courses and recordings are for your own learning, not for sharing or resale.",
       ]}
@@ -111,11 +113,18 @@ export default function Page() {
           body: (
             <>
               <p>
-                <strong>Your 14 days.</strong> You have the legal right to
-                cancel an online purchase within 14 days of buying it and get
-                your money back. <Link href="/contact">Get in touch</Link> to
-                cancel, and we will refund you within 14 days of hearing from
-                you.
+                <strong>Non-refundable once confirmed.</strong> Once your
+                purchase is confirmed, payments are non-refundable. By continuing
+                to payment at checkout, you ask for your purchase to start straight away, so your
+                coaching, recordings and Academy access are yours at once, and
+                you agree that you give up the usual 14-day right to cancel an
+                online purchase.
+              </p>
+              <p>
+                <strong>If we can&apos;t deliver.</strong> If we are unable to
+                deliver our service as agreed, you get a full refund.{" "}
+                <Link href="/contact">Get in touch</Link> and we will refund you
+                within 14 days of hearing from you.
               </p>
               <p>
                 <strong>Booked sessions.</strong> Cancel a one-to-one session
@@ -127,8 +136,8 @@ export default function Page() {
               </p>
               <p>
                 <strong>If we cancel.</strong> If we have to cancel a session or
-                event, we will offer another date or return your credit or
-                payment.
+                event, we will offer another date, or return your credit or
+                your payment in full, as you prefer.
               </p>
             </>
           ),

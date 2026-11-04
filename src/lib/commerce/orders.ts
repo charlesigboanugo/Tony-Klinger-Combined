@@ -193,8 +193,10 @@ export async function createPendingOrder(params: {
   checkoutMode?: "payment" | "subscription";
   /** Bought for someone else; `guestEmail` is theirs (migration 0016). */
   isGift?: boolean;
+  /** The buyer ticked that it is non-refundable once confirmed (migration 0028). */
+  noRefundAgreed?: boolean;
 }): Promise<{ orderId: string; total: number } | null> {
-  const { userId, guestEmail, lines, checkoutMode = "payment", isGift = false } = params;
+  const { userId, guestEmail, lines, checkoutMode = "payment", isGift = false, noRefundAgreed = false } = params;
   if (lines.length === 0) return null;
 
   const admin = createAdminClient();
@@ -216,6 +218,7 @@ export async function createPendingOrder(params: {
       total,
       checkout_mode: checkoutMode,
       is_gift: isGift,
+      no_refund_agreed_at: noRefundAgreed ? new Date().toISOString() : null,
     })
     .select("id")
     .single();

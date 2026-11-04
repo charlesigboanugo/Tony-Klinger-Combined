@@ -51,6 +51,10 @@ const schema = z.object({
   email: z.email().optional(),
   // Bought for someone else: `email` is then the RECIPIENT's (lib/commerce/gift).
   gift: z.literal("1").optional(),
+  // The no-refund agreement (Tony, 2026-11-04; migration 0028): sent with the
+  // "Continue to payment" press, beside the words that say what it agrees to.
+  // An order made without it is refused.
+  agree: z.literal("on").optional(),
 });
 
 export type CheckoutState = {
@@ -74,6 +78,7 @@ export async function startCheckoutAction(
     session: formData.get("session") || undefined,
     email: formData.get("email") || undefined,
     gift: formData.get("gift") || undefined,
+    agree: formData.get("agree") || undefined,
   });
 
   if (!parsed.success) {
@@ -84,6 +89,14 @@ export async function startCheckoutAction(
       error: emailWrong
         ? "Enter a valid email address to continue."
         : "Something went wrong with this checkout. Please go back to your cart and try again.",
+    };
+  }
+
+  // Asked before anything is priced or held: no order is made without it.
+  if (parsed.data.agree !== "on") {
+    return {
+      email: parsed.data.email,
+      error: "Something went wrong with this checkout. Please go back to your cart and try again.",
     };
   }
 
@@ -295,6 +308,7 @@ export async function startCheckoutAction(
     isGift: gift,
     lines,
     checkoutMode: isSubscription ? "subscription" : "payment",
+    noRefundAgreed: true,
   });
 
   if (!order) {

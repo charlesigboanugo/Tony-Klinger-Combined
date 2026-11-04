@@ -182,7 +182,7 @@ select v.name, v.slug, 'group_coaching', v.description, 'active', s.id, v.credit
     'A place on the ' || s.name || ' series: a seat in all eight live, hour-long sessions, with no booking.',
     8, 'The series', 20)
  ) as v(name, slug, description, credits, label, position)
- where s.slug in ('filmmaking', 'writing', 'producing', 'for-all-filmmakers')
+ where s.slug in ('filmmaking', 'writing', 'producing', 'for-all-moviemakers')
 on conflict (slug) do update set
   name = excluded.name, description = excluded.description, series_id = excluded.series_id,
   credits = excluded.credits, valid_months = excluded.valid_months, pack_of = null,
@@ -297,14 +297,15 @@ update products set status = 'paused'
 -- ---------------------------------------------------------------------------
 -- The Virtual Retreat: one day, online, at three levels. No date yet — a level
 -- is shown with "date to be announced" and cannot be bought until an
--- administrator adds a batch with its dates (migration 0030). Places (six for
--- Level Two, four for Level Three) are set on that batch, not here: since
--- 0030 a retreat has no capacity of its own, and writing one stopped a fresh
--- setup at this file (found 2026-10-15).
+-- administrator adds a batch with its dates (migration 0030). Places are set
+-- on that batch, not here: since 0030 a retreat has no capacity of its own,
+-- and writing one stopped a fresh setup at this file (found 2026-10-15).
 --
 -- Level One is open to anyone. Levels Two and Three are entered by interview
 -- (written as words on the site, as the courses' levels are: owner, 2026-10-08)
--- (`requires_application`), for six and four writers.
+-- (`requires_application`). Level Two is for six writers. Level Three reads
+-- "For writers, by invitation" (Tony, 2026-11-04): the old site's "Four
+-- writers" was not meant as a number, so the page states none.
 -- ---------------------------------------------------------------------------
 
 insert into products (name, slug, product_type, description, status, option_group, option_label, option_position) values
@@ -315,7 +316,7 @@ insert into products (name, slug, product_type, description, status, option_grou
    'The Level One day, and live feedback on your own project from a mentor matched to it. Six writers, by interview.',
    'active', 'virtual-retreat', 'Level Two', 20),
   ('Virtual Retreat — Level Three', 'retreat-level-3', 'retreat',
-   'The Level One and Two day, and your project pitched live to the full panel of mentors. Four writers, by invitation.',
+   'The Level One and Two day, and your project pitched live to the full panel of mentors. For writers, by invitation.',
    'active', 'virtual-retreat', 'Level Three', 30)
 on conflict (slug) do update set
   name = excluded.name, description = excluded.description,
@@ -355,12 +356,12 @@ select p.id, v.name, v.slug, v.description, v.level, v.level * 10, v.requires_ap
        'Access to the private retreat community, which carries on after the day'
      ]),
     ('retreat-level-3', 'Virtual Retreat — Level Three', 'virtual-retreat-level-3',
-     'The whole Level One and Two day, and your project pitched live to the full panel of mentors. Four writers, by invitation.',
+     'The whole Level One and Two day, and your project pitched live to the full panel of mentors. For writers, by invitation.',
      3, true,
      array[
        'A live pitch of your project to the full panel of mentors',
        'Feedback from every mentor on the panel: a rare look at how a pitch is really judged',
-       'One of only four places, offered by invitation to Level Two writers',
+       'Offered by invitation to Level Two writers',
        'Live feedback on your synopsis from a mentor matched to your project',
        'Access to the mentors'' live presentations, by video conference',
        'Access to every mentoring and pitching session of the day',

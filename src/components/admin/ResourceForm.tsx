@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { codeLabel } from "@/lib/admin/labels";
 import type { Field, ResourceConfig } from "@/lib/admin/resources";
+import { isoToUkLocal } from "@/lib/utils/uk-time";
 
 /**
  * Generated create/edit form — note 06 §14, note 10 §23.
@@ -182,10 +183,11 @@ function FormField({
     "disabled:opacity-60";
 
   // Datetime inputs need `YYYY-MM-DDTHH:mm`; a stored ISO string has seconds and
-  // a zone, which the input silently rejects and renders as blank.
+  // a zone, which the input silently rejects and renders as blank. Shown as UK
+  // time, which is how it is read back on save.
   const asInputValue = () => {
     if (value === null || value === undefined) return "";
-    if (field.type === "datetime") return String(value).slice(0, 16);
+    if (field.type === "datetime") return isoToUkLocal(String(value));
     if (field.type === "date") return String(value).slice(0, 10);
     if (field.type === "tags") return Array.isArray(value) ? value.join(", ") : "";
     return String(value);

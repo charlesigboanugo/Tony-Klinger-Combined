@@ -14,8 +14,7 @@ import type { Faq } from "@/components/content/FaqList";
  * "No", "For life"), then short sentences in everyday words, then what to do.
  *
  * An answer left `null` is waiting on Tony and is not shown until it is
- * written. Refunds are one (the Terms page states the legal 14 days; the FAQ
- * must agree with whatever Tony confirms).
+ * written.
  */
 type Draft = { question: string; answer: string | null };
 
@@ -25,8 +24,14 @@ const inWords = (n: number) => words[n] ?? String(n);
 const listOf = (items: string[]) =>
   items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 
-// Waiting on Tony (2026-11-02): one answer for every product.
-const refunds: Draft = { question: "What if I change my mind?", answer: null };
+/**
+ * Tony's refund policy (2026-11-04), one answer for every product. It holds
+ * because checkout says, by its button, that continuing agrees to it (migration
+ * 0028), and the Terms say the same.
+ */
+export const REFUND_ANSWER =
+  "Once your purchase is confirmed, payments are non-refundable: by continuing to payment at checkout, you ask for it to start straight away, which gives up the usual 14-day right to cancel. If we are unable to deliver our service as agreed, you get a full refund.";
+const refunds: Draft = { question: "What if I change my mind?", answer: REFUND_ANSWER };
 
 /** A Group Coaching series. Registration, single sessions and replays: migrations 0016, 0022, 0025. */
 export function seriesFaqs(opts: { sessions: number; singlePrice: string | null; seriesPrice: string | null }): Faq[] {

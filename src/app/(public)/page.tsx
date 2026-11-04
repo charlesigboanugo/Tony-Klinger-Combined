@@ -526,7 +526,9 @@ export default async function HomePage() {
             <Reveal className="lg:sticky lg:top-28 lg:col-span-5 lg:self-start">
               <Eyebrow>Coaching</Eyebrow>
               <h2 id="coaching-heading" className="mt-5 font-display">
-                Tony&apos;s coaching solves your problems.
+                {/* Tony's choice (2026-11-04), after Elaine found the old line
+                    ("Tony's coaching solves your problems") the weakest on the site. */}
+                Tony&apos;s coaching: problems solved. Progress made.
               </h2>
               <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground text-pretty">
                 Direct answers from someone who has done the job, not theory
