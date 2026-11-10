@@ -1,5 +1,10 @@
+import { photos } from "@/lib/site/photos";
+
 /**
- * Photographer credits for the static photos in `public/images/`.
+ * Photographer credits for the design photos in `src/assets/images/`.
+ *
+ * Keyed by each photo's fingerprinted URL (`photos.ts`), which is the `src`
+ * every page passes to `<PhotoCredit>`.
  *
  * The client supplied these and asked that each be credited on the page. Tony's
  * wording (2026-11-02): "Photos of Tony Klinger by Danny Clifford", replacing
@@ -30,38 +35,38 @@ export const DANNY_CLIFFORD: Photographer = {
 };
 
 const CREDITS: Record<string, Photographer> = {
-  "/images/extra-8b67cc2b.webp": DANNY_CLIFFORD,
-  "/images/extra-08b496ca.webp": DANNY_CLIFFORD,
-  "/images/extra-9af9b2df.webp": DANNY_CLIFFORD,
-  "/images/extra-10ab813f.webp": DANNY_CLIFFORD,
-  "/images/extra-23b3b03e.webp": DANNY_CLIFFORD,
-  "/images/extra-77a66a05.webp": DANNY_CLIFFORD,
-  "/images/extra-84c22937.webp": DANNY_CLIFFORD,
-  "/images/extra-a3f3b1e6.webp": DANNY_CLIFFORD,
-  "/images/extra-a791c80e.webp": DANNY_CLIFFORD,
-  "/images/extra-d64ac0c2.webp": DANNY_CLIFFORD,
-  "/images/extra-ed28353c.webp": DANNY_CLIFFORD,
-  "/images/extra-fe79e111.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-1.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-7.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-8.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-14.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-15.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-17.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-19.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-21.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-22.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-23.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-24.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-25.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-26.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-27.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-32.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-33.webp": DANNY_CLIFFORD,
-  "/images/tk-dc-0-34.webp": DANNY_CLIFFORD,
+  [photos["extra-8b67cc2b"]]: DANNY_CLIFFORD,
+  [photos["extra-08b496ca"]]: DANNY_CLIFFORD,
+  [photos["extra-9af9b2df"]]: DANNY_CLIFFORD,
+  [photos["extra-10ab813f"]]: DANNY_CLIFFORD,
+  [photos["extra-23b3b03e"]]: DANNY_CLIFFORD,
+  [photos["extra-77a66a05"]]: DANNY_CLIFFORD,
+  [photos["extra-84c22937"]]: DANNY_CLIFFORD,
+  [photos["extra-a3f3b1e6"]]: DANNY_CLIFFORD,
+  [photos["extra-a791c80e"]]: DANNY_CLIFFORD,
+  [photos["extra-d64ac0c2"]]: DANNY_CLIFFORD,
+  [photos["extra-ed28353c"]]: DANNY_CLIFFORD,
+  [photos["extra-fe79e111"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-1"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-7"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-8"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-14"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-15"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-17"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-19"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-21"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-22"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-23"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-24"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-25"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-26"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-27"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-32"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-33"]]: DANNY_CLIFFORD,
+  [photos["tk-dc-0-34"]]: DANNY_CLIFFORD,
 };
 
-/** Who took a `public/images` photo, or null when none is recorded. */
+/** Who took a design photo, or null when none is recorded. */
 export function photographer(src: string): Photographer | null {
   return CREDITS[src] ?? null;
 }

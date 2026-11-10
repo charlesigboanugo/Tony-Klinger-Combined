@@ -2436,12 +2436,12 @@ Three kinds of data, one home each:
 | Real content: products, prices, curriculum, lesson video, catalogue, blog, coaching, team, testimonials | `supabase/content/*.sql` | `pnpm content:setup --env <file>`, once |
 | Migrated image library: all ~380 images from the three source sites | `current-website/*/site-files/` (AVIF, gitignored) | the same command, which then runs `import-images.mjs` |
 | Images added from outside the old sites (openly licensed, credited) | `supabase/content/images/` (committed; licences in its `CREDITS.md`) | the same command |
-| Static photos the client supplied for page design (hero, About) | `public/images/` (AVIF). The photographer is recorded per file in `src/lib/site/photo-credits.ts`; pages render `<PhotoCredit>`, which words the line by count ("Photo courtesy of…" for one, "Photos…" for several) and places it as a caption under a framed photo or as a corner overlay when the photo is a background. The 29 files present on 2026-09-24 are credited to Danny Clifford. A file added later has no credit until the client names the photographer. | deployed with the app |
+| Static photos the client supplied for page design (hero, About) | `src/assets/images/` (WebP; in `public/images/` until 2026-11-10), imported in `src/lib/site/photos.ts` so the build fingerprints each URL. The photographer is recorded per file in `src/lib/site/photo-credits.ts`; pages render `<PhotoCredit>`, which words the line by count ("Photo courtesy of…" for one, "Photos…" for several) and places it as a caption under a framed photo or as a corner overlay when the photo is a background. The 29 files present on 2026-09-24 are credited to Danny Clifford. A file added later has no credit until the client names the photographer. | deployed with the app |
 | Local fixtures: test accounts, their roles and entitlements, placeholder rows, RLS test rows | `supabase/seed.sql` | never |
 
 **Design images vs content images (2026-09-24, owner's rule).** An image the design
 depends on, whose crop, focal point and treatment the layout was built around (the home
-hero, the About portrait), lives in `public/images/` and is referenced from code. This holds
+hero, the About portrait), lives in `src/assets/images/` and is referenced from code. This holds
 even when the same photo is also in the migrated media library. The two copies do different
 jobs: the `public/` copy changes only when the design does, so an admin edit to the library
 can't break a layout. Everything the owner should be able to swap (covers, galleries, team
@@ -2449,6 +2449,19 @@ photos) stays in Storage and is managed from the admin. A duplicated photo needs
 both places: `src/lib/site/photo-credits.ts` for the `public/` copy and `resources.credit` for
 the library copy. If the owner later wants to change a design image himself, it is no longer
 a design image and moves to the library.
+
+**Design images are imported, not linked by path (2026-11-10, owner).** The rule above
+first put design photos in `public/images/`, linked by fixed text paths. They now live in
+`src/assets/images/` and are imported once, in `src/lib/site/photos.ts`. The build publishes
+each one at `/_next/static/media/<name>.<hash>.webp`, the hash taken from the file's contents.
+`design-photos.ts` (placements) and `photo-credits.ts` (credits, keyed by that URL) name a
+photo through `photos`, so a misspelt name is a type error. This changes the location, not the
+rule's intent: design images are still in the repo, referenced from code and deployed with the
+app, never in Storage. The reason is caching. With every optimised image at a URL that changes
+when the image does (uploads: random prefix; catalogue: content-hash prefix; design photos:
+build hash), `images.minimumCacheTTL` is 31 days, Vercel's maximum, which keeps Image
+Optimization transformations within the plan. Files that need a fixed URL (`og-default.jpg`,
+`public/icons/*` for the manifest) stay in `public/`.
 
 **Old-site image credits follow the old sites (2026-09-26, owner).** `resources.credit`
 carries "Photos of Tony Klinger by Danny Clifford" (Tony's wording since 2026-11-02; the old

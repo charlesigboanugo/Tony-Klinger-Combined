@@ -128,9 +128,16 @@ const nextConfig: NextConfig = {
     // an arbitrary size and bill a transformation for it.
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [64, 128, 256, 384],
-    // Optimised results are immutable for a day; a replaced asset gets a new
-    // storage path, so this never serves a stale image.
-    minimumCacheTTL: 60 * 60 * 24,
+    // Optimised results are kept for 31 days, Vercel's maximum. Every
+    // transformation counts against the plan's monthly allowance, so the
+    // longer one is reused the fewer are billed.
+    //
+    // Never stale, because no optimised image sits at a fixed URL that can
+    // change: uploads get a fresh storage path (random prefix in
+    // admin/actions.ts), catalogue images a content-hash prefix
+    // (import-images.mjs), and design photos are imported (photos.ts), so
+    // the build fingerprints their file names.
+    minimumCacheTTL: 60 * 60 * 24 * 31,
 
     // Allowed `quality` values. Next 16 requires this allowlist — an arbitrary
     // quality in a URL is another way to bill unlimited distinct

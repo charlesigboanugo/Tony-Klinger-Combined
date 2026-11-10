@@ -7,7 +7,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { cn } from "@/lib/utils/cn";
 
 /**
- * Design photography from `public/images/` — note 08 §60.1.2, note 10 §42.3.
+ * Design photography from `src/assets/images/` — note 08 §60.1.2, note 10 §42.3.
  *
  * Every photo the layout is built around goes through one of these, so the
  * photographer's credit (`<PhotoCredit>`) can never be forgotten on a new usage.

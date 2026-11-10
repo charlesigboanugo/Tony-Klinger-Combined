@@ -1842,7 +1842,8 @@ Rules kept from before: every poster shares one 3:4 frame and fills it (§23,
 ### 42.3 Design photography across the site
 
 **2026-09-24, at the owner's request.** The public site is saturated with the
-client-supplied photographs in `public/images/` (note 08 §60.1.2), each one placed
+client-supplied photographs in `src/assets/images/` (`public/images/` until 2026-11-10;
+note 08 §60.1.2), each one placed
 **once** across the site. Placements are named in one registry,
 `src/lib/site/design-photos.ts`, and pages import their photo by name. Adding a
 placement means picking a file that isn't listed there yet.
@@ -2240,7 +2241,8 @@ Scrolling was already ~60 fps everywhere; the cost was images, JavaScript and se
    converted existing storage in place (same `resources` rows). The old AVIF files it left
    behind were deleted from local storage on 2026-10-13 (432 files, 31 MB) once nothing
    referenced them; a project converted later still holds its own until they are removed.
-   Design photos in `public/images/` are `.webp`.
+   Design photos in `src/assets/images/` are `.webp`, imported so their URLs are
+   fingerprinted (note 08 §60.1.2).
 2. **Decorative walls take a bounded set.** `PosterWall` rendered the whole catalogue in
    each of four rows, twice (~1,200 images, 4.4 MB). It now takes 12 per row.
    `/catalogue`: DOM 1,543 → 654 nodes, images 4.4 MB → 0.6 MB, LCP 1.6 s → 0.8 s.
