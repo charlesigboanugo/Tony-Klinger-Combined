@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 
 import { bookPrivateSlotAction, type PrivateBookingState } from "@/app/book/private/actions";
 import { FormMessage } from "@/components/ui/Field";
+import { Button } from "@/components/ui/Button";
 import { ConfirmSubmit } from "@/components/ui/ConfirmSubmit";
 import { cn } from "@/lib/utils/cn";
 
@@ -35,8 +36,22 @@ export type SlotWeek = { label: string; days: SlotDay[] };
  *
  * Times arrive already formatted in UK time from the server, so nothing here
  * reads the clock or the time zone.
+ *
+ * TWO WAYS TO CONTINUE (migration 0030). With a session already paid for, the
+ * time is booked with it here. Without one, `pay` names the single session's
+ * product and the chosen time goes on to checkout, where it is held while
+ * they pay: one session is chosen, then paid for.
  */
-export function SlotPicker({ weeks, submitLabel }: { weeks: SlotWeek[]; submitLabel: string }) {
+export function SlotPicker({
+  weeks,
+  submitLabel,
+  pay,
+}: {
+  weeks: SlotWeek[];
+  submitLabel: string;
+  /** Continue to checkout with this product for the chosen time, instead of booking with a session. */
+  pay?: { product: string };
+}) {
   const [state, action] = useActionState(bookPrivateSlotAction, initialState);
   const [chosen, setChosen] = useState<string | null>(null);
 
@@ -46,7 +61,8 @@ export function SlotPicker({ weeks, submitLabel }: { weeks: SlotWeek[]; submitLa
     .find((s) => s.id === chosen);
 
   return (
-    <form action={action}>
+    <form {...(pay ? { action: "/checkout", method: "get" } : { action })}>
+      {pay ? <input type="hidden" name="product" value={pay.product} /> : null}
       {state.error ? (
         <div className="mb-6">
           <FormMessage>{state.error}</FormMessage>
@@ -92,7 +108,7 @@ export function SlotPicker({ weeks, submitLabel }: { weeks: SlotWeek[]; submitLa
                         >
                           <input
                             type="radio"
-                            name="slotId"
+                            name={pay ? "slot" : "slotId"}
                             value={slot.id}
                             className="sr-only"
                             aria-label={`${day.label}, ${slot.time}`}
@@ -141,6 +157,11 @@ export function SlotPicker({ weeks, submitLabel }: { weeks: SlotWeek[]; submitLa
               <span className="text-muted-foreground">Pick a time above to continue.</span>
             )}
           </p>
+          {pay ? (
+            <Button type="submit" disabled={!chosen} className="w-full shrink-0 sm:w-auto">
+              {submitLabel}
+            </Button>
+          ) : (
           <ConfirmSubmit
             pendingLabel="Booking your time…"
             disabled={!chosen}
@@ -155,6 +176,7 @@ export function SlotPicker({ weeks, submitLabel }: { weeks: SlotWeek[]; submitLa
           >
             {submitLabel}
           </ConfirmSubmit>
+          )}
         </div>
       </div>
     </form>

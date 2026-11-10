@@ -108,7 +108,7 @@ export function RetreatPurchase({
       letters: true,
     },
     unscheduled: {
-      title: "Date to be announced",
+      title: "Date to be advised",
       body: "Booking opens as soon as the date is set. Tony's letters carry the news first.",
       letters: true,
     },

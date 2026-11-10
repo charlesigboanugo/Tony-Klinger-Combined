@@ -974,7 +974,7 @@ readable when it is the `recording_resource_id` of a cohort workshop whose cohor
 caller holds, or of a Group Coaching session the caller booked (`has_booking()`) or whose
 series they hold. **Session replays deliberately exclude customers who merely hold unspent
 credits** — credits make a session visible and bookable, and a seat never taken is not a
-replay owed. An external URL (Livid) is shown as-is; a private-bucket path is signed
+replay owed. An external URL (a Vimeo link) is shown as-is; a private-bucket path is signed
 server-side for one hour, only after the row came back under RLS
 (`src/lib/academy/delivery.ts`).
 
@@ -1140,8 +1140,10 @@ joining link in the usual window), and a paid session not yet given a time shows
 prompt to choose one. Past private sessions are listed in Account → Bookings only; they have
 no replays.
 
-**Pay first, then book — for one session and for a pack alike (owner, 2026-10-08),
-reversing the "choose an open time, pays" order above.** A session (£150) or a pack of eight
+**Superseded for one session on 2026-11-10 (owner, migration 0030): one session is chosen,
+then paid for, with the time held during checkout (note 09 §36); the pack and gifts below
+stay pay first.** The paragraph as it stood: **Pay first, then book — for one session and for
+a pack alike (owner, 2026-10-08), reversing the "choose an open time, pays" order above.** A session (£150) or a pack of eight
 (£1,000) is bought through checkout; the sessions wait in the Academy, to use within six
 months, and a time is chosen for each with nothing more to pay. The times open now can be
 seen before buying (`/book/private/[service]`, signed in; read-only until a session is
@@ -1455,8 +1457,8 @@ video_hash       Vimeo's ?h= token for an unlisted video; null for the others
 
 Two things follow from that shape, and both are the reason for it.
 
-**Moving host is a data change.** Note 09 §40.1 puts all video on Livid; the existing
-course videos are on YouTube and stay there until they are re-uploaded (R29). Because the
+**Moving host is a data change.** Note 09 §40.1 puts paid video on Vimeo (Tony, 2026-11-10);
+the existing course videos are on YouTube and stay there until they are re-uploaded (R29). Because the
 address is composed from the provider and the id rather than stored, switching is
 `update lessons set video_provider, video_id` plus one function — not a rewrite of every
 row and of whatever code parsed those URLs.
@@ -1479,7 +1481,7 @@ own members watching another tier's content, because both are on our domain.
 **How far the protection reaches depends on the host, and the hosts are not equal:**
 
 ```text
-vimeo, livid   can refuse to play except when embedded on our domains, so a URL
+vimeo          can refuse to play except when embedded on our domains, so a URL
                copied out of an entitled member's page is worth little off-site
 youtube        cannot. An unlisted URL IS the credential, it never expires, and
                revoking it means deleting and re-uploading the video
@@ -1488,7 +1490,8 @@ youtube        cannot. An unlisted URL IS the credential, it never expires, and
 Withholding does the same work in both cases — it keeps non-members out of the page. What
 it cannot do on YouTube is survive a member who passes the address on. That is the weakness
 README R29 records as option (b), accepted deliberately as an interim state, and it is the
-reason moving to Livid remains worth doing rather than a preference.
+reason moving the course videos to Vimeo remains worth doing rather than a preference.
+(`livid` behaves as `vimeo` here, but nothing is hosted on it since 2026-11-10.)
 
 **A malformed id degrades to "no video", never to a dead player.** The migrated curriculum
 proved the need: one row arrived from the source CMS carrying the literal string `IDHERE`
@@ -1497,7 +1500,7 @@ exactly eleven characters of `[A-Za-z0-9_-]`, a Vimeo id is numeric — and anyt
 that renders as written material rather than as a black rectangle that never loads. Content
 that looks broken is worse than content that is honestly absent.
 
-**Operational requirement.** On Vimeo and Livid the video must be set to unlisted AND
+**Operational requirement.** On Vimeo the video must be set to unlisted AND
 restricted to our domains. Without that restriction, withholding the URL is the only
 protection there is.
 
@@ -2036,3 +2039,5 @@ The Admin area manages the underlying products, content, customers and operation
 | 2026-10-15 | §34: lesson pages show the lesson description under the title. |
 | 2026-10-15 | §34: admin lesson editor (toolbar + preview over Markdown); lesson layout split into shared `LessonBlocks` with server-only video in `LessonBody`. |
 | 2026-10-15 | §34: lesson and module statuses respected for learners; lesson delete wording made accurate. |
+| 2026-11-10 | One private coaching session is chosen, then paid for, with the time held during checkout (migration 0030; note 09 §36). The pack and gifts stay pay first. |
+| 2026-11-10 | §34.1 and session replays: Livid references replaced with Vimeo, the paid-video host (note 09 §40.1). |

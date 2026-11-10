@@ -96,7 +96,7 @@ export function cohortFaqs(): Faq[] {
   ]);
 }
 
-/** One-to-one coaching. Pay first, then book: migration 0020; the pack: 0012; the discount: 0026. */
+/** One-to-one coaching. One session: choose a time, then pay (0030); the pack: pay, then book (0012, 0020); the discount: 0026. */
 export function privateCoachingFaqs(opts: {
   validMonths: number | null;
   pack: { sessions: number; saving: string | null; validMonths: number | null } | null;
@@ -107,7 +107,7 @@ export function privateCoachingFaqs(opts: {
   return shown([
     {
       question: "How do I book a time?",
-      answer: "Pay first, then choose a time. Your session is saved in your Academy, and when you're ready, you pick a time from Tony's diary there.",
+      answer: "For one session, pick a time from Tony's diary, then pay. The time is held for you while you pay and booked as soon as payment goes through. With a pack, you pay once and your sessions wait in your Academy, so you can pick a time for each one whenever you're ready.",
     },
     {
       question: "How long do I have to use my sessions?",

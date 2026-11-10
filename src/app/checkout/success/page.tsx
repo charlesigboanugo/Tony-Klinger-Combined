@@ -68,7 +68,7 @@ export default async function CheckoutSuccessPage({
         {paid && isGift
           ? "Thank you. We've emailed them a link to add your gift to their account, and your receipt is on its way to you."
           : paid
-          ? "Your access has been set up. If you bought coaching sessions, choose your times in the Academy. If you checked out as a guest, we've emailed you a link to claim it."
+          ? "Your access has been set up. If you booked a one-to-one time, it's confirmed in your Academy and we've emailed you. If you bought a pack of sessions, choose your times in the Academy. If you checked out as a guest, we've emailed you a link to claim it."
           : failed
             ? "No money has been taken. You can try again from the product page."
             : "This usually takes a few seconds. You can safely refresh this page — your payment is already with our provider, and your order is saved either way."}

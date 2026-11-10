@@ -781,7 +781,7 @@ public/            Static design assets — logo, icons, decorative art, favicon
 Supabase Storage   Dynamic assets an administrator adds or replaces without a
                    deploy — imagery, public audio, worksheets, documents
                    (note 08 §60.1).
-Livid              All video (note 09 §40.1).
+Vimeo              Paid video; public video on YouTube (note 09 §40.1).
 ```
 
 Assets served from `public/` are CDN-cached but are **not** compressed or resized.

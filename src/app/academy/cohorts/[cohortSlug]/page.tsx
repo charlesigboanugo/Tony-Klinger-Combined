@@ -49,7 +49,7 @@ export default async function AcademyCohortPage({
       ? `${formatDate(cohort.startsAt)} – ${formatDate(cohort.endsAt)}`
       : cohort.startsAt
         ? `Starts ${formatDate(cohort.startsAt)}`
-        : "Dates to be announced";
+        : "Dates to be advised";
 
   const hero = (
     <section className="relative isolate overflow-hidden rounded-(--radius-lg) bg-block-noir p-5 text-block-foreground shadow-lift sm:p-10">

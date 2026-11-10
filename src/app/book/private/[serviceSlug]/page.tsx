@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { SlotPicker, type SlotDay, type SlotWeek } from "@/app/book/private/SlotPicker";
@@ -17,9 +18,15 @@ export const metadata: Metadata = { title: "Choose a time", robots: { index: fal
 const UK = "Europe/London";
 
 /**
- * Private coaching: choose a time with a session already paid for — note 09
- * §36, migration 0020 (pay first, then book since 2026-10-08). Reached from
- * the service page.
+ * Private coaching: choose a time — note 09 §36.
+ *
+ *   holding a session   (a pack, a gift, or one returned by a cancellation)
+ *                       the time is booked with it here (migration 0020).
+ *   holding none        ONE SESSION IS CHOSEN, THEN PAID FOR (owner, 2026-11-10;
+ *                       migration 0030): the chosen time goes on to checkout and
+ *                       is held while they pay. A pack is still bought first.
+ *
+ * Reached from the service page.
  *
  * Sits under /book, the task-focused booking area (note 03 §29), beside
  * group sessions at /book/[bookableId]; the static `private` segment
@@ -48,6 +55,10 @@ export default async function PrivateCoachingBookingPage({
 
   const price = service.prices[0] ?? null;
   const shown = price ? formatPrice(price.amount, price.currency) : null;
+  // The single session is bought for the time chosen here; a pack is bought
+  // first and booked from here afterwards.
+  const singleSlug = buyable.find((o) => (o.credits ?? 1) === 1)?.slug ?? service.productSlug;
+  const pack = buyable.find((o) => (o.credits ?? 1) > 1) ?? null;
 
   // Grouped by UK calendar day, and the days BY MONTH: "October", "November"
   // (owner, 2026-10-09: not "Week of 12 October"). Formatted here so the client
@@ -91,47 +102,40 @@ export default async function PrivateCoachingBookingPage({
       )}
 
       <AccountHeader
-        title={credits > 0 ? "Choose a time" : "Available times"}
+        title="Choose a time"
         description={`${service.name} · ${service.duration_minutes} minutes with Tony, one to one. Times are UK time.`}
       />
 
-      {/*
-        PAY FIRST, THEN BOOK (owner, 2026-10-08). With a session to use, the
-        times can be chosen. Without one they are shown so the customer can see
-        what is open before paying, and the buttons below are how to buy.
-      */}
       {credits > 0 ? (
         <p className="mb-8 rounded-(--radius) border border-border bg-surface px-4 py-3 text-sm">
           You have <span className="font-medium">{credits}</span> session{credits === 1 ? "" : "s"} to book.
         </p>
-      ) : (
+      ) : days.length === 0 ? null : (
+        // No session to use: pick a time, then pay for it (migration 0030).
+        // No time open means nothing on sale (0029), so this waits for one.
         <div className="mb-8 rounded-(--radius-lg) border border-border bg-surface p-5 shadow-card">
-          <p className="font-medium">Buy a session first, then choose your time</p>
+          <p className="font-medium">Pick a time, then pay{shown ? ` ${shown}` : ""}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            These are the times open now. Once you have paid, come back here and pick the one you want.
+            Your time is held for you while you pay, and booked as soon as payment goes through.
           </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {buyable.length > 0 ? (
-              buyable.map((o, i) => (
-                <ButtonLink key={o.slug} href={`/checkout?product=${o.slug}`} size="sm" variant={i === 0 ? "primary" : "outline"}>
-                  Buy {o.label} · {formatPrice(o.amount, o.currency)}
-                </ButtonLink>
-              ))
-            ) : service.productSlug ? (
-              <ButtonLink href={`/checkout?product=${service.productSlug}`} size="sm">
-                Buy a session{shown ? ` · ${shown}` : ""}
-              </ButtonLink>
-            ) : (
-              <ButtonLink href="/contact" size="sm">Get in touch</ButtonLink>
-            )}
-          </div>
+          {pack ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Booking several?{" "}
+              <Link href={`/checkout?product=${pack.slug}`} className="font-medium text-foreground underline underline-offset-4 hover:text-accent">
+                Buy {pack.label} for {formatPrice(pack.amount, pack.currency)}
+              </Link>{" "}
+              and book each session here when you like.
+            </p>
+          ) : null}
         </div>
       )}
 
       {days.length === 0 ? (
         <EmptyState icon="clock"
-          title="No times open just now"
-          description="New times are added regularly. Get in touch and we'll find one that suits you."
+          title="Dates to be advised"
+          description={credits > 0
+            ? "No times are open just now. New times are added regularly, and your sessions wait in your Academy until you book them."
+            : "No times are open just now, so sessions are not on sale. They go on sale as soon as Tony opens times in his diary."}
           action={<ButtonLink href="/contact">Get in touch</ButtonLink>}
         />
       ) : credits > 0 ? (
@@ -142,15 +146,19 @@ export default async function PrivateCoachingBookingPage({
             account to rebook.
           </p>
         </>
+      ) : singleSlug ? (
+        <>
+          <SlotPicker weeks={weeks} submitLabel="Continue to payment" pay={{ product: singleSlug }} />
+          <p className="mt-6 text-sm text-muted-foreground">
+            Cancel at least 48 hours ahead and the session is returned to your account to rebook.
+          </p>
+        </>
       ) : (
-        <ul className="divide-y divide-border overflow-hidden rounded-(--radius-lg) border border-border bg-surface">
-          {days.map((day) => (
-            <li key={day.label} className="flex flex-col gap-1 p-4 sm:flex-row sm:items-baseline sm:gap-6">
-              <span className="font-medium sm:w-56 sm:shrink-0">{day.label}</span>
-              <span className="text-sm text-muted-foreground">{day.slots.map((slot) => slot.time).join(" · ")}</span>
-            </li>
-          ))}
-        </ul>
+        <EmptyState icon="clock"
+          title="Not available to book online"
+          description="Get in touch and we'll find a time that suits you."
+          action={<ButtonLink href="/contact">Get in touch</ButtonLink>}
+        />
       )}
     </>
   );

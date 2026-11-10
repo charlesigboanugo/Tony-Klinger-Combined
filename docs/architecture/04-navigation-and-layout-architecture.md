@@ -730,7 +730,8 @@ The flow and its ways back:
 /book/private/[serviceSlug]        ← Book a session (holding a session to book)
                                    ← the service page
    after booking: /academy/coaching?booked=private
-   holding none: buy a session or pack → /checkout (pay first, then book)
+   holding none: pick a time → /checkout?slot=… (held while paying, 2026-11-10);
+                 or buy the pack → /checkout, then book here
 ```
 
 `/book` now lists unspent private coaching sessions as well as group sessions, so a
@@ -1474,3 +1475,4 @@ Use Next.js layouts and contextual navigation to achieve those boundaries within
 | 2026-10-15 | Workspace and Admin headers on phones (below `sm`): the Account menu button is a round outlined icon of three staggered bars, distinct from the left-hand menu button (three equal bars, no outline); same menu. The Admin spare-key chip is a dot on phones. The TK monogram stays at every size (owner). |
 | 2026-10-15 | Headers under 300px (`tiny:` variant, globals.css): the menu button, TK monogram, divider, workspace label, spare-key dot and Account icon shrink so the Admin, Account and Academy headers fit (owner). The spare-key explainer card sits under the header at screen width on phones, so none of it falls off the screen. |
 | 2026-10-15 | Admin spare-key chip on phones shows words again, not a bare dot: "Key" under 360px, "Spare key" to `sm`, the full sentence above ("2nd key" / "Second key" for the owner); its dot blinks (opacity, `key-blink`, still under reduced motion) (owner). |
+| 2026-11-10 | One private coaching session is chosen, then paid for, with the time held during checkout (migration 0030; note 09 §36). The pack and gifts stay pay first. |

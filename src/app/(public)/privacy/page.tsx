@@ -121,7 +121,7 @@ export default function Page() {
                 <div><dt>Vercel</dt><dd>Hosts the site.</dd></div>
                 <div><dt>Cloudflare</dt><dd>Runs the security check on our contact form.</dd></div>
                 <div><dt>Google</dt><dd>Only if you choose &ldquo;Continue with Google&rdquo; to sign in.</dd></div>
-                <div><dt>Video players</dt><dd>Lesson and film videos are played by their hosts (Livid, Vimeo or YouTube, the last in its privacy-enhanced mode) once you press play.</dd></div>
+                <div><dt>Video players</dt><dd>Lesson and film videos are played by their hosts (Vimeo or YouTube, the latter in its privacy-enhanced mode) once you press play.</dd></div>
               </dl>
               <p>
                 Some of these providers may process data outside the UK. Where

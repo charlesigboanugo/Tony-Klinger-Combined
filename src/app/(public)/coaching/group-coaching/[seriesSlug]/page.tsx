@@ -237,7 +237,7 @@ export default async function SeriesPage({
                         ? `Registration opens ${day(next.registrationOpensAt)}`
                         : runs.some((r) => r.state === "in_progress" || r.state === "sessions")
                           ? "Closed"
-                          : "Dates to be announced"}
+                          : "Dates to be advised"}
                   </p>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     {runs.some((r) => r.state === "full")

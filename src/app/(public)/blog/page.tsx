@@ -268,13 +268,16 @@ function EssayCard({ post }: { post: BlogPostSummary }) {
  */
 function LeadCard({ post }: { post: BlogPostSummary }) {
   return (
-    <Card interactive className="h-full min-h-104 border-transparent text-white lg:min-h-0">
-      <div className="absolute inset-0 transition-transform duration-(--dur-slow) ease-expo group-hover:scale-[1.03] motion-reduce:transition-none">
+    // The cover and wash sit behind the words (-z-10, in the card's own layer),
+    // so the words need no positioning of their own: positioned, they captured
+    // the title's whole-card link, and only the text half showed a pointer.
+    <Card interactive className="isolate h-full min-h-104 border-transparent text-white lg:min-h-0">
+      <div className="absolute inset-0 -z-10 transition-transform duration-(--dur-slow) ease-expo group-hover:scale-[1.03] motion-reduce:transition-none">
         <GeneratedCover title={post.title} seed={post.slug} showTitle={false} eyebrow="Latest essay" className="h-full" />
       </div>
-      <div aria-hidden="true" className="absolute inset-0 bg-linear-to-t from-black/80 via-black/35 to-transparent" />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-linear-to-t from-black/80 via-black/35 to-transparent" />
 
-      <div className="relative mt-auto flex flex-col p-6 sm:p-10">
+      <div className="mt-auto flex flex-col p-6 sm:p-10">
         <p className="text-[0.6875rem] font-semibold tracking-[0.14em] text-white/75 uppercase">
           {readingMinutes(post.word_count)} min read
         </p>

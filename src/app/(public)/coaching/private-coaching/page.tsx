@@ -71,6 +71,7 @@ export default async function PrivateCoachingPage() {
                   saving={service.productSlug ? packSavingOffer(options.get(service.productSlug) ?? [])?.label : null}
                   perk={perk}
                   prices={service.prices}
+                  status={service.timesOpen ? null : { tone: "quiet", label: "Dates to be advised" }}
                   storagePath={service.storagePath}
                   seed={service.slug}
                   priority={i < 3}

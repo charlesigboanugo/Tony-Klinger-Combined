@@ -221,8 +221,8 @@ Does it need a real configuration step before it is even a well-formed purchase
 
 Does it depend on a specific calendar slot existing before payment means anything?
   → yes                                     → Book-first, pay to confirm
-                                                (nothing on sale uses this since
-                                                2026-10-08 — private coaching is
+                                                (one private coaching session,
+                                                since 2026-11-10; its pack is
                                                 pay first, then book)
 ```
 
@@ -653,9 +653,8 @@ invoice.payment_failed
 ```
 
 `checkout.session.expired` is also handled (2026-09-27): it releases a private coaching hold
-(§36). Since private coaching became pay first, then book (2026-10-08) no checkout creates a
-hold, so it has nothing to release; the handler stays. The production webhook endpoint must
-be subscribed to it.
+(§36), made by checkout for one session since 2026-11-10 (migration 0030). The production
+webhook endpoint must be subscribed to it.
 
 Also handled from 2026-09-27 (migration 0021): `invoice.paid`, `invoice.payment_failed`,
 `invoice.finalized` and `invoice.voided` record the subscription invoice for billing history.
@@ -1094,33 +1093,62 @@ Booking
 
 Membership access to Private Coaching exists only where the relevant membership entitlement explicitly provides it.
 
-**Implementation status (2026-09-27, migration 0020; pay first, then book since the owner's
-decision of 2026-10-08).** Slots are set in Admin. A session is paid for before a time is
-chosen, for one session and for a pack alike:
+**Implementation status (2026-09-27, migration 0020; one session time-first again since the
+owner's decision of 2026-11-10, migration 0030).** Slots are set in Admin. ONE SESSION is
+chosen, then paid for, with the time held while the buyer pays; A PACK is paid for first and
+each session booked afterwards (nobody knows eight dates on the day they buy); A GIFT of one
+session is paid for first and the recipient books, as with a pack.
 
 ```text
-Checkout — one session or a pack, like any product   /checkout?product=…
+One session (for yourself)
+Choose a time — signed in, no session held          /book/private/[serviceSlug]
+   ↓  SlotPicker `pay` mode: GET /checkout?product=<single>&slot=<slot id>
+Checkout — saleCheck asks private_slot_sale_status  (the caller's own hold doesn't count)
+   ↓  hold_private_coaching_slot(slot, 35 min) → pending booking, order_id set
+Stripe Checkout, expires_at = 30 min                 (closes before the hold ends)
    ↓
-Webhook → fulfil_order → `private_coaching` entitlement (one per session bought)
-   ↓
-Choose a time — signed in, holding a session         /book/private/[serviceSlug]
-   ↓
-bookPrivateSlotAction spends one session → booking confirmed
+Webhook → fulfil_order → entitlement → entitlements_confirm_private_coaching
+   → booking confirmed, session spent, `booking_confirmed` email
+   (time lost meanwhile → booking cancelled, session kept to rebook,
+    `private_coaching_rebook` email)
+checkout.session.expired → release_private_coaching_hold; otherwise the hold lapses by itself
+
+A pack, a gift, a cancelled session's credit
+Checkout → entitlement (one per session) → /book/private/[serviceSlug]
+   → bookPrivateSlotAction spends one session → booking confirmed
 ```
 
-Until 2026-10-08 a single session was book-first instead (hold a slot, then pay, with the
-booking confirmed from the order's entitlement). `bookPrivateSlotAction` now books only
-against a held session and creates no checkout. `hold_private_coaching_slot` can still return
-a hold for a caller with none (the function is unchanged); the action releases it at once.
+A single session cannot sit in the cart (`PricedLine.needsTime`; the service page offers it
+without "Add to cart", and a cart holding one says to choose a time). Returning from Stripe
+and paying again for the same time works: the new hold releases the old one, and the old
+Stripe page, if ever paid, leaves its session as a credit. `order_items.metadata` records
+`slot_id`; its parts are now merged into one object (a pass holder's discount used to replace
+anything written before it).
+
+**On sale only while a time is open (migration 0029, owner 2026-11-10).** `coaching_sale_status`
+answers `unscheduled` for a private coaching product (single or pack) while its service has no
+time in `private_coaching_availability` (open, published, at least twelve hours ahead, not taken),
+so nobody pays with nothing to book while the session's validity runs. Adding one time puts it
+back on sale. Someone holding an unused session is answered `unused` first, as before, and books
+with it as normal. The service page, its card and `/book/private/[serviceSlug]` say "Dates to be
+advised" and show no buy button; the pre-built pages follow admin edits at once (any save
+rebuilds them) and a booked or lapsed last time within the hourly refresh, with checkout
+refusing in between.
+
+From 2026-10-08 to 2026-11-10 a single session was pay first, like the pack. It was reversed
+because two buyers could pay having seen the same open time, leaving the second with nothing
+to book if it was the last. `bookPrivateSlotAction` books only against a held session and
+creates no checkout; the time-first purchase goes through checkout instead, where the pass
+holder discount, the no-refund agreement and the sale checks already live.
 
 - **Slots** (`private_coaching_slots`) belong to one service. A time overlapping any live
   booking of any service is hidden (Tony cannot be in two sessions). At least 12 hours'
   notice. Times reach customers only through `private_coaching_availability`; the table,
   which carries the call link, is readable by staff and by the person who booked it.
 - **Holds** (`bookings.hold_expires_at`, `bookings.order_id`, `release_private_coaching_hold`)
-  remain from the book-first flow with nothing left to hold: no checkout creates one.
-  `private_coaching_rebook` (the email for a held time lost before payment landed) is
-  likewise kept but no longer sent by this flow.
+  are made by checkout for one session (migration 0030). A pending booking counts as taken
+  only while its hold lasts, so no scheduled job is needed to free it.
+  `private_coaching_rebook` is sent when a held time was lost before payment landed.
 - **Credits** — unspent sessions — book outright with no payment. They come from a
   purchase not yet given a time, a cancellation made at least 48 hours ahead, or staff
   cancelling a booked slot (always returned, customer emailed). Inside 48 hours
@@ -1219,7 +1247,7 @@ The planned external services include:
 Supabase
 Stripe
 Brevo
-Livid
+Vimeo
 Vercel
 GitHub
 ```
@@ -1232,7 +1260,7 @@ Vercel / Next.js   Application server, Stripe webhooks, payment and business
 Supabase           PostgreSQL, Auth, Row Level Security, Storage
 Stripe             Payment processing, Checkout, subscriptions, invoices
 Brevo              Transactional email and communication
-Livid              Video hosting and streaming, public and private
+Vimeo              Video hosting and streaming for paid video (YouTube for public)
 GitHub             Source control and migration history
 ```
 
@@ -1246,58 +1274,63 @@ Each integration must have a clearly defined responsibility and server/client bo
 
 Additional services may be added later without changing the core commercial model.
 
-## 40.1 Livid — Video
+## 40.1 Vimeo and YouTube — Video
 
-All video is hosted on Livid, both public site video and gated Academy video. None is
-held in Supabase Storage: object storage does not transcode or serve adaptive bitrate,
-so a single upload would be served at full size to a phone on mobile data.
+**Paid video is hosted on Tony's existing Vimeo account; public video on YouTube** (Tony,
+2026-11-10; the public/paid split decided 2026-11-04). Paid video is lessons, playlists and
+session recordings; public video is the filmed testimonials and the Romford Q&A. None is held
+in Supabase Storage: object storage does not transcode or serve adaptive bitrate, so a single
+upload would be served at full size to a phone on mobile data.
 
-**Vimeo is the interim host for gated lesson video** while the Livid account is set up
-(R29, decided 2026-09-05). This is a hosting decision and not an architectural one,
-because a lesson stores a PROVIDER AND AN ID rather than a URL (note 07 §34.1): moving to
-Livid is an update of two columns. The paragraph below applies to Vimeo word for word —
-its domain restriction likewise cannot tell our own members apart.
+*History.* Livid was adopted as the host for all video on 2026-09-02, with Vimeo as the
+interim host for gated lesson video from 2026-09-05 (R29). Tony chose to keep Vimeo, which he
+already uses for other projects, so Livid was dropped on 2026-11-10 before any video was put on
+it. `livid` remains an accepted `video_provider` value, so no stored row can break, but nothing
+is hosted there and Admin offers Vimeo first.
 
-Videos are uploaded in Livid and their URLs recorded against the relevant entity. The
-platform stores the reference and never proxies the stream.
+Switching host is a data change, not an architectural one: an entity stores a PROVIDER AND AN
+ID rather than a URL (note 07 §34.1), and the player address is built server-side
+(`src/lib/academy/video.ts`), including Vimeo's `?h=` hash for an unlisted video. The platform
+stores the reference and never proxies the stream.
 
-**Domain restriction is Livid's control, not ours, and it does not distinguish between
+**Domain restriction is Vimeo's control, not ours, and it does not distinguish between
 our own customers.** A domain allowlist stops another site embedding the player; it does
 nothing to stop a Silver member watching Platinum content, because both are on our
 domain. The entitlement check must therefore happen the same way it does for every other
 gated resource: **the URL is withheld server-side unless the entitlement passes.** A
 video URL rendered into a page that any signed-in user can load is a video available to
-every signed-in user, whatever the allowlist says.
+every signed-in user, whatever the allowlist says. Signed or expiring embed links were
+considered and not wanted (2026-11-04): withholding plus the domain lock is the accepted
+protection. YouTube cannot be domain-restricted at all, which is why it carries public
+video only.
 
-Two operational consequences of the domain lock, to be confirmed against the account
-before Academy video is built:
+Two operational consequences of the domain lock, to be confirmed against the Vimeo account
+when it is connected:
 
-- **Local development.** If `localhost` is not allowlisted, video cannot be played
+- **Local development.** If `localhost` is not allowlisted, paid video cannot be played
   while developing.
 - **Preview deployments.** Vercel preview URLs are generated per deployment, so a
   fixed allowlist cannot cover them. Either a wildcard is available for the preview
-  domain, or video is verified only on production and local.
+  domain, or paid video is verified only on production and local.
 
-**Livid exposes no API.** Confirmed 2026-09-03. Getting a video onto Livid is a manual
-dashboard upload, with no scripted or programmatic path — not for this platform's own
-ingestion, and not for bulk migration from another source. This is permanent for any
-content-management workflow built around Livid, not just the initial Wix migration:
+**Video is attached by hand.** Vimeo has an upload API, but none is built: getting a video
+onto the site is a manual upload in the Vimeo dashboard, then pasting its link into Admin.
+Any bulk content import (the Wix migration included) treats every video as a manual
+hand-off point rather than something a script carries end-to-end:
 
 ```text
 Video file
    ↓
-Manual upload via the Livid dashboard   ← no automation possible here
+Upload in the Vimeo dashboard (paid: unlisted + domain-restricted)
+   or YouTube (public)
    ↓
-Livid reference (URL) copied out
+Link copied out
    ↓
-Recorded against the relevant entity, by a person, through Admin
+Pasted into the entity's Admin form (the id is taken from a whole link)
 ```
 
-Consequently, no Admin screen can offer an in-app "upload video" control that finishes
-the job itself. The Admin video-attaching flow is necessarily two-step: upload to Livid
-outside the application, then paste the resulting reference into the entity's Admin
-form. Any future bulk content import (this Wix migration included) treats every video
-as a manual hand-off point rather than something a script can carry end-to-end.
+Consequently no Admin screen offers an in-app "upload video" control that finishes the job
+itself. Building one on Vimeo's API is possible later and would not change the model.
 
 ---
 
@@ -2123,3 +2156,7 @@ at every stage of the customer and administrative workflows.
 | 2026-10-25 | §42.4 (new): when people join and leave the Newsletter, Customers and Members lists. An opt-out made on the site now holds against every list (migration 0024: `marketing_opted_out`, `record_soft_opt_in`); buyers get a `checkout` consent row; Subscribe in Account → Notifications now adds to Newsletter; `sync-audiences` retries the last week's failed adds and removals. Unsubscribes made with the link in a Brevo email are picked up on the Notifications page, and Subscribe there clears Brevo's flag (the only place that does). Customers now takes every payer (guest and gift buyers too), never a gift's recipient. A gift's recipient can tick an unticked news box when claiming; the newsletter popup stays closed for signed-in subscribers (`/api/session` `subscribed`). |
 | 2026-10-26 | §42.3: emails redesigned in the site's look — masthead, card with oxblood strip, warm ground, footer; tables and inline styles with font fallbacks; shared `button` / `details` / `note` / `quote` pieces, every action a red button. Wording unchanged. All 21 Brevo templates re-published and verified. |
 | 2026-10-26 | §42.3: Supabase's six auth emails (confirm, magic link, reset, invite, password/email changed notices) in the same look, built by `pnpm auth:templates` from the shared layout; set locally (config.toml) and on the hosted test project (Management API). Links unchanged. |
+| 2026-11-10 | §36: private coaching is on sale only while a time is open (`unscheduled` otherwise, migration 0029); pages say "Dates to be advised". |
+| 2026-11-10 | §40, §40.1: Vimeo replaces Livid as the paid-video host (Tony's decision); YouTube stays for public video. Admin hints and provider order follow. |
+| 2026-11-10 | §36, §23, webhook list: one private session is chosen, then paid for, with the time held during checkout (migration 0030, `private_slot_sale_status`); packs and gifts stay pay first; order item metadata merged into one object. |
+| 2026-11-10 | §40.1 rewritten for Vimeo (paid) and YouTube (public); Livid kept only as history and an accepted provider value. |

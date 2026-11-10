@@ -28,6 +28,9 @@ type Line = {
   needsDate?: boolean;
   seriesId?: string | null;
   sessionId?: string | null;
+  /** One private coaching session, bought for a time (migration 0030). */
+  needsTime?: boolean;
+  slotId?: string | null;
   /** Set where the line is a pass upgrade (`applyPassUpgrades`). */
   upgradeFrom?: string | null;
 };
@@ -121,9 +124,62 @@ async function datedSessionBlock(supabase: SupabaseClient, line: Line): Promise<
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Why this line cannot be bought now, or null when it can. */
-export async function saleCheck(supabase: SupabaseClient, line: Line): Promise<Block | null> {
+/**
+ * One private coaching session is bought for a time chosen first (migration
+ * 0030): the time has to be named, belong to this service, be far enough
+ * ahead, and not be taken by anyone else. The caller's own unpaid hold does
+ * not count against them, so going back from Stripe and paying again works.
+ */
+async function timedSessionBlock(supabase: SupabaseClient, line: Line, bookHref: string): Promise<Block | null> {
+  const chooser = { href: bookHref, action: "Choose a time" };
+  if (!line.slotId || !UUID.test(line.slotId)) {
+    return { message: `${line.name} is booked for a time. Choose one first, then pay.`, ...chooser };
+  }
+  const { data: status } = await supabase.rpc("private_slot_sale_status", {
+    p_slot_id: line.slotId,
+    p_product_id: line.productId,
+  });
+  switch (status) {
+    case "ok":
+      return null;
+    case "taken":
+      return { message: "Someone has just taken that time. Please choose another.", ...chooser };
+    case "past":
+      return { message: "That time is too soon to book now. Please choose another.", ...chooser };
+    default:
+      return { message: "That time is no longer available. Please choose another.", ...chooser };
+  }
+}
+
+/** Where one private session's times are chosen, from its product. */
+async function bookHrefFor(supabase: SupabaseClient, productId: string): Promise<string> {
+  const { data } = await supabase
+    .from("private_coaching_services")
+    .select("slug")
+    .eq("product_id", productId)
+    .eq("status", "published")
+    .maybeSingle();
+  const slug = (data as { slug?: string } | null)?.slug;
+  return slug ? `/book/private/${slug}` : "/coaching/private-coaching";
+}
+
+/**
+ * Why this line cannot be bought now, or null when it can.
+ *
+ * `gift`: bought for someone else. One private session is then sold without a
+ * time (migration 0030): the recipient books it, as with a pack.
+ */
+export async function saleCheck(supabase: SupabaseClient, line: Line, opts: { gift?: boolean } = {}): Promise<Block | null> {
   if (line.productType === "membership") return membershipBlock(supabase, line);
+  if (line.needsTime && !opts.gift) {
+    // The time decides, before the product's own status: a buyer coming back
+    // to pay for the time they hold must not be told there are no times
+    // because the only one is held by them.
+    const timeBlock = await timedSessionBlock(supabase, line, await bookHrefFor(supabase, line.productId));
+    if (timeBlock) return timeBlock;
+    const { data } = await supabase.rpc("coaching_sale_status", { p_product_id: line.productId });
+    return data === "unscheduled" ? null : saleBlock(toSaleStatus(data), line.name);
+  }
   const { data } = await supabase.rpc("coaching_sale_status", { p_product_id: line.productId });
   // Single sessions are sold once their series has started (migration 0024);
   // "registration is not open" is the series' wording, and wrong for them.

@@ -99,7 +99,7 @@ export default async function AcademyCoachingPage({ searchParams }: PageProps<"/
             <p className="mt-1 text-sm text-muted-foreground">
               {r.startsAt
                 ? formatSlot(r.startsAt, r.endsAt)
-                : "Your place is held. The date is to be announced, and we will email you as soon as it is set."}
+                : "Your place is held. The date is to be advised, and we will email you as soon as it is set."}
             </p>
             {r.notes ? <p className="mt-2 text-sm text-muted-foreground">{r.notes}</p> : null}
           </div>

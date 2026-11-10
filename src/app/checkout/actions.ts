@@ -48,6 +48,8 @@ const schema = z.object({
   billing: z.string().optional(),
   // The Group Coaching session a single session is bought for (migration 0022).
   session: z.uuid().optional(),
+  // The private coaching time one session is bought for (migration 0030).
+  slot: z.uuid().optional(),
   email: z.email().optional(),
   // Bought for someone else: `email` is then the RECIPIENT's (lib/commerce/gift).
   gift: z.literal("1").optional(),
@@ -56,6 +58,11 @@ const schema = z.object({
   // An order made without it is refused.
   agree: z.literal("on").optional(),
 });
+
+/** Stripe's shortest payment page lifetime, used for a held time (migration 0030). */
+const CHECKOUT_MINUTES = 30;
+/** The hold outlasts the payment page, so a payment never lands on a released time. */
+const HOLD_MINUTES = CHECKOUT_MINUTES + 5;
 
 export type CheckoutState = {
   error?: string;
@@ -76,6 +83,7 @@ export async function startCheckoutAction(
     product: formData.get("product") || undefined,
     billing: formData.get("billing") || undefined,
     session: formData.get("session") || undefined,
+    slot: formData.get("slot") || undefined,
     email: formData.get("email") || undefined,
     gift: formData.get("gift") || undefined,
     agree: formData.get("agree") || undefined,
@@ -139,6 +147,8 @@ export async function startCheckoutAction(
             ? parsed.data.billing
             : ("monthly" as const),
           sessionId: parsed.data.session,
+          // A gift is bought without a time: the recipient books it.
+          slotId: gift ? undefined : parsed.data.slot,
         },
       ]
     : (await readCart()).map((l) => ({
@@ -201,6 +211,11 @@ export async function startCheckoutAction(
   if (lines.some((l) => l.needsDate) && !user) {
     return { error: "Please sign in to buy a session, so your seat is kept in your name." };
   }
+  // Likewise one private session bought for yourself: the time is held, and
+  // then booked, in your name (migration 0030).
+  if (!gift && lines.some((l) => l.needsTime) && !user) {
+    return { error: "Please sign in to book a session, so the time is kept in your name." };
+  }
 
   /*
     CAN EACH LINE BE SOLD TO THIS PERSON NOW (migration 0012)? Asked of the
@@ -210,7 +225,7 @@ export async function startCheckoutAction(
     have not been accepted onto. Capacity is whatever is set in admin.
   */
   for (const line of lines) {
-    const block = await saleCheck(asker, line);
+    const block = await saleCheck(asker, line, { gift });
     if (block) return { error: block.message };
   }
 
@@ -302,6 +317,45 @@ export async function startCheckoutAction(
     }
   }
 
+  /*
+    ONE PRIVATE SESSION: HOLD THE TIME, THEN PAY (migration 0030). Held as the
+    last step before the order, so nothing earlier can fail and leave a time
+    reserved for nobody. The hold outlasts Stripe's payment page by five
+    minutes, so nobody can pay for a time already released to someone else;
+    payment confirms it (`entitlements_confirm_private_coaching`).
+  */
+  const timed = gift ? undefined : lines.find((l) => l.needsTime && l.slotId);
+  let holdId: string | null = null;
+  if (timed && user) {
+    const { data: held, error: holdError } = await supabase.rpc("hold_private_coaching_slot", {
+      p_slot_id: timed.slotId!,
+      p_hold_minutes: HOLD_MINUTES,
+    });
+    const result = held as { status: string; booking_id?: string } | null;
+    if (holdError || result?.status !== "held" || !result.booking_id) {
+      // "booked" would mean an unused session paid for it; the sale check
+      // refuses a buyer holding one, so this is a race and is said as one.
+      return {
+        error:
+          result?.status === "taken"
+            ? "Someone has just taken that time. Please choose another."
+            : result?.status === "past"
+              ? "That time is too soon to book now. Please choose another."
+              : "We couldn't hold that time. Please choose it again.",
+      };
+    }
+    holdId = result.booking_id;
+  }
+  const admin = createAdminClient();
+  const release = async () => {
+    if (!holdId) return;
+    await admin
+      .from("bookings")
+      .update({ status: "cancelled", cancelled_at: new Date().toISOString(), hold_expires_at: null })
+      .eq("id", holdId)
+      .eq("status", "pending");
+  };
+
   const order = await createPendingOrder({
     userId: gift ? null : (user?.id ?? null),
     guestEmail: gift || !user ? email : null,
@@ -312,8 +366,13 @@ export async function startCheckoutAction(
   });
 
   if (!order) {
+    await release();
     return { error: "We couldn't start checkout. Please try again." };
   }
+
+  // The hold knows its order, so fulfilment confirms this booking and an
+  // expired checkout releases it.
+  if (holdId) await admin.from("bookings").update({ order_id: order.orderId }).eq("id", holdId);
 
   // Which tier this subscription grants, read from our own tables rather than
   // inferred from the product name.
@@ -378,6 +437,9 @@ export async function startCheckoutAction(
           }
         : {}),
 
+      // A held time: the payment page closes before the hold ends.
+      ...(holdId ? { expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_MINUTES * 60 + 30 } : {}),
+
       success_url: absoluteUrl(`/checkout/success?order=${order.orderId}`),
       cancel_url: absoluteUrl(`/checkout/cancel?order=${order.orderId}`),
     });
@@ -398,13 +460,17 @@ export async function startCheckoutAction(
       .update({ external_reference: session.id })
       .eq("id", order.orderId);
   } catch {
+    await release();
     return {
       error:
         "Payments are unavailable right now. Your order has been saved — please try again shortly.",
     };
   }
 
-  if (!url) return { error: "We couldn't reach the payment provider." };
+  if (!url) {
+    await release();
+    return { error: "We couldn't reach the payment provider." };
+  }
 
   redirect(url);
 }

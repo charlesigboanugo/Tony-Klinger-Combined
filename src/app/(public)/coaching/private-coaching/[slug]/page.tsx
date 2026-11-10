@@ -53,10 +53,11 @@ export default async function PrivateCoachingServicePage({
   const bookHref = `/book/private/${service.slug}`;
 
   /*
-    One session, or a pack (migration 0012), bought THE SAME WAY (owner,
-    2026-10-08): pay first, then choose a time for each session. Until then one
-    session was booked first and paid for while the time was held, the opposite
-    order to the pack beside it.
+    ONE SESSION: CHOOSE THE TIME, THEN PAY (owner, 2026-11-10; migration 0030).
+    The time is held while they pay, so two buyers can never pay for the same
+    one. A PACK (migration 0012) is still paid for first and each session booked
+    afterwards, since nobody knows eight dates on the day they buy. From
+    2026-10-08 until then, both were pay first.
 
     The pack is whichever products share the single session's option group, so
     it appears here the moment one is made active in admin and not before.
@@ -74,10 +75,12 @@ export default async function PrivateCoachingServicePage({
       label: o.label,
       price: formatPrice(o.amount, o.currency),
       priceNote: count > 1 ? `for ${count} sessions` : "a session",
-      detail: [each ?? "Pay, then choose your time", validityNote(o.validMonths)].filter(Boolean).join(" · "),
+      detail: [count > 1 ? each : "Choose your time, then pay", count > 1 ? "book each session when you like" : null, validityNote(o.validMonths)].filter(Boolean).join(" · "),
       saving: saved > 0 ? `Save ${formatPrice(saved, o.currency)}` : null,
-      cta: { href: `/checkout?product=${o.slug}`, label: count > 1 ? `Buy ${count} sessions` : "Buy a session" },
-      cart: true,
+      // One session goes to the times first; a pack straight to checkout.
+      cta: count > 1 ? { href: `/checkout?product=${o.slug}`, label: `Buy ${count} sessions` } : { href: bookHref, label: "Choose a time" },
+      // A single session is bought for a time, so it cannot wait in the cart.
+      cart: count > 1,
       // A single session takes a pass holder's discount; the pack does not.
       ...(count === 1 ? { amount: o.amount, currency: o.currency, passDiscountable: true } : {}),
     };
@@ -94,6 +97,9 @@ export default async function PrivateCoachingServicePage({
   const discounts = tiersOnSale.filter((t) => t.oneToOneDiscount > 0).map((t) => `${t.oneToOneDiscount}% off with a ${t.name}`);
   // A service whose product has no option group still sells its one session.
   const buyHref = service.productSlug ? `/checkout?product=${service.productSlug}` : null;
+  // No time open in Tony's diary: not on sale, so nobody pays with nothing to
+  // book (migration 0029, owner 2026-11-10). Checkout refuses it too.
+  const waiting = !service.timesOpen && (buyHref !== null || choices.length > 0);
 
   return (
     <>
@@ -119,6 +125,7 @@ export default async function PrivateCoachingServicePage({
         saving={offer?.label}
         perk={perk}
         perkHref="/coaching/passes"
+        status={waiting ? { tone: "quiet", label: "Dates to be advised" } : null}
         // To the buy panel with the pack chosen (PackPurchase reads the hash).
         savingHref={offer && choices.length > 1 ? `#buy-${offer.slug}` : null}
       />
@@ -138,22 +145,32 @@ export default async function PrivateCoachingServicePage({
             // service page and enforced by `cancel_booking` (migration 0020).
             footnote="Cancel at least 48 hours ahead and the session is returned to your account to rebook."
           >
-            {choices.length > 1 ? (
+            {waiting ? (
+              <div>
+                <p className="font-display text-2xl font-semibold">Dates to be advised</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Sessions go on sale as soon as Tony opens times in his diary, so you never pay with nothing to book.
+                </p>
+                <div className="mt-5">
+                  <ButtonLink href="/contact" variant="outline" className="w-full">Get in touch</ButtonLink>
+                </div>
+              </div>
+            ) : choices.length > 1 ? (
               <PackPurchase label="Number of sessions" options={choices} initial={service.productSlug ?? undefined} passPerk={perk} />
             ) : buyHref ? (
-              <ButtonLink href={buyHref} size="lg" className="w-full">
-                Buy a session
+              <ButtonLink href={bookHref} size="lg" className="w-full">
+                Choose a time
               </ButtonLink>
             ) : (
               <p className="text-sm text-muted-foreground">Not available to buy at the moment.</p>
             )}
-            {buyHref ? <GiftLink href={`${buyHref}&gift=1`} /> : null}
-            <p className="mt-4 text-center text-sm text-muted-foreground">
+            {buyHref && !waiting ? <GiftLink href={`${buyHref}&gift=1`} /> : null}
+            {waiting ? null : <p className="mt-4 text-center text-sm text-muted-foreground">
               {service.duration_minutes} minutes with Tony, at a time that suits you.{" "}
               <Link href={bookHref} className="font-medium text-foreground underline underline-offset-4 hover:text-accent">
                 See the times open now
               </Link>
-            </p>
+            </p>}
           </PurchasePanel>
         }
       >
@@ -174,13 +191,12 @@ export default async function PrivateCoachingServicePage({
         <ProductSection title="How booking works">
           <div className="max-w-2xl space-y-4 leading-relaxed text-muted-foreground">
             <p>
-              <span className="font-medium text-foreground">Pay first.</span> Buy one session, or a pack of 8 sessions
-              to use when you need them. Your sessions wait in your Academy.
+              <span className="font-medium text-foreground">One session.</span> Pick a time from Tony&apos;s diary,
+              then pay. The time is held for you while you pay, and booked as soon as payment goes through.
             </p>
             <p>
-              <span className="font-medium text-foreground">Then choose your time.</span> Pick a time from Tony&apos;s
-              diary for each session, whenever you are ready, with nothing more to pay. You can see the times open now
-              before you buy.
+              <span className="font-medium text-foreground">A pack of 8.</span> Pay once, and your sessions wait in your
+              Academy. Pick a time for each one whenever you are ready, with nothing more to pay.
             </p>
             <p>The joining link appears in your Academy fifteen minutes before each session starts.</p>
           </div>
@@ -190,8 +206,8 @@ export default async function PrivateCoachingServicePage({
       <MobileBuyBar
         price={shown}
         priceNote={shown ? "a session" : null}
-        href={choices.length > 1 ? "#buy" : (buyHref ?? bookHref)}
-        label={choices.length > 1 ? "Choose sessions" : "Buy a session"}
+        href={waiting || choices.length > 1 ? "#buy" : bookHref}
+        label={waiting ? "Dates to be advised" : choices.length > 1 ? "Choose sessions" : "Choose a time"}
       />
     </>
   );

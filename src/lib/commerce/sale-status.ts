@@ -49,7 +49,7 @@ export function saleBlock(status: SaleStatus, name: string): { message: string; 
     case "full":
       return { message: `${name} is fully booked.` };
     case "unscheduled":
-      return { message: `${name} has no dates yet. It goes on sale when they are announced.` };
+      return { message: `${name} has no dates yet: dates to be advised. It goes on sale as soon as they are set.` };
     case "ended":
       // Every date has passed (migration 0022). It used to fall under
       // "no date yet", which read as though nothing had ever been planned.

@@ -117,7 +117,7 @@ export function phaseStatus(phases: OfferPhase[], extras: OfferExtras = {}): Off
       : { tone: "closed", label: "In progress · closed" };
   }
 
-  return { tone: "quiet", label: "Dates to be announced" };
+  return { tone: "quiet", label: "Dates to be advised" };
 }
 
 /**
@@ -167,8 +167,8 @@ export function datedStatus(item: {
     return { tone: "live", label: `In progress · registration open for ${day(item.nextOpenAt, now)}` };
   }
   if (item.inProgress) return { tone: "closed", label: "In progress · booking closed" };
-  if (!item.startsAt && item.endedAt) return { tone: "closed", label: "Finished · next date to be announced" };
-  if (!item.startsAt) return { tone: "quiet", label: "Date to be announced" };
+  if (!item.startsAt && item.endedAt) return { tone: "closed", label: "Finished · next date to be advised" };
+  if (!item.startsAt) return { tone: "quiet", label: "Date to be advised" };
   const phases = (item.batches ?? []).flatMap((b) =>
     b.state === "open" || b.state === "upcoming" || b.state === "full"
       ? [{ ...b, state: b.state, registrationClosesAt: b.registrationClosesAt ?? undefined } satisfies OfferPhase]

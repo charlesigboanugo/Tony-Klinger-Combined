@@ -193,7 +193,7 @@ export function hasStarted(event: Pick<PublicEvent, "starts_at">): boolean {
 const ZONE = "Europe/London";
 
 export function formatEventDate(starts?: string | null, ends?: string | null) {
-  if (!starts) return "Date to be announced";
+  if (!starts) return "Date to be advised";
   return `${eventDay(starts)}, ${eventTime(starts, ends)}`;
 }
 

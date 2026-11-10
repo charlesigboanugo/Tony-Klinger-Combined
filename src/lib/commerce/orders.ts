@@ -23,6 +23,12 @@ export type CartLine = {
    * database decides whether that session can be sold (`session_sale_status`).
    */
   sessionId?: string;
+  /**
+   * The private coaching time one session is being bought for (migration
+   * 0030). Named by the browser, so it is only an id to be checked: the
+   * database decides whether this person can have it (`private_slot_sale_status`).
+   */
+  slotId?: string;
 };
 
 export type PricedLine = {
@@ -54,6 +60,14 @@ export type PricedLine = {
   seriesId: string | null;
   /** The session chosen for a `needsDate` line, as the browser named it. */
   sessionId: string | null;
+  /**
+   * One private coaching session (not a pack): bought for a time chosen first
+   * and held while paying (migration 0030), so it cannot sit in the cart. A
+   * gift is the exception, bought without one; the recipient books.
+   */
+  needsTime: boolean;
+  /** The time chosen for a `needsTime` line, as the browser named it. */
+  slotId: string | null;
   /**
    * The pass this line upgrades (migration 0027), set by `applyPassUpgrades`
    * and never by the browser: the entitlement's id. The line is then priced at
@@ -159,6 +173,8 @@ export async function priceCart(lines: CartLine[]): Promise<PricedLine[]> {
       needsDate: product.product_type === "group_coaching" && Boolean(product.series_id) && (product.credits ?? 1) <= 1,
       seriesId: product.series_id,
       sessionId: line.sessionId ?? null,
+      needsTime: product.product_type === "private_coaching" && (product.credits ?? 1) <= 1,
+      slotId: line.slotId ?? null,
       credits: product.credits,
     });
   }
@@ -236,12 +252,23 @@ export async function createPendingOrder(params: {
       unit_amount: line.unitAmount,
       quantity: line.quantity,
       total_amount: line.unitAmount * line.quantity,
-      // The date a single session was bought for; fulfilment takes that seat.
-      ...(line.needsDate && line.sessionId ? { metadata: { session_id: line.sessionId } } : {}),
-      // The pass an upgrade changes the tier of; fulfilment adds no new year.
-      ...(line.upgradeFrom ? { metadata: { upgrade_from: line.upgradeFrom } } : {}),
-      // What a pass holder's discount took off, for the record.
-      ...(line.discountFrom ? { metadata: { full_unit_amount: line.discountFrom, discount_percent: line.discountPercent } } : {}),
+      // One metadata object, built from every part that applies: written as
+      // separate spreads, a later one replaced an earlier one, so a pass
+      // holder's discount wiped out the time a single session was held for.
+      ...(() => {
+        const metadata = {
+          // The date a single session was bought for; fulfilment takes that seat.
+          ...(line.needsDate && line.sessionId ? { session_id: line.sessionId } : {}),
+          // The time a single private session was held for; the booking itself
+          // carries the order, and fulfilment confirms it (migration 0030).
+          ...(line.needsTime && line.slotId ? { slot_id: line.slotId } : {}),
+          // The pass an upgrade changes the tier of; fulfilment adds no new year.
+          ...(line.upgradeFrom ? { upgrade_from: line.upgradeFrom } : {}),
+          // What a pass holder's discount took off, for the record.
+          ...(line.discountFrom ? { full_unit_amount: line.discountFrom, discount_percent: line.discountPercent } : {}),
+        };
+        return Object.keys(metadata).length > 0 ? { metadata } : {};
+      })(),
     })),
   );
 

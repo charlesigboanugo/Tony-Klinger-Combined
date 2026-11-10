@@ -17,6 +17,7 @@ export function CheckoutForm({
   product,
   billing,
   session,
+  slot,
   signedInEmail,
   returnTo,
   gift = false,
@@ -33,6 +34,8 @@ export function CheckoutForm({
   billing?: string;
   /** The Group Coaching session a single session is being bought for. */
   session?: string;
+  /** The private coaching time one session is being bought for (migration 0030). */
+  slot?: string;
   signedInEmail: string | null;
   /** This checkout, to come back to after signing in. */
   returnTo: string;
@@ -62,6 +65,7 @@ export function CheckoutForm({
       {product ? <input type="hidden" name="product" value={product} /> : null}
       {billing ? <input type="hidden" name="billing" value={billing} /> : null}
       {session ? <input type="hidden" name="session" value={session} /> : null}
+      {slot ? <input type="hidden" name="slot" value={slot} /> : null}
 
       {gift ? (
         /*

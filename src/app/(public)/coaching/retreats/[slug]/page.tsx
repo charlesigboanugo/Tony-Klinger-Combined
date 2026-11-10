@@ -72,7 +72,7 @@ export default async function RetreatPage({ params }: PageProps<"/coaching/retre
   // The soonest date not yet under way, laid out as the cohorts' "Next intake".
   // Run and over, with nothing new yet: say so, not "to be announced".
   const next = retreat.batches.find((b) => b.state !== "in_progress") ?? null;
-  const nextDate = next ? day(next.startsAt) : retreat.endedAt ? `Last ran ${day(retreat.endedAt)}` : "To be announced";
+  const nextDate = next ? day(next.startsAt) : retreat.endedAt ? `Last ran ${day(retreat.endedAt)}` : "To be advised";
   // A one-day batch shows its day; a longer one, from and to.
   const span = (b: { startsAt: string; endsAt: string }) =>
     day(b.startsAt) === day(b.endsAt) ? day(b.startsAt) : `${day(b.startsAt)} to ${day(b.endsAt)}`;

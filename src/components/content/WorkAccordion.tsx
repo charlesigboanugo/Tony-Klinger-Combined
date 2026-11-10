@@ -121,7 +121,7 @@ export function WorkAccordion({
                         : {})}
                       // Stretched over the panel, so the whole panel is the
                       // target and focusing it opens it.
-                      className="outline-none after:absolute after:inset-0 after:content-[''] focus-visible:after:outline-2 focus-visible:after:-outline-offset-4 focus-visible:after:outline-white"
+                      className="outline-none after:absolute after:inset-0 after:z-10 after:content-[''] focus-visible:after:outline-2 focus-visible:after:-outline-offset-4 focus-visible:after:outline-white"
                     >
                       {panel.title}
                     </Link>
@@ -129,7 +129,7 @@ export function WorkAccordion({
                     <button
                       type="button"
                       onClick={() => setActive(i)}
-                      className="text-left outline-none after:absolute after:inset-0 after:content-[''] focus-visible:after:outline-2 focus-visible:after:-outline-offset-4 focus-visible:after:outline-white lg:cursor-default"
+                      className="text-left outline-none after:absolute after:inset-0 after:z-10 after:content-[''] focus-visible:after:outline-2 focus-visible:after:-outline-offset-4 focus-visible:after:outline-white lg:cursor-default"
                     >
                       {panel.title}
                     </button>

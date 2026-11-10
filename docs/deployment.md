@@ -132,7 +132,9 @@ file still works. The Supabase CLI is never linked to the production project.
 - [ ] Collapsible admin menu on phones (if door staff check people in on phones).
 - [ ] Checkout acknowledgement waiving the 14-day right, if courses should be
       non-refundable once started (now: the full right applies).
-- [ ] Livid video for lessons: no video field on lessons and no protection on video links.
+- [ ] Vimeo for paid video: Tony's account connected, videos set to unlisted and restricted to the
+      site's domains (production, and localhost for development). The video fields and the
+      server-side withholding are built.
 - [ ] Legal pages completed from Tony's details, then a legal read (`TO-CONNECT.md` §2).
 
 ### 9. After the deploy
@@ -149,7 +151,7 @@ file still works. The Supabase CLI is never linked to the production project.
 | Database, Auth, RLS, Storage | Supabase (hosted project) |
 | Payments | Stripe |
 | Transactional email | Brevo |
-| Video | Livid (domain-restricted embeds) |
+| Video | Vimeo for paid video (domain-restricted embeds); YouTube for public video |
 | Scheduler | Vercel Cron → `/api/cron/[job]` |
 
 **Function region: London (`lhr1`), set in `vercel.json`.** It must stay in the same region
@@ -429,5 +431,5 @@ pnpm email:send
 ## Known outstanding
 
 - **R25** — Give-Get-Go Documentaries has no catalogue category.
-- **Livid video** — no video column on `lessons`, and the entitlement gate for
-  video URLs is not built.
+- **Vimeo video** — built (video fields and server-side withholding); waiting on Tony's
+  Vimeo login to connect and set the domain restriction.

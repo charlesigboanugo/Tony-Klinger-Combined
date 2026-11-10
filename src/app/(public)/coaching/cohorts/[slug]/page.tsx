@@ -41,7 +41,7 @@ export async function generateMetadata({
  *   an intake open for registration   the price buys a place on it
  *   an intake coming                  "Registration opens …"
  *   an intake under way               "In progress", closed
- *   none                              "Dates to be announced"
+ *   none                              "Dates to be advised"
  *
  * Always labelled a COHORT level, never a bare "Gold" — a cohort level is not
  * a membership tier (note 07 §16.1).
@@ -139,7 +139,7 @@ export default async function CohortPage({ params }: PageProps<"/coaching/cohort
             { label: "Workshops", value: "Eight, three hours each" },
             { label: "Format", value: "Live on Zoom" },
             { label: "Group", value: "The same group throughout" },
-            { label: "Next intake", value: lead ? day(lead.startsAt) : "To be announced" },
+            { label: "Next intake", value: lead ? day(lead.startsAt) : "To be advised" },
           ]}
         />
 

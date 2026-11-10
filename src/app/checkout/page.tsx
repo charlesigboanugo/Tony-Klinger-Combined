@@ -14,6 +14,7 @@ import { giftBlock } from "@/lib/commerce/gift";
 import { applyPassHolderDiscount, passHolderDiscount } from "@/lib/commerce/pass-discount";
 import { applyPassUpgrades } from "@/lib/commerce/pass-upgrade";
 import { saleCheck } from "@/lib/commerce/sale-check";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createPublicClient } from "@/lib/supabase/public";
 import { createClient } from "@/lib/supabase/server";
 
@@ -46,6 +47,14 @@ export const metadata: Metadata = { title: "Checkout", robots: { index: false } 
  * cart path terminated in a dead end.
  */
 /** "Friday 23 October, 5:00 pm", in the site's time zone. */
+/** "Wednesday 12 November, 10:00": a private session's time, in UK time. */
+function slotTime(value: string): string {
+  const d = new Date(value);
+  const day = d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/London" });
+  const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
+  return `${day}, ${time}`;
+}
+
 function sessionDay(value: string): string {
   return new Date(value).toLocaleString("en-GB", {
     weekday: "long",
@@ -90,11 +99,15 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   // Bought for someone else (lib/commerce/gift): priced and checked as for a
   // signed-out visitor, so the buyer's own pass or purchases change nothing.
   const gift = params.gift === "1";
+
+  // One private session is bought for a time chosen on the booking page
+  // (migration 0030), held as they pay. A gift has none: the recipient books.
+  const slotId = !gift && typeof params.slot === "string" ? params.slot : undefined;
   const asker = gift ? createPublicClient() : supabase;
 
   const stored = slug ? [] : await readCart();
   const priced = slug
-    ? await priceCart([{ productSlug: slug, quantity: 1, billing, sessionId }])
+    ? await priceCart([{ productSlug: slug, quantity: 1, billing, sessionId, slotId }])
     : await priceCart(
         stored.map((l) => ({
           productSlug: l.slug,
@@ -126,6 +139,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
     new URLSearchParams({
       ...(slug ? { product: slug, billing } : {}),
       ...(slug && sessionId ? { session: sessionId } : {}),
+      ...(slug && slotId && !asGift ? { slot: slotId } : {}),
       ...(asGift ? { gift: "1" } : {}),
     }).toString();
   const at = (asGift: boolean) => (query(asGift) ? `/checkout?${query(asGift)}` : "/checkout");
@@ -141,7 +155,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   // fills it in to be refused; the action asks the same question again.
   const blocks = (
     await Promise.all(
-      lines.map((line) => saleCheck(asker, line)),
+      lines.map((line) => saleCheck(asker, line, { gift })),
     )
   ).filter((b) => b !== null);
 
@@ -168,6 +182,28 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
         starts_at: string;
       }>).find((s) => s.id === dated.sessionId) ?? null
     : null;
+
+  // The time one private session is for, to show on its line: read from the
+  // service's open times, so a time no longer open shows nothing (the sale
+  // check above says why).
+  const timed = lines.find((l) => l.needsTime && l.slotId);
+  let heldTime: string | null = null;
+  if (timed) {
+    const { data: slot } = await supabase.rpc("private_slot_sale_status", {
+      p_slot_id: timed.slotId!,
+      p_product_id: timed.productId,
+    });
+    if (slot === "ok") {
+      // The slots table is staff-only (it holds the call link); only the start
+      // time is read, for a time this buyer may have.
+      const { data: when } = await createAdminClient()
+        .from("private_coaching_slots")
+        .select("starts_at")
+        .eq("id", timed.slotId!)
+        .maybeSingle();
+      heldTime = when?.starts_at ? slotTime(when.starts_at) : null;
+    }
+  }
 
   // Stripe refuses a session mixing a subscription with a one-off, and the
   // action rejects it too. Saying so HERE means the customer finds out before
@@ -247,6 +283,7 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
                 product={slug ?? undefined}
                 billing={slug ? billing : undefined}
                 session={dated?.sessionId ?? undefined}
+                slot={timed?.slotId ?? undefined}
                 signedInEmail={user?.email ?? null}
                 returnTo={returnTo}
                 gift={gift}
@@ -275,12 +312,14 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
                       : line.upgradeFrom
                         ? `You pay the difference${line.fullAmount ? ` (${formatPrice(line.fullAmount, line.currency)} less what your pass cost)` : ""}. Your pass moves up for the rest of its year; its end date does not change`
                         : line.discountFrom
-                          ? `Your pass holder price: ${line.discountPercent}% off ${formatPrice(line.discountFrom, line.currency)}`
+                          ? `${line.needsTime && heldTime ? `${heldTime}, UK time. The time is held for you while you pay. ` : ""}Your pass holder price: ${line.discountPercent}% off ${formatPrice(line.discountFrom, line.currency)}`
                           : line.productType === "membership"
                           ? "One payment for twelve months. No subscription, nothing auto-renews"
                           : line.needsDate && chosen
                             ? `${sessionDay(chosen.starts_at)}. Your seat is kept as you pay`
-                            : "One payment"}
+                            : line.needsTime && heldTime
+                              ? `${heldTime}, UK time. The time is held for you while you pay`
+                              : "One payment"}
                   </span>
                 </span>
                 <span className="shrink-0 text-right font-medium tabular-nums">

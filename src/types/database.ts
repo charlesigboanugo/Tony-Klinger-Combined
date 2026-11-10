@@ -3185,6 +3185,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      private_slot_sale_status: {
+        Args: { p_product_id: string; p_slot_id: string }
+        Returns: string
+      }
       record_marketing_consent: {
         Args: {
           p_consent_text?: string

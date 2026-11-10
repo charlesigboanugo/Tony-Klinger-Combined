@@ -150,7 +150,11 @@ export function CardLink({
     <Link
       {...props}
       className={cn(
-        "after:absolute after:inset-0 after:content-['']",
+        // The cover sits on its own layer above the card's contents: a hover
+        // effect inside the card (a button that brightens, a photo that
+        // zooms) starts a new layer, which otherwise rose above the cover and
+        // dropped the pointer, and the click, wherever it was.
+        "after:absolute after:inset-0 after:z-10 after:content-['']",
         "rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring",
         className,
       )}

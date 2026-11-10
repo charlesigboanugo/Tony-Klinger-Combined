@@ -42,7 +42,7 @@ export function CohortCard({ cohort }: { cohort: EnrolledCohort }) {
               ? `In progress · until ${formatShortDate(cohort.endsAt)}`
               : cohort.startsAt
                 ? `Starts ${formatShortDate(cohort.startsAt)}`
-                : "Dates to be announced"}
+                : "Dates to be advised"}
           </span>
         </p>
         <div className="mt-4 flex flex-1 items-end justify-end">

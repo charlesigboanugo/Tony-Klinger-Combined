@@ -1184,10 +1184,12 @@ Booking
 
 Customers should be able to view relevant bookings through Account and/or Academy where appropriate.
 
-**Private coaching (2026-09-27; pay first since 2026-10-08):** `/book/private/[serviceSlug]`
-— choose one of the service's open times with a session already paid for. Signed in only;
-with no session held the times are shown read-only beside the session and pack to buy, which
-go through `/checkout` like any product (a guest can buy). Reached from the service page.
+**Private coaching (2026-09-27; one session time-first since 2026-11-10, migration 0030):**
+`/book/private/[serviceSlug]` — choose one of the service's open times. Signed in only. With a
+session already held (a pack's, a gift's, a returned one) the time is booked with it; with
+none, the chosen time goes to `/checkout?product=<single>&slot=<id>`, where it is held while
+they pay. The pack is linked from the same page and bought first (a guest can buy a pack or a
+gift; one session for yourself needs an account). Reached from the service page.
 The static `private` segment keeps it apart from `/book/[bookableId]` (group sessions).
 Staff manage times at `/admin/coaching-slots`.
 
@@ -1673,3 +1675,4 @@ The exact pages, nested routes and supporting files may be expanded where later 
 | 2026-10-14 | §10: the five "membership" redirects removed (`/coaching/memberships`, `/academy/membership`, `/academy/membership/playlists`, `/account/memberships`, `/admin/memberships`). The site never launched under those addresses, so they now 404. |
 | 2026-10-14 | §18: the guest rendering of `/academy` is indexable, with a description for newcomers and a canonical; the signed-in dashboard stays `noindex`. The sitemap now lists every published coaching offer and event page and `/about/testimonials`. |
 | 2026-10-14 | Page metadata: every public page builds its title, description, canonical, Open Graph and X card through `pageMetadata` (`src/lib/seo/metadata.ts`); the root layout sets `metadataBase` from the site URL and a default share card (`/og-default.jpg`). Structured data: `WebSite` and `Person` (Tony) on home, `Person` on About, `Event`, `Course` and catalogue works (`Book`/`Movie`/`PodcastSeries`/`CreativeWork`) on their pages, from `src/lib/seo/structured-data.ts`. `/manifest.webmanifest` added. |
+| 2026-11-10 | One private coaching session is chosen, then paid for, with the time held during checkout (migration 0030; note 09 §36). The pack and gifts stay pay first. |

@@ -252,6 +252,12 @@ export type CoachingService = {
   benefits: string[];
   duration_minutes: number;
   prices: ProductPrice[];
+  /**
+   * A time is open in Tony's diary to book (`private_coaching_availability`).
+   * Without one the service is not on sale (migration 0029, owner 2026-11-10):
+   * nobody pays with nothing to book.
+   */
+  timesOpen: boolean;
 };
 
 /** Membership tiers in ladder order — cumulative (note 07 §10). */
@@ -806,13 +812,21 @@ export async function listCoachingServices(): Promise<CoachingService[]> {
     .select("id,name,slug,description,benefits,duration_minutes,resources!cover_resource_id(storage_path),products(slug,status,prices(amount,currency,billing_type,interval,active))")
     .eq("status", "published")
     .order("name");
-  return ((data ?? []) as unknown as Array<Omit<CoachingService, "prices" | "storagePath" | "productSlug"> & { products?: Embedded | Embedded[] | null; resources?: CoverEmbed | CoverEmbed[] | null }>)
-    .map((row) => ({
-      ...row,
-      prices: activePrices(row.products),
-      storagePath: coverPath(row.resources),
-      productSlug: productSlugOf(row.products),
-    }));
+  const rows = (data ?? []) as unknown as Array<Omit<CoachingService, "prices" | "storagePath" | "productSlug" | "timesOpen"> & { products?: Embedded | Embedded[] | null; resources?: CoverEmbed | CoverEmbed[] | null }>;
+  const open = await Promise.all(rows.map((row) => hasOpenTimes(row.id)));
+  return rows.map((row, i) => ({
+    ...row,
+    prices: activePrices(row.products),
+    storagePath: coverPath(row.resources),
+    productSlug: productSlugOf(row.products),
+    timesOpen: open[i],
+  }));
+}
+
+/** Whether a service has a time open to book, as checkout will judge it. */
+async function hasOpenTimes(serviceId: string): Promise<boolean> {
+  const { data } = await createPublicClient().rpc("private_coaching_availability", { p_service_id: serviceId });
+  return Array.isArray(data) && data.length > 0;
 }
 
 /** A single published service by slug, or null. Powers the detail page. */
@@ -825,12 +839,13 @@ export async function getCoachingService(slug: string): Promise<CoachingService 
     .eq("slug", slug)
     .maybeSingle();
   if (!data) return null;
-  const row = data as unknown as Omit<CoachingService, "prices" | "storagePath" | "productSlug"> & { products?: Embedded | Embedded[] | null; resources?: CoverEmbed | CoverEmbed[] | null };
+  const row = data as unknown as Omit<CoachingService, "prices" | "storagePath" | "productSlug" | "timesOpen"> & { products?: Embedded | Embedded[] | null; resources?: CoverEmbed | CoverEmbed[] | null };
   return {
     ...row,
     prices: activePrices(row.products),
     storagePath: coverPath(row.resources),
     productSlug: productSlugOf(row.products),
+    timesOpen: await hasOpenTimes(row.id),
   };
 }
 

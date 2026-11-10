@@ -48,7 +48,7 @@ export type FieldType =
    */
   | "upload";
 
-/** What a recording can be: a Livid video, or an uploaded audio file. */
+/** What a recording can be: a Vimeo video, or an uploaded audio file. */
 const RECORDING_KINDS = ["video", "audio"] as const;
 
 export type Field = {
@@ -677,7 +677,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       { name: "meeting_url", label: "Joining link", type: "text",
         hint: "Zoom or similar. Shown only to cohort members, and only from 15 minutes before the start until the end." },
       { name: "recording_resource_id", label: "Recording", type: "media", mediaKinds: RECORDING_KINDS,
-        hint: "Add the recording under Media first (a Livid link, or an uploaded file), then pick it here." },
+        hint: "Add the recording under Media first (a Vimeo link, or an uploaded file), then pick it here." },
       { name: "status", label: "Status", type: "select", required: true,
         options: ["scheduled", "cancelled", "completed"] },
     ],
@@ -946,8 +946,8 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       { name: "title", label: "Title", type: "text", required: true },
       { name: "description", label: "Description", type: "textarea" },
       { name: "video_provider", label: "Video host", type: "select",
-        options: ["livid", "vimeo", "youtube"],
-        hint: "YouTube cannot be restricted to this site, so a leaked link plays anywhere. Prefer Livid or Vimeo for pass holders' video." },
+        options: ["vimeo", "youtube", "livid"],
+        hint: "Use Vimeo for pass holders' video: it plays only on this site. YouTube cannot be restricted, so a leaked link plays anywhere." },
       { name: "video_id", label: "Video id or URL", type: "text",
         normalise: "video-id",
         hint: "Paste the whole URL if that is what you have — the id is taken from it. The player address is built server-side and never shown to anyone without access." },
@@ -1200,7 +1200,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
     label: "Media",
     labelSingular: "Media item",
     description:
-      "Images, audio, documents, videos and links used across the site. Upload an image, audio file or document; for a video, give its Livid link.",
+      "Images, audio, documents, videos and links used across the site. Upload an image, audio file or document; for a video, give its Vimeo link.",
     permissions: {
       read: "catalogue.read",
       write: "catalogue.update",
@@ -1222,13 +1222,13 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       { name: "resource_type", label: "Type", type: "select", fixedOnceCreated: true, required: true,
         options: ["image", "video", "audio", "document", "link"] },
       // Uploaded, not typed (owner, 2026-10-15): the box that appears follows
-      // the type. Video lives on Livid and a link is somewhere else, so those
+      // the type. Video lives on Vimeo and a link is somewhere else, so those
       // two take a URL instead.
       { name: "storage_path", label: "File", type: "upload", uploadKind: "resource_type", required: true,
         shownFor: { field: "resource_type", values: ["image", "audio", "document"] } },
       { name: "external_url", label: "Link", type: "text", required: true,
         shownFor: { field: "resource_type", values: ["video", "link"] },
-        hint: "For a video, its Livid link. For a link, the full address of the page or file." },
+        hint: "For a video, its Vimeo link. For a link, the full address of the page or file." },
       { name: "width", label: "Width", type: "number", hidden: true },
       { name: "height", label: "Height", type: "number", hidden: true },
     ],
@@ -1329,8 +1329,8 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       { name: "content", label: "Written content", type: "textarea", markdown: true,
         hint: "Use the toolbar for headings, lists, links and a video inside the text; Preview shows the lesson as learners see it. Optional if there is video." },
       { name: "video_provider", label: "Video host", type: "select",
-        options: ["youtube", "vimeo", "livid"],
-        hint: "Leave empty for a lesson with no video. YouTube is interim — an unlisted YouTube URL cannot be domain-restricted, so a leaked one plays anywhere for ever." },
+        options: ["vimeo", "youtube", "livid"],
+        hint: "Leave empty for a lesson with no video. Use Vimeo: it plays only on this site. YouTube is interim — an unlisted YouTube URL cannot be domain-restricted, so a leaked one plays anywhere for ever." },
       { name: "video_id", label: "Video id or URL", type: "text",
         normalise: "video-id",
         hint: "Paste the whole URL if that is what you have — the id is taken from it. The player address is rebuilt server-side, so it is never shown to anyone without access." },
@@ -1394,7 +1394,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       { name: "slug", label: "Slug", type: "slug" },
       { name: "cover_resource_id", label: "Cover", type: "media" },
       { name: "video_provider", label: "Video host", type: "select",
-        options: ["livid", "vimeo", "youtube"],
+        options: ["vimeo", "youtube", "livid"],
         hint: "Leave empty until the video is uploaded." },
       { name: "video_id", label: "Video id or URL", type: "text",
         normalise: "video-id",

@@ -23,8 +23,8 @@ type Mode = "write" | "preview" | "both";
 type Action = "bold" | "italic" | "h2" | "h3" | "bullets" | "numbers" | "quote" | "link";
 
 const PROVIDERS = [
-  { value: "youtube", label: "YouTube", directive: "Youtube" },
   { value: "vimeo", label: "Vimeo", directive: "Vimeo" },
+  { value: "youtube", label: "YouTube", directive: "Youtube" },
   { value: "livid", label: "Livid", directive: "Livid" },
 ] as const;
 
@@ -60,7 +60,7 @@ export function MarkdownEditor({
   const [value, setValue] = useState(defaultValue);
   const [mode, setMode] = useState<Mode>("write");
   const [videoOpen, setVideoOpen] = useState(false);
-  const [provider, setProvider] = useState<string>("youtube");
+  const [provider, setProvider] = useState<string>("vimeo");
   const [videoInput, setVideoInput] = useState("");
   const area = useRef<HTMLTextAreaElement>(null);
   const videoInputId = useId();
@@ -280,7 +280,7 @@ export function MarkdownEditor({
                   addVideo();
                 }
               }}
-              placeholder="https://www.youtube.com/watch?v=…"
+              placeholder={provider === "youtube" ? "https://www.youtube.com/watch?v=…" : provider === "vimeo" ? "https://vimeo.com/…" : "Video link or id"}
               className="h-9 w-full rounded-(--radius) border border-input-border bg-background px-2 text-sm"
             />
           </label>

@@ -9,18 +9,14 @@ import { createClient } from "@/lib/supabase/server";
 /**
  * Book a private coaching time — note 09 §36.
  *
- * PAY FIRST, THEN BOOK (owner, 2026-10-08), for one session and for a pack
- * alike. Until then one session was booked first and paid for while the time
- * was held; the two ways of buying the same thing worked in opposite orders.
+ * BOOKING WITH A SESSION ALREADY HELD: a pack's, a gift's, or one returned by
+ * a cancellation. `hold_private_coaching_slot` locks the slot and, finding an
+ * unspent session, books it outright.
  *
- *   1. The customer buys a session, or a pack, through checkout like anything
- *      else. That grants sessions to use (migration 0012).
- *   2. Here they choose a time. `hold_private_coaching_slot` locks the slot and,
- *      finding an unspent session, books it outright.
- *
- * Someone with no session to use is sent to buy one. The database function can
- * still return a HOLD for them (it predates this rule); a hold is released at
- * once rather than turned into a payment, so nothing is left reserved.
+ * Someone with no session to use does not come here: they choose a time and
+ * pay for it through checkout, which holds the time while they pay (owner,
+ * 2026-11-10; migration 0030). Should a hold come back here anyway, it is
+ * released at once, so nothing is left reserved.
  *
  * The browser names only the slot. The service is read from the database.
  */
@@ -31,7 +27,7 @@ const MESSAGES: Record<string, string> = {
   past: "That time is too soon to book now. Please choose another.",
   not_found: "That time is no longer available. Please choose another.",
   not_authenticated: "Please sign in to book.",
-  held: "You have no session to book with. Buy a session first, then choose your time.",
+  held: "You have no session to book with. Choose a time and continue to payment instead.",
 };
 
 export async function bookPrivateSlotAction(

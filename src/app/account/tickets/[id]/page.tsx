@@ -68,7 +68,7 @@ export default async function TicketPage({ params }: PageProps<"/account/tickets
           <dl className="mt-8 grid gap-x-8 gap-y-5 sm:grid-cols-2">
             <div>
               <dt className="text-[0.6875rem] tracking-[0.14em] text-muted-foreground uppercase">Date</dt>
-              <dd className="mt-1 font-semibold">{event.startsAt ? eventDay(event.startsAt) : "To be announced"}</dd>
+              <dd className="mt-1 font-semibold">{event.startsAt ? eventDay(event.startsAt) : "To be advised"}</dd>
             </div>
             {event.startsAt ? (
               <div>

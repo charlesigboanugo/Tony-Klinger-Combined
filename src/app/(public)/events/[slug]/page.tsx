@@ -78,7 +78,7 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
   const facts = [
     // Compact forms here: five facts must sit in three aligned columns
     // without wrapping; the hero and the panel carry the full wording.
-    { label: "Date", value: event.starts_at ? eventDayShort(event.starts_at) : "To be announced" },
+    { label: "Date", value: event.starts_at ? eventDayShort(event.starts_at) : "To be advised" },
     ...(event.starts_at ? [{ label: "Time", value: `${eventTime(event.starts_at, event.ends_at)} UK` }] : []),
     { label: "Format", value: FORMAT_LABEL[event.format] },
     ...(event.location ? [{ label: "Where", value: event.location }] : []),
@@ -114,7 +114,7 @@ export default async function EventPage({ params }: PageProps<"/events/[slug]">)
         fullScreen
         backHref="/events"
         backLabel="All events"
-        eyebrow={past ? "Past event" : event.starts_at ? eventDay(event.starts_at) : "Date to be announced"}
+        eyebrow={past ? "Past event" : event.starts_at ? eventDay(event.starts_at) : "Date to be advised"}
         title={event.name}
         description={paragraphs[0] ?? null}
         cover={{ path: event.storagePath }}

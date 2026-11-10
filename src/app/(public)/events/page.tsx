@@ -76,7 +76,7 @@ export default async function EventsPage() {
                   <span className="font-semibold">{next.name}</span>
                   <span className="text-block-foreground/70">
                     {" · "}
-                    {next.inProgress ? "Happening now" : next.starts_at ? eventDay(next.starts_at) : "Date to be announced"}
+                    {next.inProgress ? "Happening now" : next.starts_at ? eventDay(next.starts_at) : "Date to be advised"}
                   </span>
                 </span>
                 <span aria-hidden="true" className="transition-transform duration-(--dur-base) ease-expo group-hover:translate-x-1 motion-reduce:transform-none">
@@ -242,7 +242,7 @@ function FeatureBilling({ event }: { event: PublicEvent }) {
       <Frame event={event} sizes="(min-width: 1024px) 58vw, 100vw" priority />
       <div>
         <p className="text-sm font-semibold tracking-[0.08em] text-primary uppercase">
-          {event.inProgress ? "Happening now" : event.starts_at ? eventDay(event.starts_at) : "Date to be announced"}
+          {event.inProgress ? "Happening now" : event.starts_at ? eventDay(event.starts_at) : "Date to be advised"}
         </p>
         <h3 className="mt-4 font-display text-[clamp(1.75rem,1.25rem+1.5vw,2.75rem)] leading-tight font-semibold text-balance">
           {event.name}
@@ -278,7 +278,7 @@ function Billing({ event, past }: { event: PublicEvent; past?: boolean }) {
         sizes={past ? "(min-width: 1024px) 22vw, (min-width: 640px) 45vw, 100vw" : "(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 100vw"}
       />
       <p className={cn("mt-4 text-xs font-semibold tracking-[0.08em] uppercase", event.inProgress ? "text-primary" : "text-muted-foreground")}>
-        {event.inProgress ? "Happening now" : event.starts_at ? eventDay(event.starts_at) : "Date to be announced"}
+        {event.inProgress ? "Happening now" : event.starts_at ? eventDay(event.starts_at) : "Date to be advised"}
       </p>
       <h3 className={cn("mt-2 font-display leading-snug font-semibold text-balance transition-colors group-hover:text-primary", past ? "text-lg" : "text-xl")}>
         {event.name}

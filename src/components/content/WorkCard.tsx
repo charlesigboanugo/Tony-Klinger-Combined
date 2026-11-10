@@ -151,7 +151,7 @@ export function WorkCard({
               {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
               // The whole tile is the target: the link's box is stretched over
               // the article, so the accessible name stays just the title.
-              className="decoration-1 underline-offset-4 outline-offset-4 group-hover:underline after:absolute after:inset-0 after:content-[''] focus-visible:outline-2 focus-visible:outline-ring"
+              className="decoration-1 underline-offset-4 outline-offset-4 group-hover:underline after:absolute after:inset-0 after:z-10 after:content-[''] focus-visible:outline-2 focus-visible:outline-ring"
             >
               {item.title}
             </Link>
@@ -212,7 +212,7 @@ function StillCard({
             <Link
               href={link.href}
               {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-              className="decoration-1 underline-offset-4 outline-offset-4 group-hover:underline after:absolute after:inset-0 after:content-[''] focus-visible:outline-2 focus-visible:outline-white"
+              className="decoration-1 underline-offset-4 outline-offset-4 group-hover:underline after:absolute after:inset-0 after:z-10 after:content-[''] focus-visible:outline-2 focus-visible:outline-white"
             >
               {item.title}
             </Link>

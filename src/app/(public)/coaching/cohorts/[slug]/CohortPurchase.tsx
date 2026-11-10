@@ -77,7 +77,7 @@ export function CohortPurchase({
 
   const messages: Record<string, { title: string; body: string }> = {
     unscheduled: {
-      title: "Dates to be announced",
+      title: "Dates to be advised",
       body: "Places go on sale when the next intake's dates are set. Tony's letters carry the news first.",
     },
     closed: {

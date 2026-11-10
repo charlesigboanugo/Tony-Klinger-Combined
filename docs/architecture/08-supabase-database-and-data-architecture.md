@@ -979,7 +979,7 @@ only, `private-media` for any other private file (migration 0037, replacing `doc
 Do not expose protected Academy resources through a publicly accessible static directory.
 
 **Uploaded from Admin → Media (owner, 2026-10-15).** The form follows the item's type: an
-image, audio file or document is uploaded (no path is typed); a video takes its Livid link
+image, audio file or document is uploaded (no path is typed); a video takes its Vimeo link
 and a link its address. An image always goes to `site-media`. For audio and documents staff
 set "Anyone can open it": on puts the file in `site-media`, off in `private-media`
 (never `course-assets`, which is for course material only). The
@@ -1316,7 +1316,7 @@ through client props (the click-to-play facade) is acceptable here and never for
 
 **A published row with no video is valid** and shows its cover marked "Coming soon", not
 playable — the rule the owner set for the /watch uploads on 2026-09-26. The files are Wix
-uploads that go to Livid by hand (note 09 §40.1); `supabase/content/11_testimonial_videos.sql`
+uploads that go to YouTube by hand, as public video (note 09 §40.1); `supabase/content/11_testimonial_videos.sql`
 maps each row to its file. Public read of published rows; staff read all. Edited through
 Admin → Testimonial videos.
 
@@ -2944,3 +2944,4 @@ The schema should be managed through version-controlled SQL migrations, protecte
 | 2026-10-15 | Migration 0039: `course_modules.status` (content_status, default published). RLS: `lessons: entitled read` and `course_modules: entitled read` require Published (a lesson also needs its module Published); staff read unchanged. New `events: holders read` (a booking for the event) and `private_coaching_services: holders read` (an entitlement for the service, or a booking of one of its slots), so unpublishing something already sold does not break the holder's ticket or sessions. pgTAP 178. |
 | 2026-10-15 | §4: migrations consolidated 39 → 15 (mapping table in §4); verified identical by `pg_dump` on a separate stack. `content/12_coaching_offer.sql` no longer writes `retreats.capacity` (dropped by the retreat-batch migration), which had stopped a fresh setup. |
 | 2026-10-16 | §4, §35: migration 0017 — `session_reminders_due` and `passes_ending_due` (service role only) for the new reminder jobs; `event_reminders_due` revoked from PUBLIC, which had left it callable through the API; the same revoke for `record_marketing_consent`, `withdraw_marketing_consent`, `consume_rate_limit`, `cleanup_rate_limits`, `release_private_coaching_hold` and `private_coaching_time_taken`. Rule: a server-only function revokes EXECUTE from `public` as well as `anon` and `authenticated`. pgTAP 180. |
+| 2026-11-10 | Testimonial videos: uploaded to YouTube (public video), not Livid (note 09 §40.1). |
