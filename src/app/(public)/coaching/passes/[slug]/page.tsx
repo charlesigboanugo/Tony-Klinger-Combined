@@ -18,7 +18,7 @@ import { FaqList } from "@/components/content/FaqList";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { leadPrice } from "@/lib/commerce/billing";
 import { formatPrice } from "@/lib/commerce/pricing";
-import { listMembershipTiers, listPlaylists, listSeries } from "@/lib/content/coaching";
+import { listMembershipTiers, listPlaylists, listSeries, seriesDatesSet } from "@/lib/content/coaching";
 import { passFaqs } from "@/lib/content/pass-faq";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { designPhotos } from "@/lib/site/design-photos";
@@ -38,9 +38,18 @@ export default async function MembershipTierPage({
   params,
 }: PageProps<"/coaching/passes/[slug]">) {
   const { slug } = await params;
-  const [tiers, series, playlists] = await Promise.all([listMembershipTiers(), listSeries(), listPlaylists()]);
+  const [tiers, series, playlists, datesSet] = await Promise.all([
+    listMembershipTiers(),
+    listSeries(),
+    listPlaylists(),
+    seriesDatesSet(),
+  ]);
   const tier = tiers.find((t) => t.slug === slug);
   if (!tier) notFound();
+  // No series has dates yet: still on sale, but said plainly (owner, 2026-11-10).
+  const seriesWaiting = !datesSet && tier.seriesAllowance !== 0 && series.length > 0;
+  const waitingNote =
+    "Group Coaching series dates are to be advised. You can buy your pass now; as soon as a series has dates, you can register for it ahead of everyone else.";
   const rankOf = new Map(tiers.map((t) => [t.tier, t.rank]));
 
   // Membership is one payment for twelve months (owner, 2026-10-09). Everything
@@ -78,7 +87,7 @@ export default async function MembershipTierPage({
       : everySeries
         ? `Your pass includes one of every Group Coaching series each year: ${listOf(series.map((s) => s.name))}. That is ${count(tier.seriesAllowance)} places in the year, to use as you like.`
         : `Your pass includes ${count(tier.seriesAllowance)} Group Coaching series in the year, from ${listOf(series.map((s) => s.name))}.`,
-    "Each series runs for eight weeks and opens for registration before it starts. As a pass holder you can register ahead of everyone else. Register for the one you want, in your Academy, and your seat is kept in all eight sessions, with no booking. A series you register for during your year is yours to finish, even if the year ends first.",
+    `Each series runs for eight weeks and opens for registration before it starts. As a pass holder you can register ahead of everyone else. Register for the one you want, in your Academy, and your seat is kept in all eight sessions, with no booking. A series you register for during your year is yours to finish, even if the year ends first.${seriesWaiting ? " Series dates are to be advised." : ""}`,
     tier.playlistAllowance == null
       ? `Watch every video playlist: ${listOf(choosable)}. New videos appear as they are added.`
       : `Choose your video playlist from ${listOf(choosable, "or")}. New videos appear in it as they are added.`,
@@ -113,6 +122,7 @@ export default async function MembershipTierPage({
         cover={{ src: designPhotos.memberships.src, alt: designPhotos.memberships.alt, focus: designPhotos.memberships.focus }}
         price={shown ?? "Price on application"}
         priceNote={lead?.note ?? null}
+        status={seriesWaiting ? { tone: "quiet", label: "Series dates to be advised" } : null}
       />
 
       {/* Elaine's questions, answered from the rules themselves (owner, 2026-11-02). */}
@@ -133,6 +143,11 @@ export default async function MembershipTierPage({
             <Suspense fallback={<TierPurchase tierName={tier.name} rank={tier.rank} productSlug={tier.productSlug} prices={tier.prices} />}>
               <TierPurchaseFromUrl tierName={tier.name} rank={tier.rank} productSlug={tier.productSlug} prices={tier.prices} />
             </Suspense>
+            {seriesWaiting ? (
+              <p className="rounded-(--radius) border border-border bg-surface px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+                {waitingNote}
+              </p>
+            ) : null}
             <p className="text-center text-sm">
               <Link href="/coaching/passes" className="font-medium underline underline-offset-4 hover:text-accent">
                 Compare all tiers

@@ -465,6 +465,22 @@ export type SeriesRun = {
   state: "upcoming" | "open" | "full" | "sessions" | "in_progress";
 };
 
+/**
+ * Whether any Group Coaching series has dates: a published run, of a published
+ * series, still to finish. Without one, the pass pages say "Series dates to be
+ * advised" (owner, 2026-11-10); the pass stays on sale, since its playlists,
+ * Q&A and discount work from day one.
+ */
+export async function seriesDatesSet(): Promise<boolean> {
+  const { count } = await createPublicClient()
+    .from("coaching_runs")
+    .select("id, group_coaching_series!inner(status)", { count: "exact", head: true })
+    .eq("status", "published")
+    .eq("group_coaching_series.status", "published")
+    .gt("ends_at", new Date().toISOString());
+  return (count ?? 0) > 0;
+}
+
 /** Every run still to finish, for these series, soonest first. */
 export async function listRuns(seriesIds: string[]): Promise<SeriesRun[]> {
   if (seriesIds.length === 0) return [];

@@ -9,7 +9,7 @@ import { Container, Section } from "@/components/layout/Container";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { optionGroup } from "@/lib/commerce/options";
 import { formatPrice } from "@/lib/commerce/pricing";
-import { listMembershipTiers, listRetreats, listSeries, type MembershipTier } from "@/lib/content/coaching";
+import { listMembershipTiers, listRetreats, listSeries, seriesDatesSet, type MembershipTier } from "@/lib/content/coaching";
 import { passFaqs } from "@/lib/content/pass-faq";
 import { pageMetadata } from "@/lib/seo/metadata";
 
@@ -21,7 +21,12 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default async function MembershipsPage() {
-  const [tiers, series, retreats] = await Promise.all([listMembershipTiers(), listSeries(), listRetreats()]);
+  const [tiers, series, retreats, datesSet] = await Promise.all([
+    listMembershipTiers(),
+    listSeries(),
+    listRetreats(),
+    seriesDatesSet(),
+  ]);
 
   /*
     "Includes £X of …, plus …" on each card (owner, 2026-10-29, from Elaine's
@@ -97,6 +102,15 @@ export default async function MembershipsPage() {
           titleClassName="max-sm:text-[clamp(2rem,10.3vw,2.5rem)]"
           description="Live Group Coaching, a video library that keeps growing and, from Gold, a monthly Q&A with Tony, together in one payment for twelve months."
         />
+
+        {/* No series has dates yet: the passes stay on sale, and say so
+            (owner, 2026-11-10). Gone by itself once a series has dates. */}
+        {!datesSet && series.length > 0 ? (
+          <p className="mx-auto mb-8 max-w-2xl rounded-(--radius) border border-border bg-surface px-4 py-3 text-center text-sm leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-foreground">Series dates to be advised.</span> You can buy your pass
+            now; as soon as a Group Coaching series has dates, pass holders can register for it ahead of everyone else.
+          </p>
+        ) : null}
 
         <MembershipPricing tiers={priced} />
 

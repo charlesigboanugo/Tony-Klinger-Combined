@@ -458,6 +458,14 @@ The exact allocation of which series a lower membership receives must be represe
 
 ## 12.1 A member's series: a number each membership year — owner, 2026-10-09, migration 0018
 
+**Sold while no series has dates (owner, 2026-11-10).** A pass stays on sale when no Group
+Coaching series has a run still to finish: its playlists, Q&A and one-to-one discount work from
+day one, and the series places are spread across the year. The pass pages say so instead:
+`/coaching/passes` shows "Series dates to be advised" above the tiers, and each tier's page a
+"Series dates to be advised" chip, a note beside the buy panel and a line in "How it works"
+(`seriesDatesSet()`, `src/lib/content/coaching.ts`). All of it disappears once a run is
+published. The pages follow admin edits at once and a last run ending within the hourly refresh.
+
 **Terms are removed.** The term model of 2026-10-08 (migration 0013: a three-month term, a
 series chosen again each term) is withdrawn at the owner's direction, with its table,
 functions and admin screen. A series already has a start and an end of its own: the run
@@ -2041,3 +2049,4 @@ The Admin area manages the underlying products, content, customers and operation
 | 2026-10-15 | §34: lesson and module statuses respected for learners; lesson delete wording made accurate. |
 | 2026-11-10 | One private coaching session is chosen, then paid for, with the time held during checkout (migration 0030; note 09 §36). The pack and gifts stay pay first. |
 | 2026-11-10 | §34.1 and session replays: Livid references replaced with Vimeo, the paid-video host (note 09 §40.1). |
+| 2026-11-10 | §12.1: the pass stays on sale with no series dates; pass pages say "Series dates to be advised". |
