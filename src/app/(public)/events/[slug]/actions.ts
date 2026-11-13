@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
+import { syncZoomEvent } from "@/lib/zoom/sync";
 
 /**
  * Event place actions — note 03 §8.1.
@@ -55,6 +57,8 @@ export async function registerForEventAction(
   }
 
   if (result?.status === "ok") {
+    // A Zoom event: their own joining link, made after the reply is sent.
+    after(() => syncZoomEvent(eventId));
     revalidatePath(`/events/${slug}`);
     revalidatePath("/account/bookings");
     return {

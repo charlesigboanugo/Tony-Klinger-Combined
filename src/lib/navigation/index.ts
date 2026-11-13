@@ -332,6 +332,8 @@ export const adminNavigation: NavGroup[] = [
       // Event day: attendee lists, the door scan and the online joining link.
       { label: "Event check-in", href: "/admin/check-in", permission: "events.read" },
       { label: "Bookings", href: "/admin/bookings", permission: "bookings.read" },
+      // Every event and session on Zoom: meetings, own links, errors, clashes.
+      { label: "Zoom", href: "/admin/zoom", permission: "coaching.read" },
     ],
   },
   {

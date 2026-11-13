@@ -25,6 +25,7 @@ const TEMPLATES = {
   booking_cancelled: "Booking cancelled",
   contact_enquiry: "Contact enquiry",
   event_ticket: "Event ticket",
+  event_ticket_cancelled: "Event ticket cancelled",
   event_place_available: "Event place available",
   event_reminder: "Event reminder",
   event_starting: "Event starting soon",

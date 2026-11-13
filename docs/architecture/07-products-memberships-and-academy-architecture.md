@@ -1614,8 +1614,9 @@ only from **15 minutes before the start until the end** (`JOIN_OPENS_MINUTES`), 
 Group Coaching **only for a confirmed booking**. Before the window the row says when the
 link appears. This is presentation, not a security boundary: the database row is still
 readable by anyone RLS lets see the session (including credit holders who haven't booked),
-so `meeting_url` should be treated as shareable. Per-attendee links belong with the Zoom
-item in `TO-CONNECT.md`. Sessions are scheduled in Admin → Sessions.
+so `meeting_url` should be treated as shareable. A session with **Run on Zoom** on (2026-11-12,
+note 09 §40.2) shows each person their own Zoom link instead, which works on one device at a
+time, and its shared `meeting_url` is not shown. Sessions are scheduled in Admin → Sessions.
 
 ---
 
@@ -2050,3 +2051,4 @@ The Admin area manages the underlying products, content, customers and operation
 | 2026-11-10 | One private coaching session is chosen, then paid for, with the time held during checkout (migration 0030; note 09 §36). The pack and gifts stay pay first. |
 | 2026-11-10 | §34.1 and session replays: Livid references replaced with Vimeo, the paid-video host (note 09 §40.1). |
 | 2026-11-10 | §12.1: the pass stays on sale with no series dates; pass pages say "Series dates to be advised". |
+| 2026-11-12 | Joining window: a session run on Zoom shows each person their own link (note 09 §40.2). |

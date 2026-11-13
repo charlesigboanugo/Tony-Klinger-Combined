@@ -19,7 +19,7 @@ select plan(191);
 -- text goes stale silently (it had already drifted to 34 while asserting 35).
 select is(
   (select count(*)::int from information_schema.tables where table_schema = 'public'),
-  59,
+  62,
   'public schema table count matches the migrations'
 );
 

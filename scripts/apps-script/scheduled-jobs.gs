@@ -26,7 +26,7 @@
  * work, so neither matters.
  */
 
-function everyFiveMinutes() { runJobs(["send-emails"]); }
+function everyFiveMinutes() { runJobs(["send-emails", "zoom-sync"]); }
 function everyFifteenMinutes() { runJobs(["reconcile-stripe", "event-reminders", "session-reminders"]); }
 function hourly() { runJobs(["expire-entitlements", "sync-stripe"]); }
 function dailyAt3() { runJobs(["cleanup-tokens", "cleanup-uploads"]); }

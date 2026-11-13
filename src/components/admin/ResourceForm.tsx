@@ -9,11 +9,12 @@ import { StatusPill } from "@/components/admin/AdminTable";
 import { MediaPicker, type MediaOption } from "@/components/admin/MediaPicker";
 import { MarkdownEditor } from "@/components/admin/MarkdownEditor";
 import { MediaUpload } from "@/components/admin/MediaUpload";
+import { DateTimePicker } from "@/components/admin/DateTimePicker";
 import { Select } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { codeLabel } from "@/lib/admin/labels";
 import type { Field, ResourceConfig } from "@/lib/admin/resources";
-import { isoToUkLocal } from "@/lib/utils/uk-time";
+import { isoToUkLocal, ukTodayStartLocal } from "@/lib/utils/uk-time";
 
 /**
  * Generated create/edit form — note 06 §14, note 10 §23.
@@ -63,15 +64,23 @@ export function ResourceForm({
   const id = row?.id ? String(row.id) : undefined;
 
   // The current value of each field another field depends on (`shownFor`),
-  // e.g. a product's type, so the form shows only what that choice needs.
+  // e.g. a product's type, so the form shows only what that choice needs; and
+  // of each date another must not come before (`notBefore`), as typed.
   const [watched, setWatched] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      [...new Set(resource.fields.flatMap((f) => (f.shownFor ? [f.shownFor.field] : [])))].map((name) => [
+    Object.fromEntries([
+      ...[...new Set(resource.fields.flatMap((f) => (f.shownFor ? [f.shownFor.field] : [])))].map((name) => [
         name,
         String(row?.[name] ?? ""),
       ]),
-    ),
+      ...[...new Set(resource.fields.flatMap((f) => (f.notBefore ? [f.notBefore] : [])))].map((name) => [
+        name,
+        row?.[name] ? isoToUkLocal(String(row[name])) : "",
+      ]),
+    ]),
   );
+  // Days, not minutes: the same on the server and in the browser, so the
+  // pickers match when the page hydrates.
+  const [today] = useState(() => ukTodayStartLocal());
 
   return (
     <form action={formAction} className="max-w-4xl">
@@ -125,6 +134,7 @@ export function ResourceForm({
                 uploadKind={field.uploadKind ? (watched[field.uploadKind] ?? String(row?.[field.uploadKind] ?? "")) : ""}
                 editing={Boolean(id)}
                 frozen={finished && !(resource.past?.stillEditable ?? []).includes(field.name)}
+                earliest={earliestFor(field, row?.[field.name], today, watched)}
                 onChange={
                   field.name in watched ? (next) => setWatched((w) => ({ ...w, [field.name]: next })) : undefined
                 }
@@ -137,6 +147,21 @@ export function ResourceForm({
   );
 }
 
+/**
+ * The earliest a date picker offers (owner, 2026-11-12): today for anything
+ * being scheduled, or the date the record already holds if that is earlier,
+ * so an unchanged save still goes through; and never before the field it must
+ * follow (an end after its start).
+ */
+function earliestFor(field: Field, stored: unknown, today: string, watched: Record<string, string>): string | undefined {
+  if (field.type !== "datetime") return undefined;
+  const held = stored ? isoToUkLocal(String(stored)) : "";
+  let earliest = field.pastAllowed ? "" : held && held < today ? held : today;
+  const after = field.notBefore ? watched[field.notBefore] : "";
+  if (after && after > earliest) earliest = after;
+  return earliest || undefined;
+}
+
 function FormField({
   field,
   value,
@@ -146,9 +171,12 @@ function FormField({
   wide,
   editing,
   frozen,
+  earliest,
   onChange,
 }: {
   field: Field;
+  /** For a date: the earliest the picker offers. */
+  earliest?: string;
   /** For an upload field: the kind of file the form currently asks for. */
   uploadKind: string;
   /** Told the new value, for a field others are shown or hidden by. */
@@ -281,6 +309,17 @@ function FormField({
             </option>
           ))}
         </Select>
+      ) : field.type === "datetime" ? (
+        <DateTimePicker
+          id={id}
+          name={field.name}
+          defaultValue={asInputValue()}
+          min={earliest}
+          required={field.required}
+          disabled={disabled}
+          describedBy={described}
+          onChange={onChange}
+        />
       ) : field.type === "boolean" ? (
         <Toggle
           id={id}
@@ -299,13 +338,13 @@ function FormField({
               ? "number"
               : field.type === "date"
                 ? "date"
-                : field.type === "datetime"
-                  ? "datetime-local"
-                  : "text"
+                : "text"
           }
           required={field.required}
           disabled={disabled}
           defaultValue={asInputValue()}
+          min={earliest}
+          onChange={onChange ? (event) => onChange(event.target.value) : undefined}
           aria-describedby={described}
           className={`${base} h-11`}
         />

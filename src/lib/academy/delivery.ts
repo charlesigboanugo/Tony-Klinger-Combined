@@ -1,10 +1,13 @@
 import "server-only";
 
+import { after } from "next/server";
+
 import { BUCKETS, isPublicBucket, type Bucket } from "@/lib/storage";
 import { publicStorageUrl } from "@/lib/storage/public-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthContext } from "@/lib/permissions";
+import { syncZoomSession, type SessionKind } from "@/lib/zoom/sync";
 
 /**
  * Live delivery in the Academy: cohort workshops and Group Coaching sessions,
@@ -54,6 +57,34 @@ function joinState(row: {
     return { state: "soon", opensAt: new Date(opens).toISOString(), today: opens - now < 12 * 3_600_000 };
   }
   return { state: "open", url: row.meeting_url };
+}
+
+/**
+ * On a session run on Zoom (migration 0032) the link is the caller's OWN, never
+ * the session's shared `meeting_url`: each person's works on one device at a
+ * time. Someone with none yet (just booked, or Zoom was down) is registered
+ * after the page is sent, once the session is near; the link shows next visit.
+ */
+async function withOwnZoomLinks<R extends { id: string; uses_zoom: boolean; meeting_url: string | null; starts_at: string; ends_at: string }>(
+  kind: SessionKind,
+  rows: R[],
+): Promise<R[]> {
+  const onZoom = rows.filter((r) => r.uses_zoom);
+  if (onZoom.length === 0) return rows;
+
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("my_zoom_links", { p_kind: kind });
+  const own = new Map(((data ?? []) as Array<{ session_id: string; join_url: string }>).map((l) => [l.session_id, l.join_url]));
+
+  const now = Date.now();
+  const missing = onZoom.filter((r) => !own.has(r.id) && +new Date(r.starts_at) - now < 2 * 3_600_000 && +new Date(r.ends_at) > now);
+  if (missing.length > 0) {
+    after(async () => {
+      for (const r of missing) await syncZoomSession(kind, r.id);
+    });
+  }
+
+  return rows.map((r) => (r.uses_zoom ? { ...r, meeting_url: own.get(r.id) ?? null } : r));
 }
 
 export type Recording = { url: string; external: boolean };
@@ -175,7 +206,7 @@ export async function cohortBySlug(
       : Promise.resolve({ data: [] }),
     supabase
       .from("cohort_workshops")
-      .select("id,title,starts_at,ends_at,meeting_url,recording_resource_id,status,position,intake_id")
+      .select("id,title,starts_at,ends_at,meeting_url,recording_resource_id,status,position,intake_id,uses_zoom")
       .eq("cohort_id", row.id)
       .order("starts_at", { ascending: true }),
   ]);
@@ -199,9 +230,10 @@ export async function cohortBySlug(
     const nowIso = new Date().toISOString();
     staffIntake = list.find((i) => i.ends_at > nowIso) ?? list[list.length - 1];
   }
-  const shown = staffOnly
-    ? (workshops ?? []).filter((w) => !staffIntake || w.intake_id === staffIntake.id)
-    : (workshops ?? []);
+  const shown = await withOwnZoomLinks(
+    "workshop",
+    staffOnly ? (workshops ?? []).filter((w) => !staffIntake || w.intake_id === staffIntake.id) : (workshops ?? []),
+  );
 
   const all = await Promise.all(
     shown.map(async (w) => {
@@ -261,21 +293,24 @@ export async function nextWorkshops(limit = 3) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("cohort_workshops")
-    .select("id,title,starts_at,ends_at,status,meeting_url,cohorts(name,slug)")
+    .select("id,title,starts_at,ends_at,status,meeting_url,uses_zoom,cohorts(name,slug)")
     .neq("status", "cancelled")
     .gte("ends_at", new Date().toISOString())
     .order("starts_at", { ascending: true })
     .limit(limit);
 
-  return ((data ?? []) as unknown as Array<{
+  const rows = await withOwnZoomLinks("workshop", (data ?? []) as unknown as Array<{
     id: string;
     title: string;
     starts_at: string;
     ends_at: string;
     status: string;
     meeting_url: string | null;
+    uses_zoom: boolean;
     cohorts: { name: string; slug: string } | null;
-  }>).map((w) => ({
+  }>);
+
+  return rows.map((w) => ({
     id: w.id,
     title: w.title,
     startsAt: w.starts_at,
@@ -369,7 +404,7 @@ export async function myCoaching(): Promise<MyCoaching> {
   const [{ data: upcoming }, { data: mine }, { data: recorded }] = await Promise.all([
     supabase
       .from("group_coaching_sessions")
-      .select("id,title,starts_at,ends_at,meeting_url,recording_resource_id,status,group_coaching_series(name,slug)")
+      .select("id,title,starts_at,ends_at,meeting_url,recording_resource_id,status,uses_zoom,group_coaching_series(name,slug)")
       .eq("status", "scheduled")
       .gte("ends_at", new Date(now).toISOString())
       .order("starts_at", { ascending: true })
@@ -377,13 +412,13 @@ export async function myCoaching(): Promise<MyCoaching> {
     bookedIds.size > 0
       ? supabase
           .from("group_coaching_sessions")
-          .select("id,title,starts_at,ends_at,meeting_url,recording_resource_id,status,group_coaching_series(name,slug)")
+          .select("id,title,starts_at,ends_at,meeting_url,recording_resource_id,status,uses_zoom,group_coaching_series(name,slug)")
           .in("id", [...bookedIds])
           .order("starts_at", { ascending: false })
       : Promise.resolve({ data: [] }),
     supabase
       .from("group_coaching_sessions")
-      .select("id,title,starts_at,ends_at,meeting_url,recording_resource_id,status,group_coaching_series(name,slug)")
+      .select("id,title,starts_at,ends_at,meeting_url,recording_resource_id,status,uses_zoom,group_coaching_series(name,slug)")
       .lt("ends_at", new Date(now).toISOString())
       .not("recording_resource_id", "is", null)
       .order("starts_at", { ascending: false })
@@ -398,6 +433,7 @@ export async function myCoaching(): Promise<MyCoaching> {
     meeting_url: string | null;
     recording_resource_id: string | null;
     status: string;
+    uses_zoom: boolean;
     group_coaching_series: { name: string; slug: string } | null;
   };
 
@@ -407,6 +443,10 @@ export async function myCoaching(): Promise<MyCoaching> {
     ...((mine ?? []) as unknown as Row[]),
     ...((recorded ?? []) as unknown as Row[]),
   ]) {
+    byId.set(r.id, r);
+  }
+  // Only booked sessions show a link at all (below), so only theirs need one.
+  for (const r of await withOwnZoomLinks("group", [...byId.values()].filter((r) => bookedIds.has(r.id)))) {
     byId.set(r.id, r);
   }
 
@@ -596,12 +636,12 @@ export async function myQaSessions(): Promise<{ upcoming: QaSession[]; past: QaS
   const supabase = await createClient();
   const { data } = await supabase
     .from("member_qa_sessions")
-    .select("id,title,description,starts_at,ends_at,meeting_url,recording_resource_id,status")
+    .select("id,title,description,starts_at,ends_at,meeting_url,recording_resource_id,status,uses_zoom")
     .neq("status", "cancelled")
     .order("starts_at", { ascending: true });
 
   const all = await Promise.all(
-    (data ?? []).map(async (q) => {
+    (await withOwnZoomLinks("qa", data ?? [])).map(async (q) => {
       const join = joinState(q);
       return {
         id: q.id,
@@ -655,7 +695,7 @@ export async function myRetreats(): Promise<MyRetreat[]> {
 
   const { data: batches } = await supabase
     .from("retreat_batches")
-    .select("id,label,starts_at,ends_at,join_url,joining_notes,retreats(id,name,slug,position,status)")
+    .select("id,label,starts_at,ends_at,join_url,joining_notes,uses_zoom,retreats(id,name,slug,position,status)")
     .eq("status", "published")
     .gt("ends_at", nowIso)
     .order("starts_at");
@@ -667,11 +707,18 @@ export async function myRetreats(): Promise<MyRetreat[]> {
     ends_at: string;
     join_url: string | null;
     joining_notes: string | null;
+    uses_zoom: boolean;
     retreats: { id: string; name: string; slug: string; position: number; status: string } | null;
   };
 
+  // `join_url` is the batch's shared link; on Zoom, the caller's own instead.
+  const rows = await withOwnZoomLinks(
+    "retreat",
+    ((batches ?? []) as unknown as Row[]).map((b) => ({ ...b, meeting_url: b.join_url })),
+  );
+
   const result: MyRetreat[] = [];
-  for (const b of (batches ?? []) as unknown as Row[]) {
+  for (const b of rows) {
     if (!b.retreats || b.retreats.status !== "published") continue;
     const { data: entitled } = await supabase.rpc("has_retreat_batch_access", { p_batch_id: b.id });
     if (entitled !== true) continue;
@@ -684,7 +731,7 @@ export async function myRetreats(): Promise<MyRetreat[]> {
       join: joinState({
         starts_at: b.starts_at,
         ends_at: b.ends_at,
-        meeting_url: b.join_url,
+        meeting_url: b.meeting_url,
         status: "scheduled",
       }),
       notes: b.joining_notes,

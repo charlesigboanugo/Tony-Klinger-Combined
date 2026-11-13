@@ -36,7 +36,7 @@ CRON_SECRET=                      # the same value as on Vercel, to start the fi
 What runs against it, in order:
 
 ```bash
-# 1. Migrations, 0001 to 0017
+# 1. Migrations, 0001 to 0033
 set -a; . ./.env.production.local; set +a; supabase db push --db-url "$SUPABASE_DB_URL"
 # 2. Content (all twelve files) and 3. images
 pnpm content:setup --env .env.production.local
@@ -65,7 +65,7 @@ file still works. The Supabase CLI is never linked to the production project.
 
 ### 2. Database (production Supabase)
 
-- [ ] Apply every migration, `0001` to `0017`, with `supabase db push --db-url` from the
+- [ ] Apply every migration, `0001` to `0033`, with `supabase db push --db-url` from the
       temporary file ([above](#how-the-one-off-setup-is-run-agreed-2026-10-16)). **Never
       link the production project to a local terminal**: a stray `db reset --linked` would
       destroy real data.
@@ -117,27 +117,25 @@ file still works. The Supabase CLI is never linked to the production project.
 
 ### 6. Scheduled jobs
 
-- [ ] Rename `vercel.json.test` to `vercel.json` (it keeps the London region), so the ten
+- [ ] Rename `vercel.json.test` to `vercel.json` (it keeps the London region), so the eleven
       jobs run. Until then no email is sent, no reminder goes and nothing is reconciled.
 
-### 7. Contact form
+### 7. Zoom
+
+- [ ] The three Zoom keys in Vercel ([Zoom](#zoom)). Then switch **Run on Zoom** on for each
+      online event and session (or a whole series run) that should use it; Admin → Zoom
+      shows them all and any that overlap.
+
+### 8. Contact form
 
 - [ ] Cloudflare Turnstile widget with `tonyklinger.com` allowed; its two keys in Vercel.
       Without the secret the form refuses every message in production.
 
-### 8. Not yet built — decide whether launch needs them
+### 9. Still open before launch
 
-- [ ] Zoom personal join links (`TO-CONNECT.md` §1; needs Zoom Pro and its keys).
-- [ ] Staff "Cancel ticket" for paid event tickets (now: in the database only).
-- [ ] Collapsible admin menu on phones (if door staff check people in on phones).
-- [ ] Checkout acknowledgement waiving the 14-day right, if courses should be
-      non-refundable once started (now: the full right applies).
-- [ ] Vimeo for paid video: Tony's account connected, videos set to unlisted and restricted to the
-      site's domains (production, and localhost for development). The video fields and the
-      server-side withholding are built.
-- [ ] Legal pages completed from Tony's details, then a legal read (`TO-CONNECT.md` §2).
+- [ ] Everything still open in `TO-CONNECT.md` (Vimeo for paid video).
 
-### 9. After the deploy
+### 10. After the deploy
 
 - [ ] Work through [Post-deploy verification](#post-deploy-verification).
 - [ ] **Delete `.env.production.local`.** Optionally reset the database password and service
@@ -191,6 +189,7 @@ Anything missing fails closed rather than silently degrading — see
 | `BREVO_SENDER_NAME` | optional; defaults to "Tony Klinger" |
 | `CRON_SECRET` | Vercel sends it as `Authorization: Bearer …` |
 | `EMAIL_TRANSPORT` | `brevo` in production |
+| `ZOOM_ACCOUNT_ID`, `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET` | Zoom Server-to-Server OAuth app ([Zoom](#zoom)) |
 | `SECURITY_KEYS` | leave **unset** (security keys off; staff use authenticator apps). `on` only once hosted Supabase allows WebAuthn MFA. Local `.env.local` has `on`. |
 
 ### Brevo template ids
@@ -206,7 +205,8 @@ production use the same ids: `WELCOME=21`, `ORDER_RECEIPT=22`, `MEMBERSHIP_ACTIV
 `PRIVATE_COACHING_REBOOK=36`, `SECURITY_KEY_REMOVED=37`, `ACCOUNT_EXISTS=38`,
 `RETREAT_APPLICATION_RECEIVED=39`, `RETREAT_APPLICATION_SENT=40`,
 `RETREAT_APPLICATION_APPROVED=41`, `RETREAT_APPLICATION_CLOSED=42` (each prefixed
-`BREVO_TEMPLATE_`). Lists: `BREVO_LIST_NEWSLETTER=9`, `BREVO_LIST_CUSTOMERS=10`,
+`BREVO_TEMPLATE_`). `EVENT_TICKET_CANCELLED` (added 2026-11-13) has no Brevo template yet
+and is sent as the site's own HTML until `pnpm brevo:templates` is run again. Lists: `BREVO_LIST_NEWSLETTER=9`, `BREVO_LIST_CUSTOMERS=10`,
 `BREVO_LIST_MEMBERS=11`. Each template is the site's layout filled with the site's own
 wording, so restyle it in Brevo but change words in `src/lib/email/templates.ts`. After
 changing `src/lib/email/layout.mjs`, run `pnpm brevo:templates` again (same ids).
@@ -286,6 +286,7 @@ and dropped most of them, so it was removed on 2026-10-24.)
 | `/api/cron/event-reminders` | every 15 min |
 | `/api/cron/session-reminders` | every 15 min, at :05/:20/:35/:50 |
 | `/api/cron/pass-reminders` | daily at 09:00 |
+| `/api/cron/zoom-sync` | every 5 min |
 
 Cron invocations arrive as **GET** and are **not retried**; delivery is best
 effort. Every job is therefore idempotent and reconciliation-based.
@@ -336,6 +337,27 @@ dashboard. **Verification fails closed in production**: without
 `TURNSTILE_SECRET_KEY` every submission is refused, deliberately, so the form is
 never live without its protection. In development a missing secret passes, so
 the form stays testable.
+
+## Zoom
+
+Online events and coaching sessions with **Run on Zoom** on get a Zoom meeting, and every
+person on them their own link; private coaching gets one meeting once a time is booked
+(note 09 §40.2). Admin → Zoom shows them all. The site uses a Server-to-Server OAuth app in Tony's Zoom Pro account
+(marketplace.zoom.us → Develop → Build App), already made, with these scopes:
+`meeting:write:meeting:admin`, `meeting:update:meeting:admin`, `meeting:read:meeting:admin`,
+`meeting:delete:meeting:admin`, `meeting:write:registrant:admin`,
+`meeting:delete:registrant:admin`, `meeting:read:list_registrants:admin`,
+`user:read:user:admin` (and `report:read:list_meeting_participants:admin`, not used yet).
+
+| Variable | Notes |
+|---|---|
+| `ZOOM_ACCOUNT_ID` | from the app's App Credentials page |
+| `ZOOM_CLIENT_ID` | same |
+| `ZOOM_CLIENT_SECRET` | secret; server only |
+
+Without them nothing is sent to Zoom and Zoom events fall back to "link being prepared".
+The same keys work for the test deploy and production: there is one Zoom account, so a Zoom
+event made on the test site creates a real meeting in Tony's account.
 
 ## Images
 
@@ -390,6 +412,17 @@ pnpm stripe:archive --unlinked                # only products no site product ow
 It refuses any key that is not `sk_test_…` and any database but local or the test project
 (`scripts/lib/targets.mjs`), and asks for a typed "yes". Stripe keeps paid-for products, so
 archiving is the clean slate. Then `pnpm stripe:sync` locally, or the test site's hourly sync.
+
+## Updating the test deployment
+
+After pushing code that adds migrations or content (moved here from `TO-CONNECT.md`, 2026-11-13):
+
+1. `supabase db push` — applies the migrations the test database does not have yet
+   (currently up to `0033`).
+2. `pnpm content:setup --env <env file> --only 12_coaching_offer.sql` — loads the coaching
+   offer, when it has changed.
+3. Run the `sync-stripe` job, so every product and price exists in Stripe. Until it runs, a
+   price with no Stripe Price says "not available to buy just now" at checkout.
 
 ## Samples on the test deployment
 

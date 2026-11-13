@@ -1,14 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { scheduleSeriesAction, type ScheduleState } from "@/app/admin/schedule/actions";
-import { FormGrid, Wide } from "@/components/admin/AdminForm";
+import { FormGrid, Toggle, Wide } from "@/components/admin/AdminForm";
+import { DateTimePicker } from "@/components/admin/DateTimePicker";
 import { Field, FormMessage, Input, Select } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
+import { ukTodayStartLocal } from "@/lib/utils/uk-time";
 
 export function ScheduleForm({ series }: { series: Array<{ id: string; name: string; sessions: number }> }) {
   const [state, action] = useActionState<ScheduleState, FormData>(scheduleSeriesAction, {});
+  // Nothing before today is offered (owner, 2026-11-12); days, so the server
+  // and the browser agree when the page hydrates.
+  const [today] = useState(() => ukTodayStartLocal());
 
   return (
     <form action={action}>
@@ -35,7 +40,7 @@ export function ScheduleForm({ series }: { series: Array<{ id: string; name: str
       </Wide>
 
       <Field label="First session" name="first" hint="UK time. The rest follow at the same time each week. Registration closes when this session starts.">
-        <Input name="first" type="datetime-local" required />
+        <DateTimePicker id="schedule-first" name="first" min={today} required />
       </Field>
 
       <Field
@@ -43,7 +48,7 @@ export function ScheduleForm({ series }: { series: Array<{ id: string; name: str
         name="opens"
         hint="UK time. Leave empty to open it now. Nothing can be bought for this run before then, or once it has started."
       >
-        <Input name="opens" type="datetime-local" />
+        <DateTimePicker id="schedule-opens" name="opens" min={today} />
       </Field>
 
       <Field label="Places" name="capacity" hint="Leave empty to use the series' group size. Registration closes when they are taken.">
@@ -74,6 +79,15 @@ export function ScheduleForm({ series }: { series: Array<{ id: string; name: str
       >
         <Input name="meeting_url" type="url" placeholder="https://" />
       </Field>
+      </Wide>
+
+      <Wide>
+        <Toggle
+          id="schedule-uses-zoom"
+          name="uses_zoom"
+          label="Run on Zoom"
+          hint="On: the site creates a Zoom meeting for every session of the run, and gives each person on it their own joining link, which works on one device at a time. The joining link above is then not needed."
+        />
       </Wide>
 
       <Wide className="flex justify-end border-t border-border pt-5">

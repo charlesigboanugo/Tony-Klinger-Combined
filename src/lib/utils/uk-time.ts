@@ -35,3 +35,11 @@ export function isoToUkLocal(value: string): string {
   if (Number.isNaN(+instant)) return "";
   return new Date(londonWallAsUtc(instant)).toISOString().slice(0, 16);
 }
+
+/**
+ * The start of today in the UK as a `datetime-local` value: "2026-11-12T00:00".
+ * The earliest an admin date picker offers for something being scheduled.
+ */
+export function ukTodayStartLocal(now: Date = new Date()): string {
+  return `${isoToUkLocal(now.toISOString()).slice(0, 10)}T00:00`;
+}

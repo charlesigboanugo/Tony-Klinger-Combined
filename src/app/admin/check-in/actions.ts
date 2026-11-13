@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { requirePermission } from "@/lib/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { syncZoomEvent, syncZoomForBooking } from "@/lib/zoom/sync";
 
 /**
  * Event-day actions — migration 0018.
@@ -65,6 +67,36 @@ export async function saveJoiningAction(formData: FormData): Promise<void> {
 
   revalidatePath("/admin/check-in");
   redirect(`/admin/check-in?event=${eventId}&joining=${error ? "failed" : "saved"}`);
+}
+
+/**
+ * Staff cancel a ticket, paid or free (migration 0033). The database checks
+ * `events.update` again, cancels it, logs the reason and emails the holder; a
+ * waiting-list place is offered by its trigger. The Zoom link goes after.
+ */
+export async function cancelTicketAction(formData: FormData): Promise<void> {
+  await requirePermission("events.update", "/admin/check-in");
+  const bookingId = String(formData.get("bookingId") ?? "");
+  const eventId = String(formData.get("eventId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("staff_cancel_event_ticket", { p_booking_id: bookingId, p_reason: reason });
+  const result = (data ?? { status: "error" }) as { status: string; reference?: string };
+  if (result.status === "ok") after(() => syncZoomForBooking(bookingId));
+
+  revalidatePath("/admin/check-in");
+  redirect(`/admin/check-in?event=${eventId}&cancelled=${result.status}&ref=${result.reference ?? ""}`);
+}
+
+/** Bring the event's Zoom meeting and personal links up to date now (0031). */
+export async function syncZoomAction(formData: FormData): Promise<void> {
+  await requirePermission("events.update", "/admin/check-in");
+  const eventId = String(formData.get("eventId") ?? "");
+  if (eventId) await syncZoomEvent(eventId);
+
+  revalidatePath("/admin/check-in");
+  redirect(`/admin/check-in?event=${eventId}&zoom=synced`);
 }
 
 export type ScanResult = {

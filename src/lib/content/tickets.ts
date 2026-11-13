@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import { getAuthContext } from "@/lib/permissions";
+import { syncZoomEvent } from "@/lib/zoom/sync";
 
 import type { EventFormat } from "./events";
 
@@ -11,6 +12,9 @@ import type { EventFormat } from "./events";
  * Read under the holder's own session: bookings RLS returns only their own
  * rows, and `event_access` (the private joining link) is readable only by
  * someone holding a live place on that event. Anybody else gets null.
+ *
+ * On a Zoom event (0031) the link is the holder's OWN, from `zoom_registrants`,
+ * and never the shared one: a link handed on still holds only one seat.
  */
 export type Ticket = {
   id: string;
@@ -30,6 +34,8 @@ export type Ticket = {
   };
   joinUrl: string | null;
   joiningNotes: string | null;
+  /** Run on Zoom: the link is personal, and may still be on its way. */
+  zoom: boolean;
 };
 
 export async function getTicket(bookingId: string): Promise<Ticket | null> {
@@ -51,12 +57,27 @@ export async function getTicket(bookingId: string): Promise<Ticket | null> {
   const [{ data: event }, { data: access }] = await Promise.all([
     supabase
       .from("events")
-      .select("id,name,slug,starts_at,ends_at,location,venue_address,format")
+      .select("id,name,slug,starts_at,ends_at,location,venue_address,format,uses_zoom")
       .eq("id", booking.bookable_id)
       .maybeSingle(),
     supabase.from("event_access").select("join_url,joining_notes").eq("event_id", booking.bookable_id).maybeSingle(),
   ]);
   if (!event) return null;
+
+  const live = booking.status !== "cancelled";
+  const zoom = event.uses_zoom && event.format !== "in_person";
+  let joinUrl = live && !zoom ? safeUrl(access?.join_url) : null;
+  if (live && zoom) {
+    const own = () => supabase.from("zoom_registrants").select("join_url").eq("booking_id", booking.id).maybeSingle();
+    let { data: registrant } = await own();
+    // Not registered yet (a paid ticket just issued, or Zoom was down): try
+    // now, so the holder is not left waiting for the next scheduled run.
+    if (!registrant) {
+      await syncZoomEvent(event.id);
+      ({ data: registrant } = await own());
+    }
+    joinUrl = safeUrl(registrant?.join_url);
+  }
 
   return {
     id: booking.id,
@@ -76,8 +97,9 @@ export async function getTicket(bookingId: string): Promise<Ticket | null> {
     },
     // Only a web address becomes a link: a staff typo or a `javascript:` value
     // must never render as something a ticket holder can click.
-    joinUrl: booking.status === "cancelled" ? null : safeUrl(access?.join_url),
-    joiningNotes: booking.status === "cancelled" ? null : (access?.joining_notes ?? null),
+    joinUrl,
+    joiningNotes: live ? (access?.joining_notes ?? null) : null,
+    zoom,
   };
 }
 

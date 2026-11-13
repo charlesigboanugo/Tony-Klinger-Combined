@@ -25,6 +25,7 @@ export type TemplateName =
   | "booking_cancelled"
   | "contact_enquiry"
   | "event_ticket"
+  | "event_ticket_cancelled"
   | "event_place_available"
   | "event_reminder"
   | "event_starting"
@@ -326,6 +327,28 @@ export function render(
       };
     }
 
+    case "event_ticket_cancelled": {
+      // Staff cancelled the ticket from Check-in (migration 0033). A refund,
+      // when there is one, is made separately in Stripe, so it is not promised.
+      const contactUrl = absoluteUrl("/contact");
+      return {
+        subject: `Ticket cancelled — ${payload.title ?? "event"}`,
+        text: `Your ticket ${payload.reference} for ${payload.title} on ${ukWhen(payload.startsAt)} has been cancelled.${payload.paid ? " We will be in touch about your payment." : ""}
+
+Questions? ${contactUrl}`,
+        ...page(
+          "Your ticket has been cancelled",
+          `${details([
+            ["Event", esc(payload.title)],
+            ["When", ukWhen(payload.startsAt)],
+            ["Ticket reference", mono(esc(payload.reference))],
+          ])}
+           <p>This ticket no longer admits you.${payload.paid ? " We will be in touch about your payment." : ""}</p>
+           ${button(contactUrl, "Contact us")}`,
+        ),
+      };
+    }
+
     case "event_place_available": {
       const eventUrl = absoluteUrl(`/events/${payload.slug}#register`);
       return {
@@ -522,6 +545,7 @@ const TEMPLATE_ENV: Record<TemplateName, string> = {
   booking_cancelled: "BREVO_TEMPLATE_BOOKING_CANCELLED",
   contact_enquiry: "BREVO_TEMPLATE_CONTACT_ENQUIRY",
   event_ticket: "BREVO_TEMPLATE_EVENT_TICKET",
+  event_ticket_cancelled: "BREVO_TEMPLATE_EVENT_TICKET_CANCELLED",
   event_place_available: "BREVO_TEMPLATE_EVENT_PLACE_AVAILABLE",
   event_reminder: "BREVO_TEMPLATE_EVENT_REMINDER",
   event_starting: "BREVO_TEMPLATE_EVENT_STARTING",

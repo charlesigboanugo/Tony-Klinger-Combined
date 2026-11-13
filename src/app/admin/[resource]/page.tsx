@@ -6,14 +6,17 @@ import { AdminFilter, AdminSort } from "@/components/admin/AdminSort";
 import { AdminGroupSection } from "@/components/admin/AdminGroupSection";
 import { AdminTable, StatusPill } from "@/components/admin/AdminTable";
 import { AdminPageHeader, AdminPager, AdminSearch, FilterTabs } from "@/components/admin/AdminUI";
+import { ZoomSwitch } from "@/components/admin/ZoomSwitch";
 import { ButtonLink } from "@/components/ui/Button";
+import { FormMessage } from "@/components/ui/Field";
 import { withFrom } from "@/lib/admin/back";
 import { finishedParents, listReferences, listRows, parentsWithoutGroups } from "@/lib/admin/crud";
 import { codeLabel } from "@/lib/admin/labels";
 import { isUserColumn, peopleByIds } from "@/lib/admin/operations";
-import { lifecycles, resourceBySlug, splitByPast, type FieldType } from "@/lib/admin/resources";
+import { isPast, lifecycles, resourceBySlug, splitByPast, type FieldType } from "@/lib/admin/resources";
 import { applyFilters, filterOptions, readSort, searchRows, sortRows } from "@/lib/admin/sort";
-import { requirePermission } from "@/lib/permissions";
+import { getAuthContext, requirePermission } from "@/lib/permissions";
+import { ZOOM_OFF_CUTOFF_HOURS, tooCloseToTurnOff, zoomLinkCounts } from "@/lib/zoom/overview";
 import { publicStorageUrl } from "@/lib/storage/public-url";
 import { groupBy } from "@/lib/utils/group";
 
@@ -68,6 +71,20 @@ export default async function Page({
     parentsWithoutGroups(resource),
   ]);
   const path = `/admin/${resource.slug}`;
+  // The Zoom switch in the list (owner, 2026-11-13): for staff who may edit,
+  // returning to the list exactly as it was (search, sort, filters, tab).
+  const canWrite = Boolean((await getAuthContext())?.permissions.has(resource.permissions.write));
+  const here = new URLSearchParams();
+  for (const [k, v] of Object.entries(search)) if (typeof v === "string" && k !== "zoomError") here.set(k, v);
+  const back = here.size ? `${path}?${here}` : path;
+  const zoomError = typeof search.zoomError === "string" ? search.zoomError : undefined;
+  // People holding their own Zoom link, per item on Zoom: the switch's
+  // question when turning it off says how many links it would stop.
+  const zoomLinks =
+    canWrite && resource.columns.includes("uses_zoom")
+      ? await zoomLinkCounts(resource.table, allRows.filter((r) => r.uses_zoom === true).map((r) => String(r.id)))
+      : new Map<string, number>();
+  const zoomLocked = tooCloseToTurnOff(allRows);
   // A tiled list is split by kind (Images, Videos, Audio…), one switch each,
   // opening on the first; the kind is in the URL, like the search and the sort.
   const kindColumn = resource.gallery ? resource.galleryKind : undefined;
@@ -113,7 +130,8 @@ export default async function Page({
   }
   // Reads as a label rather than the stored value: a reference, or a person.
   const named = (column: string) => typeOf.get(column) === "reference" || userColumns.has(column);
-  const heading = (column: string) => (userColumns.has(column) ? "Customer" : humanise(column));
+  const heading = (column: string) =>
+    userColumns.has(column) ? "Customer" : (COLUMN_HEADINGS[column] ?? humanise(column));
 
   // Every listed column sorts (note 10 §33.1). A reference sorts by the name
   // shown, not the uuid behind it; dates and numbers start newest/largest.
@@ -320,6 +338,12 @@ export default async function Page({
         }
       />
 
+      {zoomError ? (
+        <div className="mb-4">
+          <FormMessage>{zoomError}</FormMessage>
+        </div>
+      ) : null}
+
       {kindColumn && kinds.length > 0 ? (
         <FilterTabs
           path={path}
@@ -427,6 +451,34 @@ export default async function Page({
                   <Link href={`/admin/users/${String(row[column])}`} className="hover:text-accent">
                     {labelOf.get(String(row[column])) ?? <Cell column={column} value={row[column]} />}
                   </Link>
+                ) : LINK_COLUMNS.has(column) ? (
+                  <JoiningLink
+                    url={row[column]}
+                    // Everyone has their own link; private coaching's one meeting link is the slot's own.
+                    ownLinks={row.uses_zoom === true && resource.table !== "private_coaching_slots"}
+                  />
+                ) : column === "uses_zoom" ? (
+                  canWrite ? (
+                    <ZoomSwitch
+                      slug={resource.slug}
+                      id={String(row.id)}
+                      on={row.uses_zoom === true}
+                      title={String((named(titleColumn) ? labelOf.get(String(row[titleColumn])) : row[titleColumn]) ?? resource.labelSingular)}
+                      back={back}
+                      links={resource.table === "private_coaching_slots" ? undefined : (zoomLinks.get(String(row.id)) ?? 0)}
+                      disabledReason={
+                        isPast(resource, row)
+                          ? "Finished, so it can no longer be changed."
+                          : zoomLocked.has(String(row.id))
+                            ? `Starts within ${ZOOM_OFF_CUTOFF_HOURS} hours, too close to turn Zoom off here. Open it to change it.`
+                          : resource.table === "events" && row.format === "in_person"
+                            ? "In-person events don't run on Zoom. Make it online or hybrid first."
+                            : undefined
+                      }
+                    />
+                  ) : (
+                    <ZoomState on={row.uses_zoom === true} />
+                  )
                 ) : (
                 <Cell
                   column={column}
@@ -572,6 +624,56 @@ function Gallery({
 
 function humanise(column: string): string {
   return codeLabel(column);
+}
+
+/** Headings that read better than the column's name. */
+const COLUMN_HEADINGS: Record<string, string> = {
+  uses_zoom: "Zoom",
+  meeting_url: "Joining link",
+  join_url: "Joining link",
+};
+
+/** A session's or event's joining link (note 09 §40.2). */
+const LINK_COLUMNS = new Set(["meeting_url", "join_url"]);
+
+/** "Run on Zoom": on as a small teal mark, off in quiet grey. */
+function ZoomState({ on }: { on: boolean }) {
+  return on ? (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-semibold text-accent">
+      <span aria-hidden="true" className="size-1.5 rounded-full bg-accent" />
+      On
+    </span>
+  ) : (
+    <span className="text-muted-foreground">Off</span>
+  );
+}
+
+/**
+ * The joining link, short enough for a table ("zoom.us/j/8191…") and opening
+ * in a new tab. On Zoom with personal links, the shared link is not what
+ * anyone is sent, so the column says so instead.
+ */
+function JoiningLink({ url, ownLinks }: { url: unknown; ownLinks: boolean }) {
+  if (ownLinks) return <span className="text-muted-foreground">Own link each</span>;
+  if (typeof url !== "string" || !url) return <span className="text-muted-foreground">Not set</span>;
+  let short = url;
+  try {
+    const parsed = new URL(url);
+    short = `${parsed.host.replace(/^www\./, "")}${parsed.pathname}`;
+  } catch {
+    // Not a web address: shown as typed.
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={url}
+      className="block max-w-48 truncate text-accent underline-offset-4 hover:underline"
+    >
+      {short.length > 28 ? `${short.slice(0, 27)}…` : short}
+    </a>
+  );
 }
 
 function Cell({ column, type, value }: { column: string; type?: FieldType; value: unknown }) {

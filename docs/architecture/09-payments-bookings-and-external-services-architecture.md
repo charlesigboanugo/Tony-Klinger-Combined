@@ -1248,6 +1248,7 @@ Supabase
 Stripe
 Brevo
 Vimeo
+Zoom
 Vercel
 GitHub
 ```
@@ -1261,6 +1262,7 @@ Supabase           PostgreSQL, Auth, Row Level Security, Storage
 Stripe             Payment processing, Checkout, subscriptions, invoices
 Brevo              Transactional email and communication
 Vimeo              Video hosting and streaming for paid video (YouTube for public)
+Zoom               Meetings for events and coaching sessions run on Zoom; one joining link per person (§40.2)
 GitHub             Source control and migration history
 ```
 
@@ -1333,6 +1335,85 @@ Consequently no Admin screen offers an in-app "upload video" control that finish
 itself. Building one on Vimeo's API is possible later and would not change the model.
 
 ---
+
+---
+
+## 40.2 Zoom — Event and Session Meetings (implemented, 2026-11-12)
+
+Built from `TO-CONNECT.md` §1 (owner, Charles). An online event used to have one joining
+link shown to every ticket holder, so one person could forward it to many. An event with
+**Run on Zoom** switched on (`events.uses_zoom`, online and hybrid only, off by default)
+now has its own Zoom meeting, and every ticket holder their own link into it.
+
+```text
+event (uses_zoom, published, upcoming)  →  Zoom meeting (zoom_meetings)
+ticket (live booking)                   →  Zoom registrant (zoom_registrants: own join_url)
+ticket cancelled                        →  registrant removed in Zoom, link stops working
+event changed                           →  meeting updated (title, start, length)
+Zoom switched off / unpublished / event
+moved to in person / event deleted      →  meeting deleted in Zoom
+event finished                          →  meeting kept (Zoom's history and reports)
+```
+
+- **Connection.** A Server-to-Server OAuth app in Tony's Zoom Pro account; keys
+  `ZOOM_ACCOUNT_ID`, `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET` in the server environment only
+  (§49). Meetings are created under the app's user (`/users/me`), Tony, the licensed host.
+  Scopes: create, update, read and delete meetings; add, delete and list registrants; read
+  user; and (unused so far) the meeting participants report.
+- **Meeting settings**, applied on every create and update: registration on, approved
+  automatically (the ticket is the approval), **one device per link**
+  (`allow_multiple_devices: false`), no Zoom emails (the site sends the link), no Zoom
+  account needed to join. Times are sent in UTC with the London time zone.
+- **Reconciliation, not events.** `src/lib/zoom/sync.ts` compares what should exist with
+  what the site has made and does only the difference, so it is safe from every caller:
+  straight after an admin save of an event, after a free registration or a cancellation
+  (Next.js `after`, without holding the reply), when a ticket page finds no link yet (a paid
+  ticket just issued), from **Sync with Zoom now** on Admin → Check-in, and from the
+  `zoom-sync` job every 5 minutes (§44). A Zoom failure never blocks the site: it is stored
+  on the meeting row (`last_error`, shown on Check-in) and the next run retries.
+- **Zoom's limit:** three "add registrant" calls per person, per meeting, per day. Each
+  ticket is registered on its own, so one refusal never holds up the others; a person
+  refused three times waits until midnight GMT.
+- **Who sees the link.** `zoom_registrants` is readable by the ticket's holder while the
+  ticket is live, and by staff with `events.read`; written only by the server with the
+  service role. On a Zoom event the ticket page, the calendar file and the reminder emails
+  (`event_reminders_due`, migration 0031) carry the holder's own link and never the shared
+  `event_access.join_url`; the joining notes still show.
+- **Capacity.** Zoom Pro holds 100 people. Check-in warns when a Zoom event has no place
+  limit or more than 100.
+
+**Coaching sessions (migration 0032, the same day).** The same switch is on Group Coaching
+sessions, cohort workshops, the members' Q&A, retreat batches and private coaching times
+(`uses_zoom` on each table), and on Admin → Series runs, where it is set for every session of
+the new run. Meetings for sessions are keyed (`session_kind`, `session_id`) on
+`zoom_meetings`; a deleted session's meeting is found by the job and removed.
+
+```text
+group, workshop, qa, retreat   registration; each person on it their own link
+                               (zoom_session_registrants: meeting, user, join_url)
+private                        a plain meeting (waiting room on) once the time is
+                               booked; its link written into the slot's meeting_url
+```
+
+- **Who is on a session** is `session_attendance()`: the rules that already chose who gets
+  a session's reminders (0017), taken out unchanged into one function, which
+  `session_reminders_due` now reads too. Registrations and reminders cannot disagree.
+- **When.** The meeting is made as soon as the session is scheduled with Zoom on; people
+  are registered from 14 days before the start (a pass holder's Q&A runs all year, and the
+  link shows only from 15 minutes before). Anyone who stops being on it (a cancelled
+  booking, a lapsed pass) is removed in Zoom.
+- **Where the link shows.** The Academy pages (`lib/academy/delivery.ts`,
+  `withOwnZoomLinks`) and the "starting soon" email show the person's own link, read
+  through `my_zoom_links(kind)`; the session's shared link is not shown. Someone due
+  within two hours with no link yet is registered after the page is sent.
+- **Admin → Zoom** (`/admin/zoom`, `coaching.read`): every event and session on Zoom,
+  Current and Past, with its meeting ID, how many people have their own link, Zoom's last
+  refusal and any **overlap** (Tony's one licence hosts one meeting at a time), and **Sync
+  with Zoom now**.
+
+**Limits.** Someone who has not joined yet can still hand their link to another person;
+staff compare the names in the meeting with the Check-in list (registrants are named from
+the profile, "-" standing in for a missing last name). Nothing stops screen recording.
 
 ---
 
@@ -1646,6 +1727,7 @@ sync-stripe          hourly             mirror products and prices to Stripe (§
 event-reminders      every 15 minutes   event tickets: day-before reminder, link again at the start
 session-reminders    every 15 minutes   coaching sessions: the same two reminders (2026-10-16)
 pass-reminders       daily              "your Coaching Pass ends soon", a month and a week before
+zoom-sync            every 5 minutes    Zoom meetings and personal links in step with events, sessions and people (§40.2, 2026-11-12)
 ```
 
 The schedules live in `vercel.json.test` until it becomes the production `vercel.json`
@@ -2157,6 +2239,9 @@ at every stage of the customer and administrative workflows.
 | 2026-10-26 | §42.3: emails redesigned in the site's look — masthead, card with oxblood strip, warm ground, footer; tables and inline styles with font fallbacks; shared `button` / `details` / `note` / `quote` pieces, every action a red button. Wording unchanged. All 21 Brevo templates re-published and verified. |
 | 2026-10-26 | §42.3: Supabase's six auth emails (confirm, magic link, reset, invite, password/email changed notices) in the same look, built by `pnpm auth:templates` from the shared layout; set locally (config.toml) and on the hosted test project (Management API). Links unchanged. |
 | 2026-11-10 | §36: private coaching is on sale only while a time is open (`unscheduled` otherwise, migration 0029); pages say "Dates to be advised". |
+| 2026-11-13 | §38: staff cancel an event ticket, paid or free, from Admin → Check-in (`staff_cancel_event_ticket`, migration 0033): one transaction cancels the booking, writes the reason to the audit log and emails the holder (`event_ticket_cancelled`); the waiting list is told by the existing trigger and the Zoom link is removed after. No refund is made here: payments are refunded in Stripe. |
+| 2026-11-12 | §40.2, §44: Zoom extended to Group Coaching sessions, workshops, the Q&A, retreat batches (a link per person) and private coaching (one meeting once booked); `session_attendance()`; Admin → Zoom. Migration 0032. |
+| 2026-11-12 | §40, §40.2 (new), §44: Zoom for online events — a meeting per event with Run on Zoom on, a personal link per ticket, removed on cancellation; job `zoom-sync` every 5 minutes. Migration 0031. |
 | 2026-11-10 | §40, §40.1: Vimeo replaces Livid as the paid-video host (Tony's decision); YouTube stays for public video. Admin hints and provider order follow. |
 | 2026-11-10 | §36, §23, webhook list: one private session is chosen, then paid for, with the time held during checkout (migration 0030, `private_slot_sale_status`); packs and gifts stay pay first; order item metadata merged into one object. |
 | 2026-11-10 | §40.1 rewritten for Vimeo (paid) and YouTube (public); Livid kept only as history and an accepted provider value. |

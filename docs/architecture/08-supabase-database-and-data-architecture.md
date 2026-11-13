@@ -1557,6 +1557,21 @@ The exact relationship to bookings/orders should be defined by the event type.
 
 - `events.format` (`event_format`: `in_person`, `online`, `hybrid`) and `events.venue_address`.
 - `event_access` (`event_id` PK, `join_url`, `joining_notes`): private joining details.
+  On a Zoom event the shared `join_url` is not shown to ticket holders (migration 0031).
+- `events.uses_zoom` (boolean, default false): run this online or hybrid event on Zoom
+  (note 09 §40.2).
+- `zoom_meetings` (`event_id` unique, SET NULL on delete so the job can remove the meeting
+  from Zoom; `meeting_id`, `signature`, `last_error`): the Zoom meeting made for an event.
+  Staff read; written by the server only.
+- `zoom_registrants` (`booking_id` PK, `meeting_row_id`, `registrant_id`, `join_url`): one
+  ticket's own Zoom link. Readable by the ticket's holder while it is live, and by staff.
+- Migration 0032: `uses_zoom` on `group_coaching_sessions`, `cohort_workshops`,
+  `member_qa_sessions`, `retreat_batches` and `private_coaching_slots`; `zoom_meetings` gains
+  `session_kind` + `session_id` (unique together; never with `event_id`), `join_url` (private
+  coaching's plain link) and `ends_at`. `zoom_session_registrants` (`meeting_row_id`,
+  `user_id` PK; `registrant_id`, `join_url`): a person's own link to a session, readable by
+  them and by staff. `session_attendance()` (service role) is who is on each session;
+  `my_zoom_links(kind)` returns the caller's own links.
   RLS: read by a user holding a live booking on the event, or staff (`events.read`);
   written by `events.update`.
 - `bookings.reference` (unique, set by trigger for every `event` booking) and
@@ -2958,3 +2973,5 @@ The schema should be managed through version-controlled SQL migrations, protecte
 | 2026-10-15 | §4: migrations consolidated 39 → 15 (mapping table in §4); verified identical by `pg_dump` on a separate stack. `content/12_coaching_offer.sql` no longer writes `retreats.capacity` (dropped by the retreat-batch migration), which had stopped a fresh setup. |
 | 2026-10-16 | §4, §35: migration 0017 — `session_reminders_due` and `passes_ending_due` (service role only) for the new reminder jobs; `event_reminders_due` revoked from PUBLIC, which had left it callable through the API; the same revoke for `record_marketing_consent`, `withdraw_marketing_consent`, `consume_rate_limit`, `cleanup_rate_limits`, `release_private_coaching_hold` and `private_coaching_time_taken`. Rule: a server-only function revokes EXECUTE from `public` as well as `anon` and `authenticated`. pgTAP 180. |
 | 2026-11-10 | Testimonial videos: uploaded to YouTube (public video), not Livid (note 09 §40.1). |
+| 2026-11-12 | Zoom (note 09 §40.2): migrations 0031 (`events.uses_zoom`, `zoom_meetings`, `zoom_registrants`) and 0032 (sessions' `uses_zoom`, `zoom_session_registrants`, `session_attendance()`, `my_zoom_links`); `event_reminders_due` and `session_reminders_due` return the person's own link on Zoom. |
+| 2026-11-13 | Migration 0033: `staff_cancel_event_ticket(booking, reason)` (`events.update`): cancels an event ticket, logs `event_ticket.cancel` with the reason, queues `event_ticket_cancelled`. |

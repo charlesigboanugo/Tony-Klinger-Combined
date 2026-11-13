@@ -7,7 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { syncProductToStripe } from "@/lib/stripe/sync";
 import { mediaUsage } from "@/lib/admin/media-usage";
 import { removeMediaFile } from "@/lib/storage/remove";
-import { ukLocalToIso } from "@/lib/utils/uk-time";
+import { ukLocalToIso, ukTodayStartLocal } from "@/lib/utils/uk-time";
+import { ZOOM_OFF_CUTOFF_HOURS } from "@/lib/zoom/overview";
 import { placeMediaFile, undoPlaceMediaFile } from "@/lib/storage/visibility";
 import { getAuthContext } from "@/lib/permissions";
 import {
@@ -281,7 +282,23 @@ export async function listRows(
     console.error("admin list failed", { table: resource.table, message: error.message });
     return [];
   }
-  return (data ?? []) as unknown as Array<Record<string, unknown>>;
+  const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
+
+  // Columns from a one-to-one table of their own (`attach`), read in so the
+  // list can show them like the row's own.
+  if (resource.attach && rows.length > 0) {
+    const { table, key, columns } = resource.attach;
+    const { data: extra } = await admin
+      .from(table)
+      .select([key, ...columns].join(","))
+      .in(key, rows.map((r) => String(r.id)));
+    const byId = new Map(((extra ?? []) as unknown as Array<Record<string, unknown>>).map((e) => [String(e[key]), e]));
+    for (const row of rows) {
+      const found = byId.get(String(row.id));
+      for (const column of columns) row[column] ??= found?.[column] ?? null;
+    }
+  }
+  return rows;
 }
 
 /**
@@ -607,6 +624,51 @@ function saveError(error: { message: string }): string {
   return error.message;
 }
 
+/**
+ * Dates being scheduled (owner, 2026-11-12): none before today, unless the
+ * record already held that date, and none before the field it must follow.
+ * The same rules as the pickers (`earliestFor` in ResourceForm), enforced here
+ * because a picker's minimum is only advice to the browser.
+ */
+async function dateRuleError(
+  resource: ResourceConfig,
+  values: Record<string, unknown>,
+  id?: string,
+): Promise<string | null> {
+  const dates = resource.fields.filter((f) => f.type === "datetime" && !f.virtual);
+  if (dates.length === 0) return null;
+
+  let stored: Record<string, unknown> = {};
+  if (id) {
+    const { data } = await createAdminClient()
+      .from(resource.table)
+      .select(dates.map((f) => f.name).join(","))
+      .eq("id", id)
+      .maybeSingle();
+    stored = (data as unknown as Record<string, unknown> | null) ?? {};
+  }
+  const at = (name: string) => {
+    const value = name in values ? values[name] : stored[name];
+    return typeof value === "string" ? Date.parse(value) : null;
+  };
+  const today = Date.parse(ukLocalToIso(ukTodayStartLocal())!);
+
+  for (const field of dates) {
+    const value = at(field.name);
+    if (value === null) continue;
+    const unchanged = typeof stored[field.name] === "string" && Date.parse(stored[field.name] as string) === value;
+    if (!field.pastAllowed && !unchanged && value < today) {
+      return `${field.label} can't be before today.`;
+    }
+    const after = field.notBefore ? at(field.notBefore) : null;
+    if (after !== null && value < after) {
+      const other = resource.fields.find((f) => f.name === field.notBefore)?.label ?? field.notBefore;
+      return `${field.label} can't be before ${other}.`;
+    }
+  }
+  return null;
+}
+
 export async function createRow(
   resource: ResourceConfig,
   formData: FormData,
@@ -617,6 +679,8 @@ export async function createRow(
   const values = parseFields(resource.fields, formData);
   const missing = emptyRequired(resource.fields, formData, values);
   if (missing) return { ok: false, error: missing };
+  const badDate = await dateRuleError(resource, values);
+  if (badDate) return { ok: false, error: badDate };
   await fillSlugs(resource, values, false);
   await fillPosition(resource, values, false);
   const unknownCustomer = await resolveCustomers(values);
@@ -699,6 +763,8 @@ export async function updateRow(
 
   const missing = emptyRequired(resource.fields, formData, values);
   if (missing) return { ok: false, error: missing };
+  const badDate = await dateRuleError(resource, values, id);
+  if (badDate) return { ok: false, error: badDate };
   await fillSlugs(resource, values, true);
   await fillPosition(resource, values, true);
 
@@ -760,6 +826,41 @@ export async function updateRow(
   if (resource.table === "retreat_applications") {
     await notifyRetreatApplicant(id);
   }
+  return { ok: true, id };
+}
+
+/**
+ * "Run on Zoom" switched straight from a list (owner, 2026-11-13), without
+ * opening the item. Only the one column changes, under the same rules as the
+ * form: the write permission, a finished row stays as it was, and an
+ * in-person event has nothing to put on Zoom.
+ */
+export async function setZoom(resource: ResourceConfig, id: string, on: boolean): Promise<CrudResult> {
+  const actorId = await authorize(resource.permissions.write);
+  if (!actorId) return { ok: false, error: "You do not have permission to do that." };
+  if (!resource.fields.some((f) => f.name === "uses_zoom")) return { ok: false, error: "This can't run on Zoom." };
+  if (await finishedRow(resource, id)) {
+    return { ok: false, error: `This ${resource.labelSingular.toLowerCase()} has finished, so it can no longer be changed.` };
+  }
+
+  const admin = createAdminClient();
+  // Off from a list, close to the start, would leave people no time to get a
+  // new link (owner, 2026-11-13). The item's own page can still change it.
+  if (!on) {
+    const { data } = await admin.from(resource.table).select("starts_at").eq("id", id).maybeSingle();
+    const startsAt = (data as { starts_at?: string | null } | null)?.starts_at;
+    if (startsAt && Date.parse(startsAt) - Date.now() < ZOOM_OFF_CUTOFF_HOURS * 3_600_000) {
+      return { ok: false, error: `Too close to the start to turn Zoom off here. If it must change, open the ${resource.labelSingular.toLowerCase()} and change it there.` };
+    }
+  }
+  if (on && resource.table === "events") {
+    const { data } = await admin.from("events").select("format").eq("id", id).maybeSingle();
+    if (data?.format === "in_person") return { ok: false, error: "An in-person event doesn't run on Zoom. Make it online or hybrid first." };
+  }
+
+  const { error } = await admin.from(resource.table).update({ uses_zoom: on }).eq("id", id);
+  if (error) return { ok: false, error: saveError(error) };
+  await audit(actorId, `${resource.table}.update`, resource, id, { uses_zoom: on });
   return { ok: true, id };
 }
 

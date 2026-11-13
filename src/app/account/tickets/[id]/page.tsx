@@ -104,7 +104,18 @@ export default async function TicketPage({ params }: PageProps<"/account/tickets
                     <ButtonArrow />
                   </ButtonLink>
                   <p className="mt-3 text-sm break-all text-muted-foreground">{ticket.joinUrl}</p>
+                  {ticket.zoom ? (
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                      This link is yours alone and works on one device at a time,
+                      so please don&apos;t share it.
+                    </p>
+                  ) : null}
                 </>
+              ) : ticket.zoom ? (
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Your own Zoom link is being prepared. It will appear here within
+                  a few minutes, and we will email it to you before the start.
+                </p>
               ) : (
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   The joining link will appear here, and we will email it to you

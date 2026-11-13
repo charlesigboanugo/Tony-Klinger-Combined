@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { requirePermission } from "@/lib/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ukLocalToIso } from "@/lib/utils/uk-time";
+import { ukLocalToIso, ukTodayStartLocal } from "@/lib/utils/uk-time";
+import { syncZoomSession } from "@/lib/zoom/sync";
 
 /**
  * Create a run of a series — migration 0016.
@@ -34,18 +36,21 @@ export async function scheduleSeriesAction(_prev: ScheduleState, formData: FormD
   const capacity = capacityRaw ? Number(capacityRaw) : null;
   const label = formData.get("label")?.toString().trim() || null;
   const meetingUrl = formData.get("meeting_url")?.toString().trim() || null;
+  const usesZoom = formData.get("uses_zoom") === "on";
 
   if (!UUID.test(seriesId)) return { error: "Choose a series." };
   if (!first) return { error: "Enter the date and time of the first session." };
   if (+new Date(first) <= Date.now()) return { error: "The first session must be in the future." };
   if (opensRaw && !opens) return { error: "Enter a valid date for when registration opens, or leave it empty." };
+  if (opens && +new Date(opens) < +new Date(ukLocalToIso(ukTodayStartLocal())!)) return { error: "Registration can't open before today." };
   if (opens && +new Date(opens) >= +new Date(first)) return { error: "Registration must open before the first session." };
   if (!Number.isInteger(count) || count < 1 || count > 52) return { error: "Sessions must be a number from 1 to 52." };
   if (!Number.isInteger(minutes) || minutes < 15 || minutes > 480) return { error: "Length must be between 15 and 480 minutes." };
   if (capacity !== null && (!Number.isInteger(capacity) || capacity < 1 || capacity > 500)) return { error: "Places must be a whole number." };
   if (meetingUrl && !/^https:\/\//i.test(meetingUrl)) return { error: "The joining link must start with https://" };
 
-  const { error } = await createAdminClient().rpc("schedule_series_run", {
+  const admin = createAdminClient();
+  const { data: runId, error } = await admin.rpc("schedule_series_run", {
     p_series_id: seriesId,
     p_first_start: first,
     p_count: count,
@@ -64,6 +69,19 @@ export async function scheduleSeriesAction(_prev: ScheduleState, formData: FormD
       };
     }
     return { error: "The run could not be created. Please try again." };
+  }
+
+  // Run on Zoom: every session of the run gets its meeting, and each person
+  // their own link (migration 0032). Made after the reply, without holding it.
+  if (usesZoom && runId) {
+    const { data: sessions } = await admin
+      .from("group_coaching_sessions")
+      .update({ uses_zoom: true })
+      .eq("run_id", runId)
+      .select("id");
+    after(async () => {
+      for (const s of sessions ?? []) await syncZoomSession("group", s.id);
+    });
   }
 
   // The series pages are pre-built; show the new dates now.

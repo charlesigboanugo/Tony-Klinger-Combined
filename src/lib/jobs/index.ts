@@ -8,6 +8,7 @@ import { stripe } from "@/lib/stripe/client";
 import { cleanupAbandonedUploads } from "@/lib/storage/remove";
 import { syncCatalogueToStripe } from "@/lib/stripe/sync";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { syncZoom } from "@/lib/zoom/sync";
 
 /**
  * Scheduled operations — note 01 §18, note 09 §44.
@@ -280,6 +281,7 @@ export const JOBS = {
   "event-reminders": sendEventReminders,
   "session-reminders": sendSessionReminders,
   "pass-reminders": sendPassReminders,
+  "zoom-sync": syncZoom,
 } as const;
 
 export type JobName = keyof typeof JOBS;

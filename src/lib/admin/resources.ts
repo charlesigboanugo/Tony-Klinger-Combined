@@ -55,6 +55,15 @@ export type Field = {
   name: string;
   label: string;
   type: FieldType;
+  /**
+   * A `datetime` field schedules something, so its picker starts at today and
+   * a date before today is refused on save (owner, 2026-11-12) — unless the
+   * record already held that date. `pastAllowed` lifts this for dates that
+   * record the past, such as when a post was published.
+   */
+  pastAllowed?: boolean;
+  /** A `datetime` that cannot come before this other field's (an end after its start). */
+  notBefore?: string;
   required?: boolean;
   /** Shown under the input. Use it for the non-obvious, not to restate the label. */
   hint?: string;
@@ -139,6 +148,12 @@ export type Field = {
 export type ResourceConfig = {
   /** Postgres table name. */
   table: string;
+  /**
+   * Columns kept in another table, one row per row of this one, read into the
+   * list so they can be shown as columns of their own (an event's private
+   * joining link, in `event_access`).
+   */
+  attach?: { table: string; key: string; columns: readonly string[] };
   /** URL segment under /admin. */
   slug: string;
   label: string;
@@ -261,6 +276,12 @@ export type ResourceConfig = {
 
 const CONTENT_STATUS = ["draft", "published", "archived"] as const;
 
+// Zoom for sessions (migration 0032, note 09 §40.2).
+const ZOOM_SESSION_HINT =
+  "On: the site creates the Zoom meeting and gives each person on it their own joining link, which works on one device at a time. The joining link above is then not shown. Tony's Zoom account hosts one meeting at a time, so Zoom sessions should not overlap.";
+const ZOOM_PRIVATE_HINT =
+  "On: once this time is booked, the site creates the Zoom meeting and puts its link in Joining link. Tony's Zoom account hosts one meeting at a time, so Zoom sessions should not overlap.";
+
 const statusField: Field = {
   name: "status",
   label: "Status",
@@ -274,6 +295,7 @@ const publishedAtField: Field = {
   name: "published_at",
   label: "Published at",
   type: "datetime",
+  pastAllowed: true,
   hint: "Left empty until the item is published.",
 };
 
@@ -497,10 +519,10 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       { name: "pass_opens_at", label: "Pass holders can register from", type: "datetime",
         hint: "Coaching Pass holders register ahead of everyone. Leave empty for seven days before registration opens. It cannot be later than the opening." },
       { name: "registration_opens_at", label: "Registration opens (to everyone)", type: "datetime", required: true },
-      { name: "registration_closes_at", label: "Series registration closes", type: "datetime",
+      { name: "registration_closes_at", label: "Series registration closes", type: "datetime", notBefore: "registration_opens_at",
         hint: "When the full series stops selling. From then the seats left are sold as single sessions, for the dates still to come. Leave empty to close when the series starts. It cannot be later than the start." },
       { name: "starts_at", label: "Starts", type: "datetime", required: true },
-      { name: "ends_at", label: "Ends", type: "datetime", required: true,
+      { name: "ends_at", label: "Ends", type: "datetime", notBefore: "starts_at", required: true,
         hint: "After this the run leaves the public list." },
       { name: "capacity", label: "Places", type: "number", required: true,
         hint: "Registration closes when they are taken. Raising it lets more people register; it does not change the seats in sessions already created." },
@@ -592,9 +614,9 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
         hint: "How customers tell intakes apart: \"Spring 2027\"." },
       { name: "registration_opens_at", label: "Registration opens", type: "datetime", required: true,
         hint: "Nobody can join before this." },
-      { name: "starts_at", label: "Starts (registration closes)", type: "datetime", required: true,
+      { name: "starts_at", label: "Starts (registration closes)", type: "datetime", required: true, notBefore: "registration_opens_at",
         hint: "The first workshop. Once it passes the intake shows as in progress and is closed." },
-      { name: "ends_at", label: "Ends", type: "datetime", required: true,
+      { name: "ends_at", label: "Ends", type: "datetime", notBefore: "starts_at", required: true,
         hint: "After this the intake leaves the cohort's page." },
       { name: "capacity", label: "Places", type: "number",
         hint: "Registration closes when they are taken. Leave empty for no limit — the page then makes no claim about size." },
@@ -645,7 +667,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       write: "cohorts.manage",
       remove: "cohorts.manage",
     },
-    columns: ["title", "starts_at", "status"],
+    columns: ["title", "starts_at", "uses_zoom", "meeting_url", "status"],
     titleField: "title",
     orderBy: { column: "starts_at", ascending: false },
     // By INTAKE (owner, 2026-10-14): each batch runs on its own dates, so its
@@ -672,10 +694,11 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       },
       { name: "title", label: "Title", type: "text", required: true },
       { name: "starts_at", label: "Starts", type: "datetime", required: true },
-      { name: "ends_at", label: "Ends", type: "datetime", required: true },
+      { name: "ends_at", label: "Ends", type: "datetime", notBefore: "starts_at", required: true },
       { name: "position", label: "Position", type: "number", hint: "Lower sorts first when two start together." },
       { name: "meeting_url", label: "Joining link", type: "text",
         hint: "Zoom or similar. Shown only to cohort members, and only from 15 minutes before the start until the end." },
+      { name: "uses_zoom", label: "Run on Zoom", type: "boolean", hint: ZOOM_SESSION_HINT },
       { name: "recording_resource_id", label: "Recording", type: "media", mediaKinds: RECORDING_KINDS,
         hint: "Add the recording under Media first (a Vimeo link, or an uploaded file), then pick it here." },
       { name: "status", label: "Status", type: "select", required: true,
@@ -696,7 +719,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       write: "coaching.manage",
       remove: "coaching.manage",
     },
-    columns: ["title", "starts_at", "capacity", "status"],
+    columns: ["title", "starts_at", "capacity", "uses_zoom", "meeting_url", "status"],
     titleField: "title",
     orderBy: { column: "starts_at", ascending: false },
     // By RUN (owner, 2026-10-14), as cohort workshops are by intake: each run
@@ -719,11 +742,12 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       },
       { name: "title", label: "Title", type: "text", required: true },
       { name: "starts_at", label: "Starts", type: "datetime", required: true },
-      { name: "ends_at", label: "Ends", type: "datetime", required: true },
+      { name: "ends_at", label: "Ends", type: "datetime", notBefore: "starts_at", required: true },
       { name: "capacity", label: "Capacity", type: "number",
         hint: "Seats in this session. Leave empty to use the series' group size." },
       { name: "meeting_url", label: "Joining link", type: "text",
         hint: "Shown only to people who booked, from 15 minutes before the start until the end." },
+      { name: "uses_zoom", label: "Run on Zoom", type: "boolean", hint: ZOOM_SESSION_HINT },
       { name: "recording_resource_id", label: "Replay", type: "media", mediaKinds: RECORDING_KINDS,
         hint: "Add the recording under Media first, then pick it here." },
       { name: "status", label: "Status", type: "select", required: true,
@@ -775,7 +799,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       write: "retreats.manage",
       remove: "retreats.manage",
     },
-    columns: ["label", "starts_at", "capacity", "status"],
+    columns: ["label", "starts_at", "capacity", "uses_zoom", "join_url", "status"],
     titleField: "label",
     orderBy: { column: "starts_at", ascending: false },
     groupBy: "retreat_id",
@@ -791,14 +815,15 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       { name: "label", label: "Name of this batch", type: "text", required: true,
         hint: "How customers tell two batches apart, e.g. \"Spring 2027\"." },
       { name: "registration_opens_at", label: "Registration opens", type: "datetime", required: true },
-      { name: "registration_closes_at", label: "Registration closes", type: "datetime",
+      { name: "registration_closes_at", label: "Registration closes", type: "datetime", notBefore: "registration_opens_at",
         hint: "Leave empty to close when the batch starts." },
       { name: "starts_at", label: "Starts", type: "datetime", required: true },
-      { name: "ends_at", label: "Ends", type: "datetime", required: true },
+      { name: "ends_at", label: "Ends", type: "datetime", notBefore: "starts_at", required: true },
       { name: "capacity", label: "Places", type: "number",
         hint: "No more are sold once they are gone. Leave empty for no limit." },
       { name: "join_url", label: "Joining link", type: "text",
         hint: "Shown in the Academy only to people with a place on this batch, from 15 minutes before the start." },
+      { name: "uses_zoom", label: "Run on Zoom", type: "boolean", hint: ZOOM_SESSION_HINT },
       { name: "joining_notes", label: "Notes for attendees", type: "textarea",
         hint: "Shown with the link: a passcode, what to have ready." },
       statusField,
@@ -957,7 +982,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       { name: "position", label: "Position", type: "number",
         hint: "Only breaks a tie between videos published at the same moment." },
       statusField,
-      { name: "published_at", label: "Published at", type: "datetime",
+      { name: "published_at", label: "Published at", type: "datetime", pastAllowed: true,
         hint: "Set by itself the first time the video is published. Change it to reorder." },
     ],
   },
@@ -974,16 +999,17 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       write: "memberships.update",
       remove: "memberships.update",
     },
-    columns: ["title", "starts_at", "status"],
+    columns: ["title", "starts_at", "uses_zoom", "meeting_url", "status"],
     titleField: "title",
     orderBy: { column: "starts_at", ascending: false },
     fields: [
       { name: "title", label: "Title", type: "text", required: true },
       { name: "description", label: "Description", type: "textarea" },
       { name: "starts_at", label: "Starts", type: "datetime", required: true },
-      { name: "ends_at", label: "Ends", type: "datetime", required: true },
+      { name: "ends_at", label: "Ends", type: "datetime", notBefore: "starts_at", required: true },
       { name: "meeting_url", label: "Joining link", type: "text",
         hint: "Shown to pass holders from 15 minutes before the start until the end." },
+      { name: "uses_zoom", label: "Run on Zoom", type: "boolean", hint: ZOOM_SESSION_HINT },
       { name: "recording_resource_id", label: "Recording", type: "media", mediaKinds: RECORDING_KINDS,
         hint: "Add the recording under Media first, then pick it here." },
       { name: "status", label: "Status", type: "select", required: true,
@@ -1024,7 +1050,8 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       write: "events.update",
       remove: "events.delete",
     },
-    columns: ["name", "starts_at", "format", "location", "status"],
+    columns: ["name", "starts_at", "format", "location", "uses_zoom", "join_url", "status"],
+    attach: { table: "event_access", key: "event_id", columns: ["join_url"] },
     titleField: "name",
     fields: [
       { name: "name", label: "Name", type: "text", required: true },
@@ -1037,13 +1064,20 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
         hint: "The first paragraph is the summary under the title; leave a blank line between paragraphs.",
       },
       { name: "starts_at", label: "Starts", type: "datetime" },
-      { name: "ends_at", label: "Ends", type: "datetime" },
+      { name: "ends_at", label: "Ends", type: "datetime", notBefore: "starts_at" },
       {
         name: "format",
         label: "Format",
         type: "select",
         options: ["in_person", "online", "hybrid"],
         hint: "Online joining links are set on the Check-in screen, where only ticket holders can see them.",
+      },
+      {
+        name: "uses_zoom",
+        label: "Run on Zoom",
+        type: "boolean",
+        shownFor: { field: "format", values: ["online", "hybrid"] },
+        hint: "On: for an online or hybrid event, the site creates its Zoom meeting and gives every ticket holder their own joining link, which works on one device at a time. Zoom Pro holds 100 people, so set Places to 100 or fewer.",
       },
       { name: "location", label: "Place name", type: "text", hint: "Short, public: \"Tyneside Cinema, Newcastle\" or \"Online, on Zoom\"." },
       { name: "venue_address", label: "Venue address", type: "textarea", hint: "Full address for in-person events. Shown with a map link." },
@@ -1114,7 +1148,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       write: "coaching.manage",
       remove: "coaching.manage",
     },
-    columns: ["service_id", "starts_at", "ends_at", "status"],
+    columns: ["service_id", "starts_at", "ends_at", "uses_zoom", "meeting_url", "status"],
     titleField: "starts_at",
     orderBy: { column: "starts_at", ascending: false },
     groupBy: "service_id",
@@ -1127,10 +1161,11 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
         references: { table: "private_coaching_services", label: "name", orderBy: "name" },
       },
       { name: "starts_at", label: "Starts", type: "datetime", required: true },
-      { name: "ends_at", label: "Ends", type: "datetime",
+      { name: "ends_at", label: "Ends", type: "datetime", notBefore: "starts_at",
         hint: "Leave empty to use the service's length." },
       { name: "meeting_url", label: "Joining link", type: "text",
         hint: "Shown only to the person who booked, from 15 minutes before the start. Can be added later." },
+      { name: "uses_zoom", label: "Run on Zoom", type: "boolean", hint: ZOOM_PRIVATE_HINT },
       { name: "status", label: "Status", type: "select", required: true, options: ["open", "cancelled"],
         hint: "Cancel rather than delete a time someone has booked, so they get their session back." },
       { name: "notes", label: "Private notes", type: "textarea", hint: "Staff only." },

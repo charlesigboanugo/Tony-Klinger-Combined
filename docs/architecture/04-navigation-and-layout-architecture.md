@@ -1476,3 +1476,4 @@ Use Next.js layouts and contextual navigation to achieve those boundaries within
 | 2026-10-15 | Headers under 300px (`tiny:` variant, globals.css): the menu button, TK monogram, divider, workspace label, spare-key dot and Account icon shrink so the Admin, Account and Academy headers fit (owner). The spare-key explainer card sits under the header at screen width on phones, so none of it falls off the screen. |
 | 2026-10-15 | Admin spare-key chip on phones shows words again, not a bare dot: "Key" under 360px, "Spare key" to `sm`, the full sentence above ("2nd key" / "Second key" for the owner); its dot blinks (opacity, `key-blink`, still under reduced motion) (owner). |
 | 2026-11-10 | One private coaching session is chosen, then paid for, with the time held during checkout (migration 0030; note 09 §36). The pack and gifts stay pay first. |
+| 2026-11-12 | Admin navigation, Experiences group: "Zoom" (`/admin/zoom`) added after Bookings, behind `coaching.read`. |

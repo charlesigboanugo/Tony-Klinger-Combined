@@ -322,7 +322,10 @@ online and hybrid events, the private joining link.
 - **Waitlist**: a full event offers one; a cancelled place emails the earliest person not
   yet told (first come, first served, not held).
 - **Formats**: `in_person`, `online`, `hybrid`. Joining links live in `event_access`,
-  readable only by ticket holders and staff.
+  readable only by ticket holders and staff. An online or hybrid event with **Run on Zoom**
+  on gives each ticket its own Zoom link instead, on the ticket page and in the reminders;
+  `/admin/check-in` shows the meeting, how many tickets have their link, and **Sync with
+  Zoom now** (note 09 §40.2).
 - **Event day**: a reminder the day before, and the joining link again within the hour for
   online/hybrid (`event-reminders` job, every 15 minutes). Coaching sessions get the same
   two emails from `session-reminders`, each linking to the session's Academy page. Staff use `/admin/check-in`:
@@ -1676,3 +1679,5 @@ The exact pages, nested routes and supporting files may be expanded where later 
 | 2026-10-14 | §18: the guest rendering of `/academy` is indexable, with a description for newcomers and a canonical; the signed-in dashboard stays `noindex`. The sitemap now lists every published coaching offer and event page and `/about/testimonials`. |
 | 2026-10-14 | Page metadata: every public page builds its title, description, canonical, Open Graph and X card through `pageMetadata` (`src/lib/seo/metadata.ts`); the root layout sets `metadataBase` from the site URL and a default share card (`/og-default.jpg`). Structured data: `WebSite` and `Person` (Tony) on home, `Person` on About, `Event`, `Course` and catalogue works (`Book`/`Movie`/`PodcastSeries`/`CreativeWork`) on their pages, from `src/lib/seo/structured-data.ts`. `/manifest.webmanifest` added. |
 | 2026-11-10 | One private coaching session is chosen, then paid for, with the time held during checkout (migration 0030; note 09 §36). The pack and gifts stay pay first. |
+| 2026-11-12 | `/admin/zoom` (new): every event and session on Zoom, with meeting, own links, errors and overlaps (note 09 §40.2). Events and coaching sessions can run on Zoom, each person seeing their own link on their ticket or Academy page. |
+| 2026-11-13 | `/admin/check-in`: each ticket on the attendee list has **Cancel** (paid or free), confirmed with a reason (migration 0033, note 09). |

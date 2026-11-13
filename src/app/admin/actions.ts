@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { listHref, withFrom } from "@/lib/admin/back";
-import { createRow, deleteRow, updateRow } from "@/lib/admin/crud";
+import { createRow, deleteRow, setZoom, updateRow } from "@/lib/admin/crud";
 import { accountDeletionBlockers, userIdForEmail } from "@/lib/admin/operations";
 import { COUNTED_KINDS, isGrantableKind } from "@/lib/admin/entitlement-products";
 import { resourceBySlug } from "@/lib/admin/resources";
@@ -14,6 +15,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthContext, requirePermission } from "@/lib/permissions";
 import { absoluteUrl } from "@/lib/urls";
+import { sessionKindOfTable, syncZoom, syncZoomEvent, syncZoomSession } from "@/lib/zoom/sync";
 
 /**
  * Admin form actions — note 06 §2.
@@ -44,6 +46,14 @@ export async function saveResourceAction(
 
   if (!result.ok) return { error: result.error };
 
+  // An event's or session's Zoom meeting follows it: made, moved or removed
+  // straight after the save, without holding the page. The `zoom-sync` job
+  // catches a miss.
+  const savedId = id ?? ("id" in result ? result.id : undefined);
+  const sessionKind = sessionKindOfTable(resource.table);
+  if (savedId && resource.table === "events") after(() => syncZoomEvent(savedId));
+  if (savedId && sessionKind) after(() => syncZoomSession(sessionKind, savedId));
+
   // Public pages are pre-built (note 10 §47.1); any content edit rebuilds them
   // now rather than at the hourly refresh. The sitemap is a metadata route
   // outside the layout tree, so it is named explicitly.
@@ -52,6 +62,33 @@ export async function saveResourceAction(
   // redirect() throws, so it is called outside any try/catch. Back to the
   // list as it was left: the same tab, search and page.
   redirect(listHref(resource.slug, formData.get("__from")?.toString()));
+}
+
+/**
+ * The Zoom switch in an admin list (owner, 2026-11-13). Saves the one setting,
+ * then makes or removes the meeting after the reply, as a save from the form
+ * does. Back to the list as it was, with any refusal shown there.
+ */
+export async function toggleZoomAction(formData: FormData): Promise<void> {
+  const resource = resourceBySlug(formData.get("__resource")?.toString() ?? "");
+  const id = formData.get("__id")?.toString();
+  const on = formData.get("on") === "1";
+  const back = formData.get("__back")?.toString() || (resource ? `/admin/${resource.slug}` : "/admin");
+  if (!resource || !id) return;
+
+  const result = await setZoom(resource, id, on);
+  if (result.ok) {
+    const kind = sessionKindOfTable(resource.table);
+    if (resource.table === "events") after(() => syncZoomEvent(id));
+    else if (kind) after(() => syncZoomSession(kind, id));
+  }
+
+  revalidatePath(`/admin/${resource.slug}`);
+  revalidatePath("/admin/zoom");
+  const url = new URL(back, "http://admin.local");
+  if (!result.ok) url.searchParams.set("zoomError", result.error);
+  else url.searchParams.delete("zoomError");
+  redirect(`${url.pathname}${url.search}`);
 }
 
 export async function deleteResourceAction(formData: FormData) {
@@ -69,6 +106,9 @@ export async function deleteResourceAction(formData: FormData) {
     // who pressed Delete needs to see why nothing happened.
     redirect(withFrom(`/admin/${resource.slug}/${id}?deleteError=${encodeURIComponent(result.error)}`, from));
   }
+
+  // A deleted event or session leaves its Zoom meeting behind; remove it now.
+  if (resource.table === "events" || sessionKindOfTable(resource.table)) after(() => syncZoom());
 
   revalidatePath("/", "layout");
   revalidatePath("/sitemap.xml");

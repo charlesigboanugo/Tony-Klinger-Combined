@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 
 import { queueEmail } from "@/lib/email/send";
 import { createClient } from "@/lib/supabase/server";
+import { syncZoomForBooking, syncZoomSession } from "@/lib/zoom/sync";
 
 /**
  * Booking mutations — note 09 §30, §34.
@@ -48,6 +50,9 @@ export async function bookSessionAction(
   } | null;
 
   if (result?.status === "ok") {
+    // A Zoom session: their own joining link, made after the reply is sent.
+    after(() => syncZoomSession("group", sessionId));
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -96,6 +101,9 @@ export async function cancelBookingAction(
   const result = data as { status: string; credit_returned?: boolean } | null;
 
   if (result?.status === "ok") {
+    // A cancelled Zoom ticket's link must stop working: removed after the reply.
+    after(() => syncZoomForBooking(bookingId));
+
     const {
       data: { user },
     } = await supabase.auth.getUser();

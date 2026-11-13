@@ -534,6 +534,7 @@ export type Database = {
           starts_at: string
           status: string
           title: string
+          uses_zoom: boolean
         }
         Insert: {
           cohort_id: string
@@ -547,6 +548,7 @@ export type Database = {
           starts_at: string
           status?: string
           title: string
+          uses_zoom?: boolean
         }
         Update: {
           cohort_id?: string
@@ -560,6 +562,7 @@ export type Database = {
           starts_at?: string
           status?: string
           title?: string
+          uses_zoom?: boolean
         }
         Relationships: [
           {
@@ -1016,6 +1019,7 @@ export type Database = {
           starts_at: string | null
           status: Database["public"]["Enums"]["content_status"]
           updated_at: string
+          uses_zoom: boolean
           venue_address: string | null
         }
         Insert: {
@@ -1034,6 +1038,7 @@ export type Database = {
           starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
           updated_at?: string
+          uses_zoom?: boolean
           venue_address?: string | null
         }
         Update: {
@@ -1052,6 +1057,7 @@ export type Database = {
           starts_at?: string | null
           status?: Database["public"]["Enums"]["content_status"]
           updated_at?: string
+          uses_zoom?: boolean
           venue_address?: string | null
         }
         Relationships: [
@@ -1143,6 +1149,7 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          uses_zoom: boolean
         }
         Insert: {
           capacity: number
@@ -1158,6 +1165,7 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          uses_zoom?: boolean
         }
         Update: {
           capacity?: number
@@ -1173,6 +1181,7 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          uses_zoom?: boolean
         }
         Relationships: [
           {
@@ -1421,6 +1430,7 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          uses_zoom: boolean
         }
         Insert: {
           created_at?: string
@@ -1433,6 +1443,7 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          uses_zoom?: boolean
         }
         Update: {
           created_at?: string
@@ -1445,6 +1456,7 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          uses_zoom?: boolean
         }
         Relationships: [
           {
@@ -2027,6 +2039,7 @@ export type Database = {
           starts_at: string
           status: string
           updated_at: string
+          uses_zoom: boolean
         }
         Insert: {
           created_at?: string
@@ -2038,6 +2051,7 @@ export type Database = {
           starts_at: string
           status?: string
           updated_at?: string
+          uses_zoom?: boolean
         }
         Update: {
           created_at?: string
@@ -2049,6 +2063,7 @@ export type Database = {
           starts_at?: string
           status?: string
           updated_at?: string
+          uses_zoom?: boolean
         }
         Relationships: [
           {
@@ -2327,6 +2342,7 @@ export type Database = {
           starts_at: string
           status: Database["public"]["Enums"]["content_status"]
           updated_at: string
+          uses_zoom: boolean
         }
         Insert: {
           capacity?: number | null
@@ -2342,6 +2358,7 @@ export type Database = {
           starts_at: string
           status?: Database["public"]["Enums"]["content_status"]
           updated_at?: string
+          uses_zoom?: boolean
         }
         Update: {
           capacity?: number | null
@@ -2357,6 +2374,7 @@ export type Database = {
           starts_at?: string
           status?: Database["public"]["Enums"]["content_status"]
           updated_at?: string
+          uses_zoom?: boolean
         }
         Relationships: [
           {
@@ -2786,6 +2804,127 @@ export type Database = {
           },
         ]
       }
+      zoom_meetings: {
+        Row: {
+          created_at: string
+          ends_at: string | null
+          event_id: string | null
+          id: string
+          join_url: string | null
+          last_error: string | null
+          meeting_id: string | null
+          session_id: string | null
+          session_kind: string | null
+          signature: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at?: string | null
+          event_id?: string | null
+          id?: string
+          join_url?: string | null
+          last_error?: string | null
+          meeting_id?: string | null
+          session_id?: string | null
+          session_kind?: string | null
+          signature?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string | null
+          event_id?: string | null
+          id?: string
+          join_url?: string | null
+          last_error?: string | null
+          meeting_id?: string | null
+          session_id?: string | null
+          session_kind?: string | null
+          signature?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_meetings_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zoom_registrants: {
+        Row: {
+          booking_id: string
+          created_at: string
+          join_url: string
+          meeting_row_id: string
+          registrant_id: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          join_url: string
+          meeting_row_id: string
+          registrant_id: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          join_url?: string
+          meeting_row_id?: string
+          registrant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_registrants_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zoom_registrants_meeting_row_id_fkey"
+            columns: ["meeting_row_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zoom_session_registrants: {
+        Row: {
+          created_at: string
+          join_url: string
+          meeting_row_id: string
+          registrant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          join_url: string
+          meeting_row_id: string
+          registrant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          join_url?: string
+          meeting_row_id?: string
+          registrant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_session_registrants_meeting_row_id_fkey"
+            columns: ["meeting_row_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       active_member_emails: {
@@ -3119,6 +3258,13 @@ export type Database = {
         }[]
       }
       my_waitlist_position: { Args: { p_event_id: string }; Returns: number }
+      my_zoom_links: {
+        Args: { p_kind: string }
+        Returns: {
+          join_url: string
+          session_id: string
+        }[]
+      }
       new_ticket_reference: { Args: never; Returns: string }
       orders_awaiting_reconciliation: {
         Args: { p_older_than?: string }
@@ -3263,6 +3409,15 @@ export type Database = {
         }
         Returns: string
       }
+      session_attendance: {
+        Args: never
+        Returns: {
+          item_id: string
+          joined_at: string
+          kind: string
+          user_id: string
+        }[]
+      }
       session_places_left: { Args: { p_session_id: string }; Returns: number }
       session_reminders_due: {
         Args: { p_kind: string }
@@ -3281,6 +3436,10 @@ export type Database = {
       }
       session_sale_status: { Args: { p_session_id: string }; Returns: string }
       sign_out_my_session: { Args: { p_session_id: string }; Returns: boolean }
+      staff_cancel_event_ticket: {
+        Args: { p_booking_id: string; p_reason: string }
+        Returns: Json
+      }
       sync_membership_entitlements: {
         Args: { p_user_id: string }
         Returns: undefined

@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { BackLink } from "@/components/ui/BackLink";
-import { FILLED_STATES } from "@/components/ui/Button";
+import { ConfirmSubmit } from "@/components/ui/ConfirmSubmit";
+import { FILLED_STATES, OUTLINE_STATES } from "@/components/ui/Button";
 import { AdminTable, StatusPill } from "@/components/admin/AdminTable";
 import { AdminPageHeader } from "@/components/admin/AdminUI";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -13,7 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import { cn } from "@/lib/utils/cn";
 
-import { checkInAction, saveJoiningAction } from "./actions";
+import { cancelTicketAction, checkInAction, saveJoiningAction, syncZoomAction } from "./actions";
 import { Scanner } from "./Scanner";
 
 export const metadata: Metadata = { title: "Event check-in · Admin", robots: { index: false } };
@@ -71,7 +72,7 @@ export default async function CheckInPage({ searchParams }: PageProps<"/admin/ch
   }
 
   const [{ data: event }, { data: attendees }, { data: access }] = await Promise.all([
-    supabase.from("events").select("id,name,slug,starts_at,ends_at,format,location,capacity").eq("id", eventId).maybeSingle(),
+    supabase.from("events").select("id,name,slug,starts_at,ends_at,format,location,capacity,uses_zoom").eq("id", eventId).maybeSingle(),
     supabase.rpc("event_attendees", { p_event_id: eventId }),
     supabase.from("event_access").select("join_url,joining_notes").eq("event_id", eventId).maybeSingle(),
   ]);
@@ -85,6 +86,22 @@ export default async function CheckInPage({ searchParams }: PageProps<"/admin/ch
   const done = typeof params.done === "string" ? params.done : null;
   const doneRef = typeof params.ref === "string" ? params.ref : null;
   const online = event.format !== "in_person";
+  const onZoom = online && event.uses_zoom;
+
+  // The Zoom meeting and how many tickets have their own link (0031).
+  let zoomMeeting: { id: string; meeting_id: string | null; last_error: string | null } | null = null;
+  let zoomLinks = 0;
+  if (onZoom) {
+    ({ data: zoomMeeting } = await supabase.from("zoom_meetings").select("id,meeting_id,last_error").eq("event_id", event.id).maybeSingle());
+    if (zoomMeeting) {
+      const { count } = await supabase
+        .from("zoom_registrants")
+        .select("booking_id", { count: "exact", head: true })
+        .eq("meeting_row_id", zoomMeeting.id);
+      zoomLinks = count ?? 0;
+    }
+  }
+  const zoomCapacityWarning = onZoom && (event.capacity === null || event.capacity > 100);
 
   return (
     <>
@@ -112,6 +129,20 @@ export default async function CheckInPage({ searchParams }: PageProps<"/admin/ch
         ))}
       </dl>
 
+      {typeof params.cancelled === "string" ? (
+        <div className="mt-6">
+          <FormMessage tone={params.cancelled === "ok" ? "success" : undefined}>
+            {params.cancelled === "ok"
+              ? `${params.ref} cancelled. The holder has been emailed.`
+              : params.cancelled === "already"
+                ? `${params.ref} was already cancelled.`
+                : params.cancelled === "no_reason"
+                  ? "Give a reason to cancel a ticket."
+                  : "That ticket couldn't be cancelled. Please try again."}
+          </FormMessage>
+        </div>
+      ) : null}
+
       {done && doneRef ? (
         <div className="mt-6">
           <FormMessage tone={done === "ok" || done === "undone" ? "success" : undefined}>
@@ -121,11 +152,61 @@ export default async function CheckInPage({ searchParams }: PageProps<"/admin/ch
       ) : null}
 
 
+      {onZoom ? (
+        <section className="mt-8 rounded-(--radius-lg) border border-border bg-surface p-6 shadow-card">
+          <h2 className="font-display text-xl font-semibold">Zoom</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Every ticket holder gets their own joining link, on their ticket and in the
+            reminder emails. Each link works on one device at a time.
+          </p>
+          {params.zoom === "synced" ? <div className="mt-3"><FormMessage tone="success">Synced with Zoom.</FormMessage></div> : null}
+          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-muted-foreground">Meeting ID</dt>
+              <dd className="mt-0.5 font-mono font-semibold tracking-wider">
+                {zoomMeeting?.meeting_id ? zoomMeeting.meeting_id.replace(/(\d{3})(\d{3,4})(\d{4})$/, "$1 $2 $3") : "Not created yet"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Personal links</dt>
+              <dd className="mt-0.5 font-semibold">{zoomLinks} of {list.length} tickets</dd>
+            </div>
+          </dl>
+          {zoomMeeting?.last_error ? (
+            <div className="mt-3">
+              <FormMessage>Zoom refused the last attempt: {zoomMeeting.last_error}. It is retried every five minutes.</FormMessage>
+            </div>
+          ) : null}
+          {zoomCapacityWarning ? (
+            <div className="mt-3">
+              <FormMessage>
+                Zoom Pro holds 100 people. Set Places to 100 or fewer on this event, or anyone past
+                the hundredth will be turned away by Zoom.
+              </FormMessage>
+            </div>
+          ) : null}
+          <p className="mt-3 text-sm text-muted-foreground">
+            Tony starts the meeting from his Zoom app as usual. Compare the names in the meeting
+            with the list below.
+          </p>
+          {canWrite ? (
+            <form action={syncZoomAction} className="mt-4">
+              <input type="hidden" name="eventId" value={event.id} />
+              <button type="submit" className={`h-10 rounded-full border border-input-border px-5 text-sm font-semibold ${OUTLINE_STATES}`}>
+                Sync with Zoom now
+              </button>
+            </form>
+          ) : null}
+        </section>
+      ) : null}
+
       {online ? (
         <section className="mt-8 rounded-(--radius-lg) border border-border bg-surface p-6 shadow-card">
-          <h2 className="font-display text-xl font-semibold">Joining link</h2>
+          <h2 className="font-display text-xl font-semibold">{onZoom ? "Joining notes" : "Joining link"}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Only ticket holders see this, on their ticket and in the reminder emails.
+            {onZoom
+              ? "Shown to ticket holders with their own link. A link saved here is not shown while the event runs on Zoom."
+              : "Only ticket holders see this, on their ticket and in the reminder emails."}
           </p>
           {params.joining === "saved" ? <div className="mt-3"><FormMessage tone="success">Saved.</FormMessage></div> : null}
           {params.joining === "invalid" ? <div className="mt-3"><FormMessage>That link must start with https://</FormMessage></div> : null}
@@ -182,6 +263,7 @@ export default async function CheckInPage({ searchParams }: PageProps<"/admin/ch
               </td>
               <td className="px-4 py-3 text-right">
                 {canWrite && a.reference ? (
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                   <form action={checkInAction}>
                     <input type="hidden" name="reference" value={a.reference} />
                     <input type="hidden" name="back" value="list" />
@@ -196,6 +278,43 @@ export default async function CheckInPage({ searchParams }: PageProps<"/admin/ch
                       {a.checked_in_at ? "Undo" : "Check in"}
                     </button>
                   </form>
+                  {/* Paid or free (migration 0033); asks first, with a reason for the log. */}
+                  <form action={cancelTicketAction}>
+                    <input type="hidden" name="bookingId" value={a.booking_id} />
+                    <input type="hidden" name="eventId" value={event.id} />
+                    <ConfirmSubmit
+                      variant="outline"
+                      size="sm"
+                      destructive
+                      title={`Cancel ${a.name}'s ticket?`}
+                      confirmLabel="Cancel the ticket"
+                      cancelLabel="Keep it"
+                      pendingLabel="Cancelling…"
+                      points={[
+                        `Ticket ${a.reference} stops admitting them, and they are emailed to say so.`,
+                        a.paid
+                          ? "It does not refund them. Refund the payment in Stripe; the email says we will be in touch about it."
+                          : "It was free, so there is nothing to refund.",
+                        "If anyone is on the waiting list, the next person is told a place is free.",
+                        ...(onZoom ? ["Their own Zoom link stops working."] : []),
+                      ]}
+                      note={
+                        <label className="block text-foreground">
+                          <span className="font-medium">Reason</span>{" "}
+                          <span className="text-muted-foreground">(kept in the audit log)</span>
+                          <input
+                            name="reason"
+                            required
+                            defaultValue="Cancelled at the ticket holder's request"
+                            className="mt-1.5 h-10 w-full rounded-(--radius) border border-input-border bg-background px-3 text-sm"
+                          />
+                        </label>
+                      }
+                    >
+                      Cancel
+                    </ConfirmSubmit>
+                  </form>
+                  </div>
                 ) : null}
               </td>
             </tr>
