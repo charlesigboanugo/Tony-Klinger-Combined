@@ -135,7 +135,8 @@ export default async function AdminZoomPage({ searchParams }: PageProps<"/admin/
           <tr key={r.key} className="align-top hover:bg-surface-muted/60">
             <td className="px-4 py-3 whitespace-nowrap">{ukDateTime(r.startsAt)}</td>
             <td className="px-4 py-3">
-              <Link href={r.href} className="font-medium hover:text-accent">{r.title}</Link>
+              {/* The meeting, with everyone on it and their own link. */}
+              <Link href={`/admin/zoom/${r.kind}/${r.key.split(":")[1]}`} className="font-medium hover:text-accent">{r.title}</Link>
             </td>
             <td className="px-4 py-3 text-muted-foreground">{ZOOM_KIND_LABEL[r.kind]}</td>
             <td className="px-4 py-3 font-mono whitespace-nowrap">

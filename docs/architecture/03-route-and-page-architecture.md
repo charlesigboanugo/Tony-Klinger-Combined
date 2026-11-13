@@ -1681,3 +1681,4 @@ The exact pages, nested routes and supporting files may be expanded where later 
 | 2026-11-10 | One private coaching session is chosen, then paid for, with the time held during checkout (migration 0030; note 09 §36). The pack and gifts stay pay first. |
 | 2026-11-12 | `/admin/zoom` (new): every event and session on Zoom, with meeting, own links, errors and overlaps (note 09 §40.2). Events and coaching sessions can run on Zoom, each person seeing their own link on their ticket or Academy page. |
 | 2026-11-13 | `/admin/check-in`: each ticket on the attendee list has **Cancel** (paid or free), confirmed with a reason (migration 0033, note 09). |
+| 2026-11-13 | `/admin/zoom/[kind]/[id]` (new): one Zoom meeting, everyone on it and their own link (copy only); `/admin/check-in` gains a "Zoom link" column on Zoom events (note 09 §40.2). |

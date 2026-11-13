@@ -1,5 +1,6 @@
 import "server-only";
 
+import { peopleByIds } from "@/lib/admin/operations";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import { ZOOM_SESSION_TABLES, type SessionKind } from "./sync";
@@ -192,4 +193,93 @@ export function tooCloseToTurnOff(rows: Array<Record<string, unknown>>, now = Da
       .filter((r) => r.uses_zoom === true && typeof r.starts_at === "string" && Date.parse(r.starts_at) - now < ZOOM_OFF_CUTOFF_HOURS * 3_600_000)
       .map((r) => String(r.id)),
   );
+}
+
+export type ZoomPerson = {
+  userId: string;
+  name: string | null;
+  email: string | null;
+  /** Their own joining link; null while they have none yet. */
+  link: string | null;
+};
+
+/**
+ * Everyone on one event or session run on Zoom, with their own link — for
+ * staff helping someone whose link "doesn't work" (owner, 2026-11-13). Who
+ * should be on it comes from the same place the sync reads (tickets, or
+ * `session_attendance`), so anyone still waiting for a link is listed too.
+ */
+export async function zoomPeople(kind: ZoomKind, id: string): Promise<{
+  title: string;
+  startsAt: string | null;
+  meetingId: string | null;
+  lastError: string | null;
+  people: ZoomPerson[];
+  /** Private coaching: one plain link for the booking, not one per person. */
+  plainLink: string | null;
+} | null> {
+  const admin = createAdminClient();
+  const table = kind === "event" ? "events" : ZOOM_SESSION_TABLES[kind];
+  const titleColumn = kind === "event" ? "name" : kind === "retreat" ? "label" : kind === "private" ? "id" : "title";
+  const { data: item } = await admin.from(table).select(`${titleColumn},starts_at`).eq("id", id).maybeSingle();
+  if (!item) return null;
+  const row = item as unknown as Record<string, string | null>;
+
+  const { data: meeting } = await (kind === "event"
+    ? admin.from("zoom_meetings").select("id,meeting_id,last_error,join_url").eq("event_id", id)
+    : admin.from("zoom_meetings").select("id,meeting_id,last_error,join_url").eq("session_kind", kind).eq("session_id", id)
+  ).maybeSingle();
+
+  let should: string[] = [];
+  const links = new Map<string, string>();
+  if (kind === "event") {
+    const { data: bookings } = await admin
+      .from("bookings")
+      .select("id,user_id,status")
+      .eq("bookable_type", "event")
+      .eq("bookable_id", id)
+      .in("status", ["pending", "confirmed", "completed"]);
+    should = (bookings ?? []).map((b) => b.user_id as string);
+    if (meeting) {
+      const { data: regs } = await admin.from("zoom_registrants").select("booking_id,join_url").eq("meeting_row_id", meeting.id);
+      const userOf = new Map((bookings ?? []).map((b) => [b.id as string, b.user_id as string]));
+      for (const r of regs ?? []) {
+        const user = userOf.get(r.booking_id as string);
+        if (user) links.set(user, r.join_url as string);
+      }
+    }
+  } else if (kind === "private") {
+    const { data: bookings } = await admin
+      .from("bookings")
+      .select("user_id")
+      .eq("bookable_type", "private_coaching")
+      .eq("bookable_id", id)
+      .eq("status", "confirmed");
+    should = (bookings ?? []).map((b) => b.user_id as string);
+  } else {
+    const { data: attending } = await admin.rpc("session_attendance").eq("kind", kind).eq("item_id", id);
+    should = ((attending ?? []) as Array<{ user_id: string }>).map((a) => a.user_id);
+    if (meeting) {
+      const { data: regs } = await admin.from("zoom_session_registrants").select("user_id,join_url").eq("meeting_row_id", meeting.id);
+      for (const r of regs ?? []) links.set(r.user_id as string, r.join_url as string);
+    }
+  }
+
+  const ids = [...new Set([...should, ...links.keys()])];
+  const people = await peopleByIds(ids);
+  return {
+    title: kind === "private" ? "Private coaching" : (row[titleColumn] ?? "Untitled"),
+    startsAt: row.starts_at ?? null,
+    meetingId: meeting?.meeting_id ?? null,
+    lastError: meeting?.last_error ?? null,
+    plainLink: kind === "private" ? (meeting?.join_url ?? null) : null,
+    people: ids
+      .map((userId) => ({
+        userId,
+        name: people.get(userId)?.name ?? null,
+        email: people.get(userId)?.email ?? null,
+        link: links.get(userId) ?? null,
+      }))
+      .sort((a, b) => (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? "")),
+  };
 }

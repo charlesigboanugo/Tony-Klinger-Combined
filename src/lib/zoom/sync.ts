@@ -87,7 +87,7 @@ const MAX_MINUTES = 24 * 60;
 // from 15 minutes before the start, and a pass holder's Q&A runs all year.
 const REGISTER_AHEAD_DAYS = 14;
 // Bumped when the settings sent to Zoom change, so every meeting is updated once.
-const SETTINGS_VERSION = 1;
+const SETTINGS_VERSION = 2;
 
 function endOf(target: Pick<Target, "startsAt" | "endsAt">): number | null {
   if (!target.startsAt) return null;
@@ -110,8 +110,12 @@ function meetingBody(target: Target) {
     timezone: "Europe/London",
     settings: target.registration
       ? {
-          // Registration on, approved automatically: the booking is the approval.
-          approval_type: 0,
+          // Registration on, approved BY HAND (owner, 2026-11-13). Zoom's own
+          // registration page is public to anyone holding its address; with
+          // manual approval, someone signing up there waits as "pending" and
+          // gets no working link. The site approves the people it registers
+          // itself (`auto_approve` below): the booking is the approval.
+          approval_type: 1,
           registration_type: 1,
           // One device per link: a forwarded link cannot be in the room twice.
           allow_multiple_devices: false,
@@ -279,7 +283,11 @@ async function register(meetingId: string, userId: string) {
   if (!person) return null;
   // Registering an email already on the meeting returns the same registration,
   // so a repeat after a lost write is harmless.
-  return zoom<{ registrant_id: string; join_url: string }>("POST", `/meetings/${meetingId}/registrants`, person);
+  return zoom<{ registrant_id: string; join_url: string }>("POST", `/meetings/${meetingId}/registrants`, {
+    ...person,
+    // Approved on the spot: they hold a ticket or a place (see approval_type).
+    auto_approve: true,
+  });
 }
 
 /**

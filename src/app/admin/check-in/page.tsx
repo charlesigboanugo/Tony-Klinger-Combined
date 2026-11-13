@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { BackLink } from "@/components/ui/BackLink";
 import { ConfirmSubmit } from "@/components/ui/ConfirmSubmit";
+import { CopyLink } from "@/components/admin/CopyLink";
 import { FILLED_STATES, OUTLINE_STATES } from "@/components/ui/Button";
 import { AdminTable, StatusPill } from "@/components/admin/AdminTable";
 import { AdminPageHeader } from "@/components/admin/AdminUI";
@@ -91,14 +92,14 @@ export default async function CheckInPage({ searchParams }: PageProps<"/admin/ch
   // The Zoom meeting and how many tickets have their own link (0031).
   let zoomMeeting: { id: string; meeting_id: string | null; last_error: string | null } | null = null;
   let zoomLinks = 0;
+  // Each ticket's own link, for staff helping someone whose link "doesn't work".
+  const linkOf = new Map<string, string>();
   if (onZoom) {
     ({ data: zoomMeeting } = await supabase.from("zoom_meetings").select("id,meeting_id,last_error").eq("event_id", event.id).maybeSingle());
     if (zoomMeeting) {
-      const { count } = await supabase
-        .from("zoom_registrants")
-        .select("booking_id", { count: "exact", head: true })
-        .eq("meeting_row_id", zoomMeeting.id);
-      zoomLinks = count ?? 0;
+      const { data: regs } = await supabase.from("zoom_registrants").select("booking_id,join_url").eq("meeting_row_id", zoomMeeting.id);
+      for (const r of regs ?? []) linkOf.set(r.booking_id, r.join_url);
+      zoomLinks = linkOf.size;
     }
   }
   const zoomCapacityWarning = onZoom && (event.capacity === null || event.capacity > 100);
@@ -245,7 +246,7 @@ export default async function CheckInPage({ searchParams }: PageProps<"/admin/ch
 
       <div className="mt-8">
         <AdminTable
-          headers={["Name", "Reference", "Ticket", "Arrived", ""]}
+          headers={onZoom ? ["Name", "Reference", "Ticket", "Arrived", "Zoom link", ""] : ["Name", "Reference", "Ticket", "Arrived", ""]}
           empty={list.length === 0 ? "No tickets yet." : undefined}
         >
           {list.map((a) => (
@@ -261,6 +262,15 @@ export default async function CheckInPage({ searchParams }: PageProps<"/admin/ch
                   ? new Date(a.checked_in_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" })
                   : "—"}
               </td>
+              {onZoom ? (
+                <td className="max-w-64 px-4 py-3">
+                  {linkOf.get(a.booking_id) ? (
+                    <CopyLink url={linkOf.get(a.booking_id)!} label={`${a.name}'s Zoom link`} />
+                  ) : (
+                    <span className="text-muted-foreground">No link yet</span>
+                  )}
+                </td>
+              ) : null}
               <td className="px-4 py-3 text-right">
                 {canWrite && a.reference ? (
                   <div className="flex flex-wrap items-center justify-end gap-2">

@@ -1361,7 +1361,9 @@ event finished                          →  meeting kept (Zoom's history and re
   Scopes: create, update, read and delete meetings; add, delete and list registrants; read
   user; and (unused so far) the meeting participants report.
 - **Meeting settings**, applied on every create and update: registration on, approved
-  automatically (the ticket is the approval), **one device per link**
+  **by hand** (2026-11-13: Zoom's own registration page is public to anyone holding its
+  address, so a sign-up there stays pending with no working link; the site registers its
+  people with `auto_approve`, so they are approved at once), **one device per link**
   (`allow_multiple_devices: false`), no Zoom emails (the site sends the link), no Zoom
   account needed to join. Times are sent in UTC with the London time zone.
 - **Reconciliation, not events.** `src/lib/zoom/sync.ts` compares what should exist with
@@ -1410,6 +1412,13 @@ private                        a plain meeting (waiting room on) once the time i
   Current and Past, with its meeting ID, how many people have their own link, Zoom's last
   refusal and any **overlap** (Tony's one licence hosts one meeting at a time), and **Sync
   with Zoom now**.
+
+**Staff can see each person's link** (2026-11-13): Zoom's own site lists registrants but
+not their links, so Admin shows them: a "Zoom link" column on Check-in for event tickets,
+and `/admin/zoom/[kind]/[id]` (from each row of Admin → Zoom) listing everyone on a meeting,
+their link, and who is still waiting for one (`zoomPeople`). Links are **copied, never
+opened** (`CopyLink`): following someone's link would join as them and, one device per link,
+could push them out.
 
 **Limits.** Someone who has not joined yet can still hand their link to another person;
 staff compare the names in the meeting with the Check-in list (registrants are named from
