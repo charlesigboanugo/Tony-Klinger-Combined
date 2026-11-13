@@ -189,8 +189,8 @@ export default async function AdminSettingsPage() {
           <Check
             ok
             icon="play"
-            label="Video hosting (Vimeo and YouTube)"
-            detail="Nothing to connect: paid videos play from their Vimeo links, public ones from YouTube."
+            label="Video hosting (Livid and YouTube)"
+            detail="Nothing to connect: paid videos play from their Livid links (Vimeo links still play), public ones from YouTube."
           />
           <Check
             ok={s.cron}

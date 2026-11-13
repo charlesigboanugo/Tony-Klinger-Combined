@@ -29,7 +29,7 @@ is live at `www.tonydklinger.com` (note the `d`), and the intention is to move t
 system bind to the domain and each must be updated deliberately when it changes:
 
 ```text
-Vimeo              domain allowlist for video playback (§40.1 of note 09) — a
+Livid              domain allowlist for video playback (§40.1 of note 09) — a
                    changed domain silently breaks every embedded player
 Supabase Auth      allowed redirect URLs, email link host
 Stripe             Checkout return URLs, webhook endpoint

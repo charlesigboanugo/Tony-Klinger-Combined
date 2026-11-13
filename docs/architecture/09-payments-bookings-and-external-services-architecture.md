@@ -1247,7 +1247,7 @@ The planned external services include:
 Supabase
 Stripe
 Brevo
-Vimeo
+Livid
 Zoom
 Vercel
 GitHub
@@ -1261,7 +1261,7 @@ Vercel / Next.js   Application server, Stripe webhooks, payment and business
 Supabase           PostgreSQL, Auth, Row Level Security, Storage
 Stripe             Payment processing, Checkout, subscriptions, invoices
 Brevo              Transactional email and communication
-Vimeo              Video hosting and streaming for paid video (YouTube for public)
+Livid              Video hosting and streaming for paid video (YouTube for public)
 Zoom               Meetings for events and coaching sessions run on Zoom; one joining link per person (§40.2)
 GitHub             Source control and migration history
 ```
@@ -1276,26 +1276,30 @@ Each integration must have a clearly defined responsibility and server/client bo
 
 Additional services may be added later without changing the core commercial model.
 
-## 40.1 Vimeo and YouTube — Video
+## 40.1 Livid and YouTube — Video
 
-**Paid video is hosted on Tony's existing Vimeo account; public video on YouTube** (Tony,
-2026-11-10; the public/paid split decided 2026-11-04). Paid video is lessons, playlists and
+**Paid video is hosted on Livid; public video on YouTube** (Tony agreed to Livid,
+2026-11-13; the public/paid split decided 2026-11-04). Paid video is lessons, playlists and
 session recordings; public video is the filmed testimonials and the Romford Q&A. None is held
 in Supabase Storage: object storage does not transcode or serve adaptive bitrate, so a single
 upload would be served at full size to a phone on mobile data.
 
 *History.* Livid was adopted as the host for all video on 2026-09-02, with Vimeo as the
-interim host for gated lesson video from 2026-09-05 (R29). Tony chose to keep Vimeo, which he
-already uses for other projects, so Livid was dropped on 2026-11-10 before any video was put on
-it. `livid` remains an accepted `video_provider` value, so no stored row can break, but nothing
-is hosted there and Admin offers Vimeo first.
+interim host for gated lesson video from 2026-09-05 (R29). On 2026-11-10 Vimeo was chosen
+instead (Tony already used it); on 2026-11-13 Tony agreed to Livid after all, so Livid is the
+host again and Admin offers it first. `vimeo` remains an accepted `video_provider` and still
+plays, so any video already given a Vimeo link keeps working.
+
+**Livid's player address is unconfirmed.** `src/lib/academy/video.ts` builds
+`https://embed.livid.tv/<id>`, written before any Livid account existed. The first real Livid
+video confirms the embed format, the id to store, and how domain restriction is set.
 
 Switching host is a data change, not an architectural one: an entity stores a PROVIDER AND AN
 ID rather than a URL (note 07 §34.1), and the player address is built server-side
-(`src/lib/academy/video.ts`), including Vimeo's `?h=` hash for an unlisted video. The platform
+(`src/lib/academy/video.ts`), including Vimeo's `?h=` hash for an unlisted Vimeo video. The platform
 stores the reference and never proxies the stream.
 
-**Domain restriction is Vimeo's control, not ours, and it does not distinguish between
+**Domain restriction is the host's control (Livid's, as Vimeo's), not ours, and it does not distinguish between
 our own customers.** A domain allowlist stops another site embedding the player; it does
 nothing to stop a Silver member watching Platinum content, because both are on our
 domain. The entitlement check must therefore happen the same way it does for every other
@@ -1306,7 +1310,7 @@ considered and not wanted (2026-11-04): withholding plus the domain lock is the 
 protection. YouTube cannot be domain-restricted at all, which is why it carries public
 video only.
 
-Two operational consequences of the domain lock, to be confirmed against the Vimeo account
+Two operational consequences of the domain lock, to be confirmed against the Livid account
 when it is connected:
 
 - **Local development.** If `localhost` is not allowlisted, paid video cannot be played
@@ -1315,15 +1319,18 @@ when it is connected:
   fixed allowlist cannot cover them. Either a wildcard is available for the preview
   domain, or paid video is verified only on production and local.
 
-**Video is attached by hand.** Vimeo has an upload API, but none is built: getting a video
-onto the site is a manual upload in the Vimeo dashboard, then pasting its link into Admin.
+**Video is attached by hand.** No upload integration is built: getting a video onto the site
+is a manual upload in the Livid dashboard, then pasting its link into Admin. **Session
+recordings** go the same way (2026-11-13): Tony records in Zoom, uploads the recording to
+Livid, and staff attach the Livid link as the session's Recording (Group Coaching, workshops,
+the Q&A). Nothing is fetched from Zoom automatically.
 Any bulk content import (the Wix migration included) treats every video as a manual
 hand-off point rather than something a script carries end-to-end:
 
 ```text
 Video file
    ↓
-Upload in the Vimeo dashboard (paid: unlisted + domain-restricted)
+Upload in the Livid dashboard (paid: private + domain-restricted)
    or YouTube (public)
    ↓
 Link copied out
@@ -1332,7 +1339,7 @@ Pasted into the entity's Admin form (the id is taken from a whole link)
 ```
 
 Consequently no Admin screen offers an in-app "upload video" control that finishes the job
-itself. Building one on Vimeo's API is possible later and would not change the model.
+itself. Building one on the host's API is possible later and would not change the model.
 
 ---
 

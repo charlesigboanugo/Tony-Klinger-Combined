@@ -133,7 +133,7 @@ file still works. The Supabase CLI is never linked to the production project.
 
 ### 9. Still open before launch
 
-- [ ] Everything still open in `TO-CONNECT.md` (Vimeo for paid video).
+- [ ] Everything still open in `TO-CONNECT.md` (Livid for paid video).
 
 ### 10. After the deploy
 
@@ -149,7 +149,7 @@ file still works. The Supabase CLI is never linked to the production project.
 | Database, Auth, RLS, Storage | Supabase (hosted project) |
 | Payments | Stripe |
 | Transactional email | Brevo |
-| Video | Vimeo for paid video (domain-restricted embeds); YouTube for public video |
+| Video | Livid for paid video (domain-restricted embeds); YouTube for public video |
 | Scheduler | Vercel Cron → `/api/cron/[job]` |
 
 **Function region: London (`lhr1`), set in `vercel.json`.** It must stay in the same region
@@ -464,5 +464,5 @@ pnpm email:send
 ## Known outstanding
 
 - **R25** — Give-Get-Go Documentaries has no catalogue category.
-- **Vimeo video** — built (video fields and server-side withholding); waiting on Tony's
-  Vimeo login to connect and set the domain restriction.
+- **Livid video** — built (video fields and server-side withholding); waiting on Tony's
+  Livid account to confirm the player address and set the domain restriction.

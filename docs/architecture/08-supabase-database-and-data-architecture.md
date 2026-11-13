@@ -979,7 +979,7 @@ only, `private-media` for any other private file (migration 0037, replacing `doc
 Do not expose protected Academy resources through a publicly accessible static directory.
 
 **Uploaded from Admin → Media (owner, 2026-10-15).** The form follows the item's type: an
-image, audio file or document is uploaded (no path is typed); a video takes its Vimeo link
+image, audio file or document is uploaded (no path is typed); a video takes its Livid link
 and a link its address. An image always goes to `site-media`. For audio and documents staff
 set "Anyone can open it": on puts the file in `site-media`, off in `private-media`
 (never `course-assets`, which is for course material only). The

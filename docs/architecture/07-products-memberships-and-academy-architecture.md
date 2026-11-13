@@ -982,7 +982,7 @@ readable when it is the `recording_resource_id` of a cohort workshop whose cohor
 caller holds, or of a Group Coaching session the caller booked (`has_booking()`) or whose
 series they hold. **Session replays deliberately exclude customers who merely hold unspent
 credits** — credits make a session visible and bookable, and a seat never taken is not a
-replay owed. An external URL (a Vimeo link) is shown as-is; a private-bucket path is signed
+replay owed. An external URL (a Livid link) is shown as-is; a private-bucket path is signed
 server-side for one hour, only after the row came back under RLS
 (`src/lib/academy/delivery.ts`).
 
@@ -1465,7 +1465,7 @@ video_hash       Vimeo's ?h= token for an unlisted video; null for the others
 
 Two things follow from that shape, and both are the reason for it.
 
-**Moving host is a data change.** Note 09 §40.1 puts paid video on Vimeo (Tony, 2026-11-10);
+**Moving host is a data change.** Note 09 §40.1 puts paid video on Livid (Tony, 2026-11-13);
 the existing course videos are on YouTube and stay there until they are re-uploaded (R29). Because the
 address is composed from the provider and the id rather than stored, switching is
 `update lessons set video_provider, video_id` plus one function — not a rewrite of every
@@ -1482,14 +1482,14 @@ back — and a lesson row is readable solely with a live entitlement to its cour
 OUTLINE carries only a boolean saying a lesson has video, because a table of contents is
 rendered for people who may not hold every lesson on it.
 
-This is the mechanism note 09 §40.1 asks for. Its argument applies unchanged to Vimeo:
+This is the mechanism note 09 §40.1 asks for. Its argument applies unchanged to Livid:
 domain locking stops another site embedding the player and does nothing to stop one of our
 own members watching another tier's content, because both are on our domain.
 
 **How far the protection reaches depends on the host, and the hosts are not equal:**
 
 ```text
-vimeo          can refuse to play except when embedded on our domains, so a URL
+livid, vimeo   can refuse to play except when embedded on our domains, so a URL
                copied out of an entitled member's page is worth little off-site
 youtube        cannot. An unlisted URL IS the credential, it never expires, and
                revoking it means deleting and re-uploading the video
@@ -1498,8 +1498,8 @@ youtube        cannot. An unlisted URL IS the credential, it never expires, and
 Withholding does the same work in both cases — it keeps non-members out of the page. What
 it cannot do on YouTube is survive a member who passes the address on. That is the weakness
 README R29 records as option (b), accepted deliberately as an interim state, and it is the
-reason moving the course videos to Vimeo remains worth doing rather than a preference.
-(`livid` behaves as `vimeo` here, but nothing is hosted on it since 2026-11-10.)
+reason moving the course videos to Livid remains worth doing rather than a preference.
+(`vimeo` behaves as `livid` here and still plays; Livid has been the paid host since 2026-11-13.)
 
 **A malformed id degrades to "no video", never to a dead player.** The migrated curriculum
 proved the need: one row arrived from the source CMS carrying the literal string `IDHERE`
@@ -1508,7 +1508,7 @@ exactly eleven characters of `[A-Za-z0-9_-]`, a Vimeo id is numeric — and anyt
 that renders as written material rather than as a black rectangle that never loads. Content
 that looks broken is worse than content that is honestly absent.
 
-**Operational requirement.** On Vimeo the video must be set to unlisted AND
+**Operational requirement.** On Livid the video must be set to private AND
 restricted to our domains. Without that restriction, withholding the URL is the only
 protection there is.
 
