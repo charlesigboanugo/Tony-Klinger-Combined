@@ -9,7 +9,14 @@ import { Field, FormMessage, Input, Select } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { ukTodayStartLocal } from "@/lib/utils/uk-time";
 
-export function ScheduleForm({ series }: { series: Array<{ id: string; name: string; sessions: number }> }) {
+export function ScheduleForm({
+  series,
+  zoomUnavailable,
+}: {
+  series: Array<{ id: string; name: string; sessions: number }>;
+  /** Why Run on Zoom can't be switched on (Zoom isn't connected). */
+  zoomUnavailable?: string;
+}) {
   const [state, action] = useActionState<ScheduleState, FormData>(scheduleSeriesAction, {});
   // Nothing before today is offered (owner, 2026-11-12); days, so the server
   // and the browser agree when the page hydrates.
@@ -86,7 +93,8 @@ export function ScheduleForm({ series }: { series: Array<{ id: string; name: str
           id="schedule-uses-zoom"
           name="uses_zoom"
           label="Run on Zoom"
-          hint="On: the site creates a Zoom meeting for every session of the run, and gives each person on it their own joining link, which works on one device at a time. The joining link above is then not needed."
+          disabled={Boolean(zoomUnavailable)}
+          hint={zoomUnavailable ?? "On: the site creates a Zoom meeting for every session of the run, and gives each person on it their own joining link, which works on one device at a time. The joining link above is then not needed."}
         />
       </Wide>
 

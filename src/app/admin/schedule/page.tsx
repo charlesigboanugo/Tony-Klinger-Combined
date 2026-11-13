@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { ZOOM_NOT_CONNECTED, zoomConfigured } from "@/lib/zoom/client";
 import { ScheduleForm } from "@/app/admin/schedule/ScheduleForm";
 import { AdminGroupSection } from "@/components/admin/AdminGroupSection";
 import { AdminReveal } from "@/components/admin/AdminReveal";
@@ -141,6 +142,7 @@ export default async function AdminSchedulePage({
           description="Makes the run and its weekly sessions: the first at the time you give, then one a week, each titled with its topic."
         >
           <ScheduleForm
+            zoomUnavailable={zoomConfigured() ? undefined : ZOOM_NOT_CONNECTED}
             series={(series ?? []).map((s) => ({
               id: s.id,
               name: s.name,

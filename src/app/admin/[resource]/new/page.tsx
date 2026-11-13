@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { ZOOM_NOT_CONNECTED, zoomConfigured } from "@/lib/zoom/client";
 import { ResourceForm } from "@/components/admin/ResourceForm";
 import { AdminPageHeader } from "@/components/admin/AdminUI";
 import { BackLink } from "@/components/ui/BackLink";
@@ -49,7 +50,7 @@ export default async function Page({
     <>
       <BackLink href={listHref(resource.slug, query.from)}>All {resource.label.toLowerCase()}</BackLink>
       <AdminPageHeader title={`New ${resource.labelSingular.toLowerCase()}`} description={resource.description} />
-      <ResourceForm resource={resource} media={media} references={references} row={preset} from={query.from} />
+      <ResourceForm resource={resource} media={media} references={references} row={preset} from={query.from} locked={zoomConfigured() ? {} : { uses_zoom: ZOOM_NOT_CONNECTED }} />
     </>
   );
 }

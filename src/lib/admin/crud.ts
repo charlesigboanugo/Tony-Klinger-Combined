@@ -8,6 +8,7 @@ import { syncProductToStripe } from "@/lib/stripe/sync";
 import { mediaUsage } from "@/lib/admin/media-usage";
 import { removeMediaFile } from "@/lib/storage/remove";
 import { ukLocalToIso, ukTodayStartLocal } from "@/lib/utils/uk-time";
+import { ZOOM_NOT_CONNECTED, zoomConfigured } from "@/lib/zoom/client";
 import { ZOOM_OFF_CUTOFF_HOURS } from "@/lib/zoom/overview";
 import { placeMediaFile, undoPlaceMediaFile } from "@/lib/storage/visibility";
 import { getAuthContext } from "@/lib/permissions";
@@ -681,6 +682,7 @@ export async function createRow(
   if (missing) return { ok: false, error: missing };
   const badDate = await dateRuleError(resource, values);
   if (badDate) return { ok: false, error: badDate };
+  if (values.uses_zoom === true && !zoomConfigured()) return { ok: false, error: ZOOM_NOT_CONNECTED };
   await fillSlugs(resource, values, false);
   await fillPosition(resource, values, false);
   const unknownCustomer = await resolveCustomers(values);
@@ -765,6 +767,11 @@ export async function updateRow(
   if (missing) return { ok: false, error: missing };
   const badDate = await dateRuleError(resource, values, id);
   if (badDate) return { ok: false, error: badDate };
+  // Turning Zoom on needs Zoom connected; an item already on may stay on or go off.
+  if (values.uses_zoom === true && !zoomConfigured()) {
+    const { data } = await createAdminClient().from(resource.table).select("uses_zoom").eq("id", id).maybeSingle();
+    if ((data as { uses_zoom?: boolean } | null)?.uses_zoom !== true) return { ok: false, error: ZOOM_NOT_CONNECTED };
+  }
   await fillSlugs(resource, values, true);
   await fillPosition(resource, values, true);
 
@@ -839,6 +846,7 @@ export async function setZoom(resource: ResourceConfig, id: string, on: boolean)
   const actorId = await authorize(resource.permissions.write);
   if (!actorId) return { ok: false, error: "You do not have permission to do that." };
   if (!resource.fields.some((f) => f.name === "uses_zoom")) return { ok: false, error: "This can't run on Zoom." };
+  if (on && !zoomConfigured()) return { ok: false, error: ZOOM_NOT_CONNECTED };
   if (await finishedRow(resource, id)) {
     return { ok: false, error: `This ${resource.labelSingular.toLowerCase()} has finished, so it can no longer be changed.` };
   }

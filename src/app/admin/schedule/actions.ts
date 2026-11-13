@@ -6,6 +6,7 @@ import { after } from "next/server";
 import { requirePermission } from "@/lib/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ukLocalToIso, ukTodayStartLocal } from "@/lib/utils/uk-time";
+import { ZOOM_NOT_CONNECTED, zoomConfigured } from "@/lib/zoom/client";
 import { syncZoomSession } from "@/lib/zoom/sync";
 
 /**
@@ -48,6 +49,7 @@ export async function scheduleSeriesAction(_prev: ScheduleState, formData: FormD
   if (!Number.isInteger(minutes) || minutes < 15 || minutes > 480) return { error: "Length must be between 15 and 480 minutes." };
   if (capacity !== null && (!Number.isInteger(capacity) || capacity < 1 || capacity > 500)) return { error: "Places must be a whole number." };
   if (meetingUrl && !/^https:\/\//i.test(meetingUrl)) return { error: "The joining link must start with https://" };
+  if (usesZoom && !zoomConfigured()) return { error: ZOOM_NOT_CONNECTED };
 
   const admin = createAdminClient();
   const { data: runId, error } = await admin.rpc("schedule_series_run", {

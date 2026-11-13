@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { deleteResourceAction } from "@/app/admin/actions";
+import { ZOOM_NOT_CONNECTED, zoomConfigured } from "@/lib/zoom/client";
 import { ResourceForm } from "@/components/admin/ResourceForm";
 import { AdminPageHeader } from "@/components/admin/AdminUI";
 import { BackLink } from "@/components/ui/BackLink";
@@ -97,6 +98,7 @@ export default async function Page({
         emails={emails}
         finished={finished}
         from={from}
+        locked={zoomConfigured() ? {} : { uses_zoom: ZOOM_NOT_CONNECTED }}
       />
 
       {linked ? (

@@ -94,18 +94,103 @@ export default async function AdminSettingsPage() {
             }
           />
           <Check
-            ok={s.brevo}
+            // Sending is on only when the transport is Brevo with a key and a sender;
+            // the local test mailbox counts as working where it is not production.
+            ok={s.emailTransport === "brevo" ? s.brevo && Boolean(s.senderEmail) : s.emailTransport === "mailpit" && !s.production}
             icon="mail"
             label="Email delivery (Brevo)"
             detail={
-              s.brevo
-                ? s.failedEmails > 0
-                  ? `${s.failedEmails} email${s.failedEmails === 1 ? "" : "s"} failed — see Emails.`
-                  : s.oldestPendingEmailAt
-                    ? `Oldest queued email waiting since ${ukDateTime(s.oldestPendingEmailAt)}.`
-                    : "Configured. Nothing waiting."
-                : "No API key — emails are queued but never sent."
+              s.emailTransport === "off"
+                ? "Sending is off (EMAIL_TRANSPORT) — emails are queued but nobody receives them."
+                : s.emailTransport === "mailpit"
+                  ? "Test mailbox (Mailpit) — emails are caught on this computer, never delivered."
+                  : !s.brevo
+                    ? "No API key — emails are queued but never sent."
+                    : !s.senderEmail
+                      ? "No sender address — Brevo refuses every email."
+                      : s.failedEmails > 0
+                        ? `Sending from ${s.senderEmail}. ${s.failedEmails} email${s.failedEmails === 1 ? "" : "s"} failed — see Emails.`
+                        : s.oldestPendingEmailAt
+                          ? `Sending from ${s.senderEmail}. Oldest queued email waiting since ${ukDateTime(s.oldestPendingEmailAt)}.`
+                          : `Sending from ${s.senderEmail}. Nothing waiting.`
             }
+          />
+          <Check
+            ok={s.brevoLists === 3}
+            icon="megaphone"
+            label="Mailing lists (Brevo)"
+            detail={
+              s.brevoLists === 3
+                ? "Newsletter, Customers and Members lists are set."
+                : `${s.brevoLists} of 3 lists set (Newsletter, Customers, Members) — sign-ups to a missing list are not added.`
+            }
+          />
+          <Check
+            ok={s.zoom.state === "ok" && s.zoomErrors === 0}
+            icon="desktop"
+            label="Video meetings (Zoom)"
+            detail={
+              s.zoom.state === "missing" ? (
+                "No Zoom keys — Run on Zoom can't be switched on, and no meetings are made."
+              ) : s.zoom.state === "ok" ? (
+                <>
+                  Signed in to Zoom; meetings are made under a {s.zoom.plan} host.{" "}
+                  {s.zoomErrors > 0 ? (
+                    <Link href="/admin/zoom" className="text-error underline-offset-4 hover:underline">
+                      {s.zoomErrors} meeting{s.zoomErrors === 1 ? "" : "s"} with an error — see Zoom.
+                    </Link>
+                  ) : (
+                    <Link href="/admin/zoom" className="underline-offset-4 hover:underline">See every meeting.</Link>
+                  )}
+                </>
+              ) : s.zoom.state === "refused" ? (
+                `Zoom refused the keys: ${s.zoom.reason}`
+              ) : (
+                `Couldn't reach Zoom just now: ${s.zoom.reason}`
+              )
+            }
+          />
+          <Check
+            ok={s.google === true}
+            icon="key"
+            label="Google sign-in"
+            detail={
+              s.google === true
+                ? "On — people can sign in with Google."
+                : s.google === false
+                  ? "Off — switch it on in the Supabase dashboard (Authentication → Providers → Google)."
+                  : "Couldn't ask Supabase just now."
+            }
+          />
+          <Check
+            ok={s.turnstile || !s.production}
+            icon="shield"
+            label="Contact form spam check (Cloudflare Turnstile)"
+            detail={
+              s.turnstile
+                ? "Both keys set — the contact form checks every message."
+                : s.production
+                  ? "Keys missing — the contact form refuses every message."
+                  : "Keys missing — messages are let through here, as this is not production."
+            }
+          />
+          <Check
+            ok={Boolean(s.contactNotify)}
+            icon="bell"
+            label="Enquiry notifications"
+            detail={s.contactNotify ? `Contact and retreat enquiries are announced to ${s.contactNotify}.` : "No address — enquiries are saved but nobody is told."}
+          />
+          <Check
+            ok
+            icon="receipt"
+            label="Stripe customer portal"
+            detail={s.stripePortal ? "The site's own portal settings." : "Stripe's default portal settings (optional to change)."}
+          />
+          <Check
+            ok
+            icon="play"
+            label="Video hosting (Vimeo and YouTube)"
+            detail="Nothing to connect: paid videos play from their Vimeo links, public ones from YouTube."
           />
           <Check
             ok={s.cron}

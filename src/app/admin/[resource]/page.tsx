@@ -16,6 +16,7 @@ import { isUserColumn, peopleByIds } from "@/lib/admin/operations";
 import { isPast, lifecycles, resourceBySlug, splitByPast, type FieldType } from "@/lib/admin/resources";
 import { applyFilters, filterOptions, readSort, searchRows, sortRows } from "@/lib/admin/sort";
 import { getAuthContext, requirePermission } from "@/lib/permissions";
+import { ZOOM_NOT_CONNECTED, zoomConfigured } from "@/lib/zoom/client";
 import { ZOOM_OFF_CUTOFF_HOURS, tooCloseToTurnOff, zoomLinkCounts } from "@/lib/zoom/overview";
 import { publicStorageUrl } from "@/lib/storage/public-url";
 import { groupBy } from "@/lib/utils/group";
@@ -469,6 +470,8 @@ export default async function Page({
                       disabledReason={
                         isPast(resource, row)
                           ? "Finished, so it can no longer be changed."
+                          : row.uses_zoom !== true && !zoomConfigured()
+                            ? ZOOM_NOT_CONNECTED
                           : zoomLocked.has(String(row.id))
                             ? `Starts within ${ZOOM_OFF_CUTOFF_HOURS} hours, too close to turn Zoom off here. Open it to change it.`
                           : resource.table === "events" && row.format === "in_person"

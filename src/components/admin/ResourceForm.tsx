@@ -42,6 +42,7 @@ export function ResourceForm({
   emails = {},
   finished = false,
   from,
+  locked = {},
 }: {
   resource: ResourceConfig;
   row?: Record<string, unknown> | null;
@@ -55,6 +56,11 @@ export function ResourceForm({
   finished?: boolean;
   /** The list this was opened from, returned to after saving (`back.ts`). */
   from?: string;
+  /**
+   * Fields that cannot be switched ON just now, with why (Run on Zoom while
+   * Zoom isn't connected). One already on stays usable, so it can be turned off.
+   */
+  locked?: Record<string, string>;
 }) {
   const [state, formAction] = useActionState<AdminFormState, FormData>(
     saveResourceAction,
@@ -133,7 +139,11 @@ export function ResourceForm({
                 references={references}
                 uploadKind={field.uploadKind ? (watched[field.uploadKind] ?? String(row?.[field.uploadKind] ?? "")) : ""}
                 editing={Boolean(id)}
-                frozen={finished && !(resource.past?.stillEditable ?? []).includes(field.name)}
+                frozen={
+                  (finished && !(resource.past?.stillEditable ?? []).includes(field.name)) ||
+                  (field.name in locked && row?.[field.name] !== true)
+                }
+                lockedReason={field.name in locked && row?.[field.name] !== true ? locked[field.name] : undefined}
                 earliest={earliestFor(field, row?.[field.name], today, watched)}
                 onChange={
                   field.name in watched ? (next) => setWatched((w) => ({ ...w, [field.name]: next })) : undefined
@@ -172,9 +182,12 @@ function FormField({
   editing,
   frozen,
   earliest,
+  lockedReason,
   onChange,
 }: {
   field: Field;
+  /** Why it cannot be changed just now; shown in place of the hint. */
+  lockedReason?: string;
   /** For a date: the earliest the picker offers. */
   earliest?: string;
   /** For an upload field: the kind of file the form currently asks for. */
@@ -202,7 +215,7 @@ function FormField({
     field.type === "slug" && !editing
       ? `${field.hint ?? ""} Leave empty to make one from the name.`.trim()
       : field.hint;
-  const hint = locked && !field.readOnly ? `Fixed once created. ${fieldHint ?? ""}`.trim() : fieldHint;
+  const hint = lockedReason ?? (locked && !field.readOnly ? `Fixed once created. ${fieldHint ?? ""}`.trim() : fieldHint);
   const described = hint ? `${id}-hint` : undefined;
 
   const base =
@@ -325,7 +338,8 @@ function FormField({
           id={id}
           name={field.name}
           label={field.label}
-          hint={field.hint}
+          // A switch that can't be turned on just now says why instead.
+          hint={lockedReason ?? field.hint}
           disabled={disabled}
           defaultChecked={value === true}
         />

@@ -15,6 +15,9 @@ export function zoomConfigured(): boolean {
   return Boolean(process.env.ZOOM_ACCOUNT_ID && process.env.ZOOM_CLIENT_ID && process.env.ZOOM_CLIENT_SECRET);
 }
 
+/** Why "Run on Zoom" cannot be switched on while the keys are missing (owner, 2026-11-13). */
+export const ZOOM_NOT_CONNECTED = "Zoom isn't connected on this site (no Zoom keys), so it can't be switched on. See Admin → Settings.";
+
 let token: { value: string; expiresAt: number } | null = null;
 
 async function accessToken(): Promise<string> {
@@ -83,4 +86,22 @@ export async function zoom<T = unknown>(method: "GET" | "POST" | "PATCH" | "DELE
     throw new ZoomError(response.status, `Zoom ${method} ${path.split("?")[0]}: ${data.message ?? response.status}`, data.code);
   }
   return data as T;
+}
+
+/**
+ * Admin → Settings: are the keys present, and does Zoom accept them? Signs in
+ * and reads the host user (the account the meetings are made under). Never
+ * throws; the reason is for staff, never a secret.
+ */
+export async function zoomStatus(): Promise<
+  { state: "missing" } | { state: "ok"; plan: string } | { state: "refused" | "unreachable"; reason: string }
+> {
+  if (!zoomConfigured()) return { state: "missing" };
+  try {
+    const user = await zoom<{ type: number }>("GET", "/users/me");
+    return { state: "ok", plan: user.type === 2 ? "Licensed (Pro)" : user.type === 1 ? "Basic (free)" : `type ${user.type}` };
+  } catch (caught) {
+    if (caught instanceof ZoomError && caught.status > 0) return { state: "refused", reason: caught.message };
+    return { state: "unreachable", reason: caught instanceof Error ? caught.message : "no reply" };
+  }
 }

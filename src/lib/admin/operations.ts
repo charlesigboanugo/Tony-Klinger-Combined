@@ -1,6 +1,8 @@
 import "server-only";
 
 import { codeLabel } from "@/lib/admin/labels";
+import { currentTransport } from "@/lib/email/transport";
+import { zoomStatus } from "@/lib/zoom/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { timeAgo } from "@/lib/utils/device";
 import type { Database } from "@/types/database";
@@ -404,7 +406,7 @@ export async function systemStatus() {
   const admin = createAdminClient();
   const stripeKey = process.env.STRIPE_SECRET_KEY ?? "";
 
-  const [lastWebhook, oldestPending, failedEmails] = await Promise.all([
+  const [lastWebhook, oldestPending, failedEmails, zoom, zoomErrors, google] = await Promise.all([
     admin
       .from("processed_webhook_events")
       .select("processed_at,provider")
@@ -419,6 +421,9 @@ export async function systemStatus() {
       .limit(1)
       .maybeSingle(),
     admin.from("email_messages").select("*", { count: "exact", head: true }).eq("status", "failed"),
+    zoomStatus(),
+    admin.from("zoom_meetings").select("id", { count: "exact", head: true }).not("last_error", "is", null),
+    googleSignIn(),
   ]);
 
   return {
@@ -430,11 +435,39 @@ export async function systemStatus() {
       webhook: Boolean(process.env.STRIPE_WEBHOOK_SECRET),
     },
     brevo: Boolean(process.env.BREVO_API_KEY),
+    emailTransport: currentTransport(),
+    senderEmail: process.env.BREVO_SENDER_EMAIL ?? null,
+    brevoLists: (["NEWSLETTER", "CUSTOMERS", "MEMBERS"] as const).filter((l) => process.env[`BREVO_LIST_${l}`]).length,
     cron: Boolean(process.env.CRON_SECRET),
+    zoom,
+    zoomErrors: zoomErrors.count ?? 0,
+    google,
+    turnstile: Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY),
+    contactNotify: process.env.CONTACT_NOTIFICATION_EMAIL ?? null,
+    stripePortal: Boolean(process.env.STRIPE_PORTAL_CONFIGURATION_ID),
+    production: process.env.NODE_ENV === "production",
     lastWebhookAt: lastWebhook.data?.processed_at ?? null,
     oldestPendingEmailAt: oldestPending.data?.created_at ?? null,
     failedEmails: failedEmails.count ?? 0,
   };
+}
+
+/**
+ * Whether Google sign-in is switched on. Set in the Supabase dashboard (or
+ * supabase/config.toml locally), not by the site, so it is asked of Supabase's
+ * public auth settings. Null when Supabase did not answer.
+ */
+async function googleSignIn(): Promise<boolean | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  try {
+    const response = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: key }, signal: AbortSignal.timeout(5000), cache: "no-store" });
+    const body = (await response.json()) as { external?: { google?: boolean } };
+    return response.ok ? Boolean(body.external?.google) : null;
+  } catch {
+    return null;
+  }
 }
 
 function hostOf(url: string | undefined) {
