@@ -2052,3 +2052,4 @@ The Admin area manages the underlying products, content, customers and operation
 | 2026-11-10 | §34.1 and session replays: Livid references replaced with Vimeo, the paid-video host (note 09 §40.1). |
 | 2026-11-10 | §12.1: the pass stays on sale with no series dates; pass pages say "Series dates to be advised". |
 | 2026-11-12 | Joining window: a session run on Zoom shows each person their own link (note 09 §40.2). |
+| 2026-11-14 | Session replays: a pasted video link (Livid) on the session, played in a player on the Academy page (`ReplayPlayer`); Media no longer holds videos. |

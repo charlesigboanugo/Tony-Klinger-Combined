@@ -74,7 +74,9 @@ export function ResourceForm({
   // of each date another must not come before (`notBefore`), as typed.
   const [watched, setWatched] = useState<Record<string, string>>(() =>
     Object.fromEntries([
-      ...[...new Set(resource.fields.flatMap((f) => (f.shownFor ? [f.shownFor.field] : [])))].map((name) => [
+      // Also the field an upload box takes its kind from (Media's Type), whether
+      // or not anything is shown or hidden by it.
+      ...[...new Set(resource.fields.flatMap((f) => [...(f.shownFor ? [f.shownFor.field] : []), ...(f.uploadKind ? [f.uploadKind] : [])]))].map((name) => [
         name,
         String(row?.[name] ?? ""),
       ]),

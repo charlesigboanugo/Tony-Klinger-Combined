@@ -5,6 +5,8 @@ import { formatTime } from "@/lib/academy/format";
 import { dateBadge } from "@/lib/account/format";
 import { cn } from "@/lib/utils/cn";
 
+import { ReplayPlayer } from "./ReplayPlayer";
+
 /**
  * Pieces shared by every live-session row in the Academy — cohort workshops
  * and Group Coaching sessions (note 07 §35, §36).
@@ -53,10 +55,11 @@ export function JoinAction({ join, onBlock = false }: { join: JoinState; onBlock
   }
 }
 
-export function RecordingAction({ recording }: { recording: Recording | null }) {
+export function RecordingAction({ recording, title = "Recording" }: { recording: Recording | null; title?: string }) {
   if (!recording) {
     return <span className="text-sm text-muted-foreground">Recording to follow</span>;
   }
+  if (recording.embed) return <ReplayPlayer embed={recording.embed} title={title} />;
   return (
     <ButtonLink
       href={recording.url}

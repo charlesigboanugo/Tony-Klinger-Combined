@@ -1323,9 +1323,19 @@ when it is connected:
 
 **Video is attached by hand.** No upload integration is built: getting a video onto the site
 is a manual upload in the Livid dashboard, then pasting its link into Admin. **Session
-recordings** go the same way (2026-11-13): Tony records in Zoom, uploads the recording to
-Livid, and staff attach the Livid link as the session's Recording (Group Coaching, workshops,
-the Q&A). Nothing is fetched from Zoom automatically.
+recordings** (2026-11-14): Tony records to the **Zoom cloud**, and Livid's own Zoom
+integration (on every paid Livid plan) imports each recording into his Livid library by
+itself, titled with the meeting topic and dated, usually within a few hours (up to 48).
+Every meeting's topic carries its UK date ("Doing the Deal · 19 Nov 2026"), so weekly
+sessions of the same name stay distinct in Livid.
+Staff then paste its Livid link into the session's **Recording link** field (Group Coaching,
+workshops, the Q&A); the site files it privately and members with access watch the replay in
+a player on the Academy page, never on Livid itself (a domain-restricted video would not play
+there, and the link is never shown). **Attaching stays manual by decision:** Tony's account is on **Livid Pro**, and Livid's
+API (which could let the site find and attach replays itself) is on Premium only; no upgrade
+is planned for now (if Tony ever moves to Premium, the site could find and attach replays
+itself). Imported recordings take the Livid account's default privacy, so that default
+must be private and restricted to the site's domains.
 Any bulk content import (the Wix migration included) treats every video as a manual
 hand-off point rather than something a script carries end-to-end:
 

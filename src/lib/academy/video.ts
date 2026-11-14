@@ -157,3 +157,33 @@ export const VIDEO_FRAME_ORIGINS = [
   "https://livid.com",
   "https://www.youtube-nocookie.com",
 ] as const;
+
+/**
+ * A pasted video address as a playable video — for a session's recording link
+ * (owner, 2026-11-14: staff paste the Livid link of the replay that Livid's
+ * Zoom import made). Null when it is not a Livid, Vimeo or YouTube address, or
+ * its id is malformed.
+ */
+export function videoFromLink(input: string): LessonVideo | null {
+  let url: URL;
+  try {
+    url = new URL(input.trim());
+  } catch {
+    return null;
+  }
+  const host = url.hostname.replace(/^www\./, "");
+  const provider: VideoProvider | null =
+    host === "livid.com" ? "livid"
+    : host.endsWith("vimeo.com") ? "vimeo"
+    : host === "youtu.be" || host.endsWith("youtube.com") || host.endsWith("youtube-nocookie.com") ? "youtube"
+    : null;
+  if (!provider) return null;
+
+  const id =
+    provider === "livid"
+      ? (url.pathname.match(/^\/(?:watch|embed)\/([A-Za-z0-9_-]+)/)?.[1] ?? "")
+      : videoIdFromInput(input);
+  // An unlisted Vimeo link carries its token as the second path part or ?h=.
+  const hash = provider === "vimeo" ? (url.searchParams.get("h") ?? url.pathname.split("/").filter(Boolean)[1] ?? null) : null;
+  return lessonVideo({ video_provider: provider, video_id: id, video_hash: hash });
+}

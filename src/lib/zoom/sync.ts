@@ -103,7 +103,10 @@ function meetingBody(target: Target) {
   const start = new Date(target.startsAt!);
   const minutes = Math.round(((endOf(target) ?? 0) - start.getTime()) / 60_000) || DEFAULT_MINUTES;
   return {
-    topic: target.topic.slice(0, 200),
+    // Dated (owner, 2026-11-14): Livid's Zoom import titles each recording
+    // with this topic, and staff find the replay to attach by it, so two
+    // sessions of the same name (a weekly series) must not look alike.
+    topic: `${target.topic.slice(0, 180)} · ${UK_DAY.format(start)}`,
     type: 2,
     start_time: start.toISOString().replace(/\.\d{3}Z$/, "Z"),
     duration: Math.min(MAX_MINUTES, Math.max(15, minutes)),
@@ -134,6 +137,9 @@ function meetingBody(target: Target) {
         },
   };
 }
+
+/** "19 Nov 2026" in UK time, for meeting topics. */
+const UK_DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London" });
 
 function signatureOf(target: Target): string {
   const { topic, start_time, duration } = meetingBody(target);

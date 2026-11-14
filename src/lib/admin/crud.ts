@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { syncProductToStripe } from "@/lib/stripe/sync";
 import { mediaUsage } from "@/lib/admin/media-usage";
 import { removeMediaFile } from "@/lib/storage/remove";
+import { videoFromLink } from "@/lib/academy/video";
 import { ukLocalToIso, ukTodayStartLocal } from "@/lib/utils/uk-time";
 import { ZOOM_NOT_CONNECTED, zoomConfigured } from "@/lib/zoom/client";
 import { ZOOM_OFF_CUTOFF_HOURS } from "@/lib/zoom/overview";
@@ -424,6 +425,7 @@ export async function getRow(
   // What a product sells is stored on the thing it sells; read back so the
   // form opens on it.
   if (row && resource.table === "products") return { ...row, ...(await productLinkValues(row)) };
+  if (row && RECORDING_TABLES.has(resource.table)) return { ...row, recording_link: await recordingLinkOf(row) };
   return row;
 }
 
@@ -471,6 +473,68 @@ async function resolveCustomers(values: Record<string, unknown>): Promise<string
  * cohort from its intake. Read from the database, so it is always the parent
  * the chosen row really has.
  */
+/**
+ * A session's replay (owner, 2026-11-14): staff paste the Livid link on the
+ * session; the site files it as the session's private recording (a `resources`
+ * row of type video, never listed in Media), so it keeps the existing access
+ * rule — only people owed the replay can read it (0019).
+ */
+const RECORDING_TABLES = new Set(["group_coaching_sessions", "cohort_workshops", "member_qa_sessions"]);
+
+/** Take the pasted link out of the values (it is not a column) and check it. */
+function takeRecordingLink(
+  resource: ResourceConfig,
+  values: Record<string, unknown>,
+): { error: string } | { link: string | null } | null {
+  if (!RECORDING_TABLES.has(resource.table) || !("recording_link" in values)) return null;
+  const link = typeof values.recording_link === "string" ? values.recording_link.trim() : null;
+  delete values.recording_link;
+  if (link && !videoFromLink(link)) {
+    return { error: "The recording link must be a Livid video link (livid.com/watch/…), or a Vimeo or YouTube one." };
+  }
+  return { link: link || null };
+}
+
+/** File the link as the session's recording, replacing or removing the one before. */
+async function saveRecordingLink(resource: ResourceConfig, id: string, link: string | null, title: string): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data: row } = await admin.from(resource.table).select("recording_resource_id").eq("id", id).maybeSingle();
+  const current = (row as { recording_resource_id?: string | null } | null)?.recording_resource_id ?? null;
+  const { data: held } = current
+    ? await admin.from("resources").select("id,resource_type,external_url").eq("id", current).maybeSingle()
+    : { data: null };
+
+  if (!link) {
+    if (current) {
+      await admin.from(resource.table).update({ recording_resource_id: null }).eq("id", id);
+      // A recording the site filed itself goes with it; anything else stays in Media.
+      if (held?.resource_type === "video") await admin.from("resources").delete().eq("id", current);
+    }
+    return null;
+  }
+  if (held?.resource_type === "video") {
+    if (held.external_url === link) return null;
+    const { error } = await admin.from("resources").update({ external_url: link, title: `Recording · ${title}` }).eq("id", current!);
+    return error ? saveError(error) : null;
+  }
+  const { data: made, error } = await admin
+    .from("resources")
+    .insert({ resource_type: "video", external_url: link, title: `Recording · ${title}` })
+    .select("id")
+    .single();
+  if (error) return saveError(error);
+  const { error: linkError } = await admin.from(resource.table).update({ recording_resource_id: made.id }).eq("id", id);
+  return linkError ? saveError(linkError) : null;
+}
+
+/** The link the form opens on: the session's filed recording, when it is one. */
+async function recordingLinkOf(row: Record<string, unknown>): Promise<string> {
+  const id = row.recording_resource_id;
+  if (typeof id !== "string") return "";
+  const { data } = await createAdminClient().from("resources").select("resource_type,external_url").eq("id", id).maybeSingle();
+  return data?.resource_type === "video" ? (data.external_url ?? "") : "";
+}
+
 async function applyDerived(resource: ResourceConfig, values: Record<string, unknown>): Promise<void> {
   for (const [field, rule] of Object.entries(resource.derive ?? {})) {
     const source = values[rule.from];
@@ -682,6 +746,8 @@ export async function createRow(
   if (missing) return { ok: false, error: missing };
   const badDate = await dateRuleError(resource, values);
   if (badDate) return { ok: false, error: badDate };
+  const recording = takeRecordingLink(resource, values);
+  if (recording && "error" in recording) return { ok: false, error: recording.error };
   if (values.uses_zoom === true && !zoomConfigured()) return { ok: false, error: ZOOM_NOT_CONNECTED };
   await fillSlugs(resource, values, false);
   await fillPosition(resource, values, false);
@@ -721,6 +787,10 @@ export async function createRow(
   }
 
   const id = (data as { id: string }).id;
+  if (recording?.link) {
+    const recordingError = await saveRecordingLink(resource, id, recording.link, String(values.title ?? resource.labelSingular));
+    if (recordingError) return { ok: false, error: `Saved, but the recording link could not be kept: ${recordingError}` };
+  }
   const linkError = await applyProductLink(id, link.plan);
   await audit(actorId, `${resource.table}.create`, resource, id, audited);
   if (linkError) return { ok: false, error: `The product was created, but linking it failed: ${linkError}` };
@@ -767,6 +837,8 @@ export async function updateRow(
   if (missing) return { ok: false, error: missing };
   const badDate = await dateRuleError(resource, values, id);
   if (badDate) return { ok: false, error: badDate };
+  const recording = takeRecordingLink(resource, values);
+  if (recording && "error" in recording) return { ok: false, error: recording.error };
   // Turning Zoom on needs Zoom connected; an item already on may stay on or go off.
   if (values.uses_zoom === true && !zoomConfigured()) {
     const { data } = await createAdminClient().from(resource.table).select("uses_zoom").eq("id", id).maybeSingle();
@@ -818,13 +890,21 @@ export async function updateRow(
     }
   }
 
-  const { error } = await admin.from(resource.table).update(values).eq("id", id);
+  // A finished session may change only its recording, which is not a column:
+  // then there is nothing to write to the row itself.
+  const { error } =
+    Object.keys(values).length > 0 ? await admin.from(resource.table).update(values).eq("id", id) : { error: null };
 
   if (error) {
     await undoPlaceMediaFile(moved);
     return { ok: false, error: saveError(error) };
   }
   await removeMediaFile(replacedPath);
+  if (recording && "link" in recording) {
+    const { data: named } = await admin.from(resource.table).select("title").eq("id", id).maybeSingle();
+    const recordingError = await saveRecordingLink(resource, id, recording.link, String((named as { title?: string } | null)?.title ?? resource.labelSingular));
+    if (recordingError) return { ok: false, error: `Saved, but the recording link could not be kept: ${recordingError}` };
+  }
 
   const linkError = await applyProductLink(id, link.plan);
   await audit(actorId, `${resource.table}.update`, resource, id, audited);

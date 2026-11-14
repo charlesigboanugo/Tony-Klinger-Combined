@@ -330,7 +330,7 @@ export default async function AcademyCoachingPage({ searchParams }: PageProps<"/
                             <p className="font-medium">{s.title}</p>
                             <p className="text-sm text-muted-foreground">{formatSlot(s.startsAt)}</p>
                           </div>
-                          <RecordingAction recording={s.recording} />
+                          <RecordingAction recording={s.recording} title={s.title} />
                         </li>
                       ))}
                     </ul>

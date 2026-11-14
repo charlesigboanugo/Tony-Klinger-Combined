@@ -150,7 +150,7 @@ export default async function AcademyCohortPage({
                       <p className="font-medium">{w.title}</p>
                       <p className="text-sm text-muted-foreground">{formatSlot(w.startsAt)}</p>
                     </div>
-                    <RecordingAction recording={w.recording} />
+                    <RecordingAction recording={w.recording} title={w.title} />
                   </li>
                 ))}
               </ul>

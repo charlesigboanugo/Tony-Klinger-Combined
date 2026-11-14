@@ -14,9 +14,12 @@ a test video played on the site, 2026-11-13).
 - Paid videos uploaded to Tony's Livid, each set to **private** and **restricted to the site's
   domains** (tonyklinger.com, and localhost for development).
 - Each lesson or playlist video then gets its Livid link in Admin.
-- **Session recordings** the same way: Tony records in Zoom, uploads the recording to Livid,
-  and its Livid link is attached as the session's Recording (Group Coaching, workshops, the
-  Q&A). Members with access see the replay in the Academy once the session ends.
+- **Session recordings:** connect Zoom in Livid (Settings → Integrations → Zoom), set Livid's
+  default privacy to private and restricted to the site, and raise Zoom's cloud recording
+  resolution from 360p to 720p or 1080p. Tony records to the Zoom cloud; each recording then
+  arrives in Livid by itself, and staff paste its link as the session's Recording (Group
+  Coaching, workshops, the Q&A). Attaching stays manual: Livid Pro has no API (Premium only),
+  and no upgrade is planned for now.
 - The player address is confirmed (`livid.com/embed/<id>`; paste either the watch or embed
   link in Admin). Before going live, check one paid video is set to **private** and plays
   only on tonyklinger.com.

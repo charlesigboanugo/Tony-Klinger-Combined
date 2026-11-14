@@ -48,8 +48,14 @@ export type FieldType =
    */
   | "upload";
 
-/** What a recording can be: a Livid video, or an uploaded audio file. */
-const RECORDING_KINDS = ["video", "audio"] as const;
+/**
+ * A session's recording is a pasted video link (owner, 2026-11-14), not a Media
+ * item: Livid's Zoom import puts each replay in Tony's Livid, titled with the
+ * dated meeting topic, and staff paste its link here. Kept privately by the
+ * site (`saveRecordingLink` in crud.ts), so only people owed the replay see it.
+ */
+const RECORDING_HINT =
+  "Paste the replay's Livid link: in Livid, open the Zoom Recordings folder and find the recording named after this session and its date. Members with access watch it here once the session has ended. Leave empty to remove it.";
 
 export type Field = {
   name: string;
@@ -657,7 +663,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
     table: "cohort_workshops",
     slug: "workshops",
     emptyParents: { table: "cohorts", label: "name", childTable: "cohort_intakes", childKey: "cohort_id", note: "No intake yet. Create one under Cohort intakes." },
-    past: { columns: ["ends_at", "starts_at"], stillEditable: ["recording_resource_id"], currentOnly: true },
+    past: { columns: ["ends_at", "starts_at"], stillEditable: ["recording_link"], currentOnly: true },
     label: "Cohort workshops",
     labelSingular: "Workshop",
     description:
@@ -699,8 +705,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       { name: "meeting_url", label: "Joining link", type: "text",
         hint: "Zoom or similar. Shown only to cohort members, and only from 15 minutes before the start until the end." },
       { name: "uses_zoom", label: "Run on Zoom", type: "boolean", hint: ZOOM_SESSION_HINT },
-      { name: "recording_resource_id", label: "Recording", type: "media", mediaKinds: RECORDING_KINDS,
-        hint: "Add the recording under Media first (a Livid link, or an uploaded file), then pick it here." },
+      { name: "recording_link", label: "Recording link", type: "text", virtual: true, hint: RECORDING_HINT },
       { name: "status", label: "Status", type: "select", required: true,
         options: ["scheduled", "cancelled", "completed"] },
     ],
@@ -709,7 +714,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
     table: "group_coaching_sessions",
     slug: "sessions",
     emptyParents: { table: "group_coaching_series", label: "name", childTable: "coaching_runs", childKey: "series_id", note: "No run yet. Create one under Series runs." },
-    past: { columns: ["ends_at", "starts_at"], stillEditable: ["recording_resource_id"], currentOnly: true },
+    past: { columns: ["ends_at", "starts_at"], stillEditable: ["recording_link"], currentOnly: true },
     label: "Coaching sessions",
     labelSingular: "Session",
     description:
@@ -748,8 +753,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       { name: "meeting_url", label: "Joining link", type: "text",
         hint: "Shown only to people who booked, from 15 minutes before the start until the end." },
       { name: "uses_zoom", label: "Run on Zoom", type: "boolean", hint: ZOOM_SESSION_HINT },
-      { name: "recording_resource_id", label: "Replay", type: "media", mediaKinds: RECORDING_KINDS,
-        hint: "Add the recording under Media first, then pick it here." },
+      { name: "recording_link", label: "Replay link", type: "text", virtual: true, hint: RECORDING_HINT },
       { name: "status", label: "Status", type: "select", required: true,
         options: ["scheduled", "cancelled", "completed"] },
     ],
@@ -989,7 +993,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
   {
     table: "member_qa_sessions",
     slug: "qa-sessions",
-    past: { columns: ["ends_at", "starts_at"], stillEditable: ["recording_resource_id"] },
+    past: { columns: ["ends_at", "starts_at"], stillEditable: ["recording_link"] },
     label: "Q&A sessions",
     labelSingular: "Q&A session",
     description:
@@ -1010,8 +1014,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       { name: "meeting_url", label: "Joining link", type: "text",
         hint: "Shown to pass holders from 15 minutes before the start until the end." },
       { name: "uses_zoom", label: "Run on Zoom", type: "boolean", hint: ZOOM_SESSION_HINT },
-      { name: "recording_resource_id", label: "Recording", type: "media", mediaKinds: RECORDING_KINDS,
-        hint: "Add the recording under Media first, then pick it here." },
+      { name: "recording_link", label: "Recording link", type: "text", virtual: true, hint: RECORDING_HINT },
       { name: "status", label: "Status", type: "select", required: true,
         options: ["scheduled", "cancelled", "completed"] },
     ],
@@ -1235,7 +1238,7 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
     label: "Media",
     labelSingular: "Media item",
     description:
-      "Images, audio, documents, videos and links used across the site. Upload an image, audio file or document; for a video, give its Livid link.",
+      "Images, audio and documents used across the site. Upload an image, audio file or document. Videos are not kept here: they live on Livid, and a session's replay is its Livid link, pasted on the session.",
     permissions: {
       read: "catalogue.read",
       write: "catalogue.update",
@@ -1255,15 +1258,11 @@ export const ADMIN_RESOURCES: readonly ResourceConfig[] = [
       { name: "title", label: "Title", type: "text", required: true,
         hint: "Imported items carry their original filename and the page they appeared on." },
       { name: "resource_type", label: "Type", type: "select", fixedOnceCreated: true, required: true,
-        options: ["image", "video", "audio", "document", "link"] },
+        options: ["image", "audio", "document"] },
       // Uploaded, not typed (owner, 2026-10-15): the box that appears follows
-      // the type. Video lives on Livid and a link is somewhere else, so those
-      // two take a URL instead.
-      { name: "storage_path", label: "File", type: "upload", uploadKind: "resource_type", required: true,
-        shownFor: { field: "resource_type", values: ["image", "audio", "document"] } },
-      { name: "external_url", label: "Link", type: "text", required: true,
-        shownFor: { field: "resource_type", values: ["video", "link"] },
-        hint: "For a video, its Livid link. For a link, the full address of the page or file." },
+      // the type. Media holds files only (owner, 2026-11-14): no video (it
+      // lives on Livid) and no links (nothing on the site used them).
+      { name: "storage_path", label: "File", type: "upload", uploadKind: "resource_type", required: true },
       { name: "width", label: "Width", type: "number", hidden: true },
       { name: "height", label: "Height", type: "number", hidden: true },
     ],

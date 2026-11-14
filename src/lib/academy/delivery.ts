@@ -7,6 +7,7 @@ import { publicStorageUrl } from "@/lib/storage/public-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthContext } from "@/lib/permissions";
+import { embedUrl, videoFromLink } from "@/lib/academy/video";
 import { syncZoomSession, type SessionKind } from "@/lib/zoom/sync";
 
 /**
@@ -87,7 +88,11 @@ async function withOwnZoomLinks<R extends { id: string; uses_zoom: boolean; meet
   return rows.map((r) => (r.uses_zoom ? { ...r, meeting_url: own.get(r.id) ?? null } : r));
 }
 
-export type Recording = { url: string; external: boolean };
+/**
+ * `embed`: a video (a session's pasted Livid link), played on the page.
+ * Otherwise `url` is a file or page opened in a new tab.
+ */
+export type Recording = { url: string; external: boolean; embed?: string };
 
 /**
  * The playable address of a recording, or null.
@@ -109,7 +114,16 @@ async function recordingFor(resourceId: string | null): Promise<Recording | null
     .maybeSingle();
   if (!data) return null;
 
-  if (data.external_url) return { url: data.external_url, external: true };
+  if (data.external_url) {
+    // A video link is played here, never handed out: a paid Livid video plays
+    // only embedded on this site (owner, 2026-11-14).
+    const video = videoFromLink(data.external_url);
+    if (video) {
+      const embed = embedUrl(video);
+      return { url: embed, external: false, embed };
+    }
+    return { url: data.external_url, external: true };
+  }
   if (!data.storage_path) return null;
 
   const key = data.storage_path.replace(/^\/+/, "");

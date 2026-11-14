@@ -324,7 +324,7 @@ export default async function AcademyMembershipPage() {
                         <p className="font-medium">{q.title}</p>
                         <p className="text-sm text-muted-foreground">{formatSlot(q.startsAt)}</p>
                       </div>
-                      <RecordingAction recording={q.recording} />
+                      <RecordingAction recording={q.recording} title={q.title} />
                     </li>
                   ))}
                 </ul>
