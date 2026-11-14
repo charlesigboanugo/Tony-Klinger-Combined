@@ -39,6 +39,11 @@ function videoId(provider: string, input: string): string {
     const match = text.match(/vimeo\.com\/(?:video\/)?(\d+)/);
     return match ? match[1] : text;
   }
+  if (provider === "livid") {
+    // A watch page or an embed address: livid.com/watch/<id>, livid.com/embed/<id>.
+    const match = text.match(/livid\.com\/(?:watch|embed)\/([A-Za-z0-9_-]+)/);
+    return match ? match[1] : text;
+  }
   return text;
 }
 

@@ -53,12 +53,14 @@ export function lessonVideo(row: {
     upload it actually is.
 
     Only formats we can state confidently are checked. A YouTube id is exactly
-    eleven characters of [A-Za-z0-9_-]; a Vimeo id is numeric. Livid's is not
-    documented here, so it is not guessed at.
+    eleven characters of [A-Za-z0-9_-]; a Vimeo id is numeric; a Livid id is
+    letters and digits (twelve, from Tony's account, 2026-11-13: livid.com/
+    watch/zYvWiHelCfDD), allowed a little either way in case Livid varies it.
   */
   const SHAPE: Record<string, RegExp> = {
     youtube: /^[A-Za-z0-9_-]{11}$/,
     vimeo: /^\d+$/,
+    livid: /^[A-Za-z0-9_-]{6,32}$/,
   };
 
   const known: readonly string[] = ["vimeo", "livid", "youtube"];
@@ -111,9 +113,10 @@ export function embedUrl(video: LessonVideo): string {
     return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(video.id)}?${params}`;
   }
 
-  // Livid. Kept deliberately simple until the account exists: the point of the
-  // (provider, id) shape is that this is the only line that has to change.
-  return `https://embed.livid.tv/${encodeURIComponent(video.id)}`;
+  // Livid: the address its own embed code uses (oEmbed for a video on Tony's
+  // account, 2026-11-13). A watch page is livid.com/watch/<id>; the player is
+  // livid.com/embed/<id>. Domain restriction is set on the video in Livid.
+  return `https://livid.com/embed/${encodeURIComponent(video.id)}`;
 }
 
 /**
@@ -151,6 +154,6 @@ export function videoIdFromInput(input: string): string {
 /** Origins the player needs, for the frame-src allowance in the proxy CSP. */
 export const VIDEO_FRAME_ORIGINS = [
   "https://player.vimeo.com",
-  "https://embed.livid.tv",
+  "https://livid.com",
   "https://www.youtube-nocookie.com",
 ] as const;

@@ -1290,9 +1290,11 @@ instead (Tony already used it); on 2026-11-13 Tony agreed to Livid after all, so
 host again and Admin offers it first. `vimeo` remains an accepted `video_provider` and still
 plays, so any video already given a Vimeo link keeps working.
 
-**Livid's player address is unconfirmed.** `src/lib/academy/video.ts` builds
-`https://embed.livid.tv/<id>`, written before any Livid account existed. The first real Livid
-video confirms the embed format, the id to store, and how domain restriction is set.
+**Livid's player address** (confirmed 2026-11-13 with a video on Tony's account, through
+Livid's oEmbed): a watch page is `livid.com/watch/<id>`, the player `livid.com/embed/<id>`;
+an id is letters and digits (twelve so far). Admin and the lesson editor accept either link
+and keep the id; the CSP allows `https://livid.com` as a frame source. Domain restriction is
+set on each video in Livid.
 
 Switching host is a data change, not an architectural one: an entity stores a PROVIDER AND AN
 ID rather than a URL (note 07 §34.1), and the player address is built server-side

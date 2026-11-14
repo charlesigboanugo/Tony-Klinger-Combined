@@ -8,7 +8,8 @@ in `docs/architecture/` (built work) and `docs/deployment.md` (launch steps).
 
 ## 1. Livid — paid video and session recordings
 
-**Waiting on:** Tony's Livid account.
+**Waiting on:** the paid videos and recordings being uploaded to Livid (the account works:
+a test video played on the site, 2026-11-13).
 
 - Paid videos uploaded to Tony's Livid, each set to **private** and **restricted to the site's
   domains** (tonyklinger.com, and localhost for development).
@@ -16,8 +17,9 @@ in `docs/architecture/` (built work) and `docs/deployment.md` (launch steps).
 - **Session recordings** the same way: Tony records in Zoom, uploads the recording to Livid,
   and its Livid link is attached as the session's Recording (Group Coaching, workshops, the
   Q&A). Members with access see the replay in the Academy once the session ends.
-- **First video:** confirms Livid's player address. The site builds
-  `embed.livid.tv/<id>`, written before the account existed, so one real link settles it.
+- The player address is confirmed (`livid.com/embed/<id>`; paste either the watch or embed
+  link in Admin). Before going live, check one paid video is set to **private** and plays
+  only on tonyklinger.com.
 
 The site side is built: the video fields, Livid playback, and withholding the link from
 anyone without access (architecture note 09 §40.1). Public videos stay on YouTube. Vimeo

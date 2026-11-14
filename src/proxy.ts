@@ -136,7 +136,7 @@ function contentSecurityPolicy(nonce: string | null): string {
     // access control — the embed URL is withheld server-side from anyone
     // without entitlement, and a frame-src entry only says which origins may be
     // framed at all, never who may see a URL.
-    "frame-src 'self' https://challenges.cloudflare.com https://player.vimeo.com https://embed.livid.tv https://www.youtube-nocookie.com",
+    "frame-src 'self' https://challenges.cloudflare.com https://player.vimeo.com https://livid.com https://www.youtube-nocookie.com",
     "object-src 'none'",
     "base-uri 'self'",
     // Where forms may post. Stripe Checkout is a redirect, not a cross-origin
